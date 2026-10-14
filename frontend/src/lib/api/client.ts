@@ -1,7 +1,8 @@
 /**
  * Centralized HTTP client for the MmiriOma API.
  *
- * - Always sends credentials so future cookie-based sessions work cross-origin.
+ * - Always sends credentials so cookie-based sessions work cross-origin.
+ * - Sends the session's CSRF token on unsafe methods (see `setCsrfToken`).
  * - Every failure is thrown as an ApiError with a stable `code`, mirroring the
  *   backend envelope: {"error": {"code", "message", "details"}}.
  */
@@ -47,6 +48,9 @@ export class ApiError extends Error {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
+/** Header the backend checks on unsafe methods (docs/api/auth.md#csrf). */
+export const CSRF_HEADER = 'X-CSRF-Token'
+
 export interface RequestOptions {
   /** Defaults to `GET`. */
   method?: HttpMethod
@@ -65,6 +69,12 @@ export interface ApiClient {
    * @throws {ApiError} On network, HTTP, parse, or configuration failures.
    */
   request<T>(path: string, options?: RequestOptions): Promise<T>
+  /**
+   * Remember the CSRF token from the last session response, or forget it on
+   * sign-out. It is kept in memory only, never in storage, and is sent as
+   * `X-CSRF-Token` on every non-GET request.
+   */
+  setCsrfToken(token: string | null): void
 }
 
 interface ClientConfig {
@@ -100,14 +110,15 @@ async function readJson(response: Response): Promise<unknown> {
  * Create an API client. Application code should use the shared `apiClient`;
  * this factory exists so tests can inject a mock `fetch` and base URL.
  *
- * Every request sends cookies (`credentials: 'include'`) so future
- * cookie-based sessions work when the API is on a different origin.
+ * Every request sends cookies (`credentials: 'include'`) so cookie-based
+ * sessions work when the API is on a different origin.
  */
 export function createApiClient({
   baseUrl,
   fetch: fetchImpl = globalThis.fetch.bind(globalThis),
 }: ClientConfig): ApiClient {
   const normalizedBaseUrl = baseUrl?.trim().replace(/\/+$/, '')
+  let csrfToken: string | null = null
 
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     if (!normalizedBaseUrl) {
@@ -119,9 +130,13 @@ export function createApiClient({
       })
     }
 
+    const method = options.method ?? 'GET'
     const headers: Record<string, string> = { Accept: 'application/json' }
+    if (method !== 'GET' && csrfToken) {
+      headers[CSRF_HEADER] = csrfToken
+    }
     const init: RequestInit = {
-      method: options.method ?? 'GET',
+      method,
       credentials: 'include',
       headers,
       signal: options.signal,
@@ -185,7 +200,12 @@ export function createApiClient({
     return payload as T
   }
 
-  return { request }
+  return {
+    request,
+    setCsrfToken(token) {
+      csrfToken = token
+    },
+  }
 }
 
 function resolveBaseUrl(): string | undefined {

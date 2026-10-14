@@ -43,7 +43,8 @@ def create_app() -> FastAPI:
         allow_origins=[settings.frontend_url],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Accept", "Content-Type", "Authorization"],
+        # X-CSRF-Token carries the session's CSRF token (app/modules/auth).
+        allow_headers=["Accept", "Content-Type", "Authorization", "X-CSRF-Token"],
     )
 
     register_exception_handlers(app)

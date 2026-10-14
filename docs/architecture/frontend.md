@@ -12,6 +12,7 @@ Vite 8.3, Vitest 5.0.
 | --------------------------------- | ------------------------------------------------------ |
 | `src/lib/api/client.ts`           | `createApiClient`, the shared `apiClient`, `ApiError`  |
 | `src/lib/api/health.ts`           | Typed `getHealth()` for `GET /api/v1/health`           |
+| `src/lib/api/auth.ts`             | `register`, `login`, `getMe`, `logout`; stores the CSRF token |
 | `src/components/ApiStatus.tsx`    | Shows API reachability (in the admin sidebar)          |
 | `src/main.tsx`, `src/App.tsx`     | Providers (TanStack Query, router) and the route table |
 | `src/lib/queryClient.ts`          | Query client defaults (retry policy)                   |
@@ -35,9 +36,14 @@ If it is unset:
 
 ## Request behavior
 
-- `credentials: 'include'` on every request, so cookies will be sent once
-  cookie-based authentication exists. The backend allows this only for the exact
-  `FRONTEND_URL` origin.
+- `credentials: 'include'` on every request, so the HttpOnly session cookie is
+  sent. The backend allows this only for the exact `FRONTEND_URL` origin.
+- **CSRF:** `client.setCsrfToken(token)` stores the token from the last session
+  response in memory. Every non-GET request then sends it as `X-CSRF-Token`.
+  The `auth.ts` functions call it for you: `login`, `register` and `getMe` set
+  it, and `logout` clears it. Call `getMe()` on page load, because a reload
+  loses the in-memory token. It is never written to `localStorage`, so a script
+  injected through XSS cannot read it from storage later.
 - `Accept: application/json` is always sent. `body` is JSON-encoded and sets
   `Content-Type: application/json`.
 - A successful response is parsed as JSON and returned as `T`. The type is **not**
@@ -103,5 +109,6 @@ of the file and use Testing Library (`@testing-library/react`, `user-event`).
 
 Tests create a client with `createApiClient({ baseUrl, fetch: mockFetch })`; no
 server is needed. They cover the health call (URL, method, credentials), JSON
-bodies, envelope mapping, non-envelope errors, network errors, aborts, and a
-missing base URL.
+bodies, envelope mapping, non-envelope errors, network errors, aborts, a
+missing base URL, and (`auth.test.ts`) storing, sending and clearing the CSRF
+token.

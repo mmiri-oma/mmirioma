@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "order_not_found",
+    "message": "Order not found",
+    "details": null
+  }
+}

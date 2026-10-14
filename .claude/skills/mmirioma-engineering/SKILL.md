@@ -15,7 +15,7 @@ Task: $ARGUMENTS
 
 ## 1. Understand the requirement first
 
-1. Read `CLAUDE.md`. Read `docs/architecture/backend.md` and/or `docs/architecture/frontend.md` for the area you will touch.
+1. Read `CLAUDE.md` and `LOG.md` (known issues and their fixes). Read `docs/architecture/backend.md` and/or `docs/architecture/frontend.md` for the area you will touch.
 2. Read the requirement sources at the repo root: `MmiriOma_MVP_SRS.md` (normative) and `MmiriOma_MVP_PRD.md`. Use [references/requirements.md](references/requirements.md) to find the relevant sections, then read them in the source files.
 3. Identify the requirement IDs the task implements (`FR-`, `BR-`, `NFR-`, `PR-`) and the acceptance tests (`T-01`…`T-14`).
 4. Check the open decisions (PRD §13, SRS §12). If the task depends on an unresolved one, or the documents do not answer a business question, **stop and ask the user**. Never invent business rules, prices, limits, or state names.
@@ -64,6 +64,8 @@ Apply [references/review-checklist.md](references/review-checklist.md) to your o
 
 ## 7. Report
 
-Summarize: files changed, requirement IDs covered, decisions and why, docs consulted, check results, and open questions or concerns.
+Add an entry to `LOG.md` for every issue or error encountered during the task (rules in `CLAUDE.md`, "Issue log").
+
+Summarize: files changed, requirement IDs covered, decisions and why, docs consulted, check results, new `LOG.md` entries, and open questions or concerns.
 
 Never commit, push, merge, rebase, or switch branches unless the user explicitly asks.

@@ -35,6 +35,12 @@ def error_client() -> TestClient:
     async def conflict() -> None:
         raise APIError(HTTPStatus.CONFLICT, "order_conflict", "Order conflict", {"id": "1"})
 
+    @app.get("/throttled")
+    async def throttled() -> None:
+        raise APIError(
+            HTTPStatus.TOO_MANY_REQUESTS, "slow_down", "Slow down", headers={"Retry-After": "30"}
+        )
+
     @app.get("/crash")
     async def crash() -> None:
         raise RuntimeError("internal secret detail")
@@ -84,3 +90,11 @@ def test_unexpected_errors_hide_internal_details(error_client: TestClient) -> No
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "internal_server_error"
     assert "internal secret detail" not in response.text
+
+
+def test_api_error_headers_are_sent(error_client: TestClient) -> None:
+    response = error_client.get("/throttled")
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "30"
+    assert response.json()["error"]["code"] == "slow_down"

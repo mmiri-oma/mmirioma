@@ -36,7 +36,14 @@ class Settings(BaseSettings):
             SecretStr so the password is masked in reprs and logs.
         frontend_url: Exact frontend origin allowed by CORS, normalized without a
             trailing slash.
-        session_secret: Key for signing future session cookies.
+        session_secret: Key for hashing session tokens and deriving CSRF tokens.
+        session_max_age_seconds: Absolute session lifetime; there is no sliding
+            renewal.
+        session_cookie_secure: Explicit ``Secure`` cookie flag. When unset it is
+            on in production and off elsewhere (plain-http local development).
+        session_cookie_samesite: ``SameSite`` attribute of the session cookie.
+            Use ``none`` only when the frontend and API are on different sites;
+            it requires a secure cookie.
     """
 
     model_config = SettingsConfigDict(
@@ -54,6 +61,10 @@ class Settings(BaseSettings):
     session_secret: SecretStr = Field(
         default_factory=lambda: SecretStr(secrets.token_urlsafe(MIN_SECRET_LENGTH))
     )
+    # Between 5 minutes and 30 days; default 7 days.
+    session_max_age_seconds: int = Field(default=7 * 24 * 3600, ge=300, le=30 * 24 * 3600)
+    session_cookie_secure: bool | None = None
+    session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
     @field_validator("database_url")
     @classmethod
@@ -77,9 +88,18 @@ class Settings(BaseSettings):
         return f"{parts.scheme}://{parts.netloc}"
 
     @model_validator(mode="after")
+    def _validate_cookie_flags(self) -> Settings:
+        # Browsers reject SameSite=None cookies that are not Secure.
+        if self.session_cookie_samesite == "none" and not self.cookie_secure:
+            raise ValueError("SESSION_COOKIE_SAMESITE=none requires a secure cookie")
+        return self
+
+    @model_validator(mode="after")
     def _validate_production(self) -> Settings:
         if not self.is_production:
             return self
+        if self.session_cookie_secure is False:
+            raise ValueError("SESSION_COOKIE_SECURE must not be false in production")
         if self.app_debug:
             raise ValueError("APP_DEBUG must be false in production")
         if "session_secret" not in self.model_fields_set:
@@ -96,6 +116,13 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Whether strict production rules apply."""
         return self.app_env == "production"
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Effective ``Secure`` flag for the session cookie."""
+        if self.session_cookie_secure is None:
+            return self.is_production
+        return self.session_cookie_secure
 
     @property
     def async_database_url(self) -> URL:

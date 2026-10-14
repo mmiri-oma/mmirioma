@@ -62,6 +62,6 @@ backend/app/modules/<module>/
 - Authorize per object in the service or a dependency: "may this user act on *this* order?" (FR-001, T-07).
 - SQL only through SQLAlchemy constructs or `text()` with bound parameters.
 - Never log or return secrets, phone numbers, addresses, or payment references in full (NFR-015).
-- Rate limiting (NFR-002) and request IDs (NFR-015) are not implemented yet. Propose an approach (and any dependency) before adding one.
+- Rate limiting (NFR-002) exists only for login and registration (`app/modules/auth/rate_limit.py`, in-memory, single process). Reuse `SlidingWindowLimiter` for quote, OTP and order endpoints. Request IDs (NFR-015) are not implemented yet. Propose an approach (and any dependency) before adding one.
 - New settings go in `Settings`, `.env.example`, and `docs/architecture/backend.md`. No secrets in code, tests, or docs.
 - CORS stays an explicit origin. Add new custom headers to `allow_headers`.

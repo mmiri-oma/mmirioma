@@ -14,6 +14,15 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.modules.auth.rate_limit import get_auth_rate_limits  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def reset_auth_rate_limits() -> Iterator[None]:
+    # The limiters are process-wide; keep tests independent of each other.
+    get_auth_rate_limits().clear()
+    yield
+    get_auth_rate_limits().clear()
 
 
 @pytest.fixture

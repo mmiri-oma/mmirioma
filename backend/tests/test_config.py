@@ -15,7 +15,16 @@ def make_settings(**overrides: object) -> Settings:
 
 @pytest.fixture(autouse=True)
 def clear_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("APP_ENV", "APP_DEBUG", "DATABASE_URL", "FRONTEND_URL", "SESSION_SECRET"):
+    for name in (
+        "APP_ENV",
+        "APP_DEBUG",
+        "DATABASE_URL",
+        "FRONTEND_URL",
+        "SESSION_SECRET",
+        "SESSION_MAX_AGE_SECONDS",
+        "SESSION_COOKIE_SECURE",
+        "SESSION_COOKIE_SAMESITE",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -114,3 +123,43 @@ def test_valid_production_settings() -> None:
 def test_production_rejects_unsafe_settings(overrides: dict[str, object], message: str) -> None:
     with pytest.raises(ValidationError, match=message):
         make_settings(app_env="production", **overrides)
+
+
+def test_session_cookie_defaults_outside_production() -> None:
+    settings = make_settings()
+
+    assert settings.cookie_secure is False
+    assert settings.session_cookie_samesite == "lax"
+    assert settings.session_max_age_seconds == 7 * 24 * 3600
+
+
+def test_session_cookie_is_secure_by_default_in_production() -> None:
+    settings = make_settings(
+        app_env="production", session_secret=STRONG_SECRET, frontend_url="https://app.example"
+    )
+
+    assert settings.cookie_secure is True
+
+
+def test_production_rejects_insecure_session_cookie() -> None:
+    with pytest.raises(ValidationError, match="SESSION_COOKIE_SECURE"):
+        make_settings(
+            app_env="production",
+            session_secret=STRONG_SECRET,
+            frontend_url="https://app.example",
+            session_cookie_secure=False,
+        )
+
+
+def test_samesite_none_requires_secure_cookie() -> None:
+    with pytest.raises(ValidationError, match="SAMESITE=none"):
+        make_settings(session_cookie_samesite="none")
+
+    settings = make_settings(session_cookie_samesite="none", session_cookie_secure=True)
+    assert settings.cookie_secure is True
+
+
+@pytest.mark.parametrize("seconds", [299, 30 * 24 * 3600 + 1])
+def test_rejects_out_of_range_session_lifetime(seconds: int) -> None:
+    with pytest.raises(ValidationError, match="session_max_age_seconds"):
+        make_settings(session_max_age_seconds=seconds)

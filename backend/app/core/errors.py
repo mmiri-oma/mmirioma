@@ -53,6 +53,7 @@ class APIError(Exception):
         code: Stable snake_case error code for clients.
         message: Human-readable message. Must not contain internal details or secrets.
         details: Optional JSON-serializable context.
+        headers: Optional response headers, e.g. ``Retry-After`` on 429.
     """
 
     def __init__(
@@ -61,12 +62,14 @@ class APIError(Exception):
         code: str,
         message: str,
         details: Any | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details
+        self.headers = headers
 
 
 def error_response(
@@ -118,7 +121,7 @@ def _validation_details(exc: RequestValidationError) -> list[dict[str, Any]]:
 
 
 async def _handle_api_error(_: Request, exc: APIError) -> JSONResponse:
-    return error_response(exc.status_code, exc.code, exc.message, exc.details)
+    return error_response(exc.status_code, exc.code, exc.message, exc.details, exc.headers)
 
 
 async def _handle_http_exception(_: Request, exc: StarletteHTTPException) -> JSONResponse:

@@ -1,0 +1,11 @@
+{
+  "user": {
+    "id": "0b8f1c5e-2a7d-4d3e-9a51-6f0c2b7e9d14",
+    "name": "Sample Customer",
+    "phone": "+2348000000001",
+    "role": "customer",
+    "phone_verified": false
+  },
+  "csrf_token": "sample-csrf-token-not-real",
+  "expires_at": "2026-10-21T09:30:00Z"
+}

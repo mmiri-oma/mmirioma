@@ -226,6 +226,26 @@ Write "None" for a section that genuinely does not apply rather than omitting it
 Do not create placeholder feature documents: only document functionality that
 actually exists.
 
+## Issue log (`LOG.md`)
+
+`LOG.md` at the repo root records every problem hit while working on the
+project. This applies to every team member and every coding agent.
+
+- **Read `LOG.md` before starting a task.** If a known issue applies, follow its
+  recorded fix instead of rediscovering it.
+- **Add an entry for every issue or error you encounter**: failed commands,
+  test or CI failures, tooling or dependency problems, migration problems,
+  confusing framework behavior, wrong data in plans or issues, and mistakes
+  you had to undo. Log it even if you fixed it in minutes.
+- Use the entry template at the top of `LOG.md`, newest entries first. Include
+  the exact error message, the cause, the fix or workaround, and a status
+  (`resolved`, `workaround`, `open`). Name the author (GitHub username, plus
+  "+ agent" when one was used).
+- Add entries in the same branch and PR as the work they came from. Update the
+  status of an existing entry rather than duplicating it.
+- Never put secrets, credentials, tokens or personal data in `LOG.md`.
+- Agents: mention new `LOG.md` entries in your final report to the user.
+
 ## Modern framework standards
 
 - Follow the current official documentation that matches the project's

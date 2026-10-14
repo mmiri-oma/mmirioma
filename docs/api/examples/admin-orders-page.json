@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "id": "3c1d6f0a-8b2e-4f7a-9c35-1e2d4b6a8f90",
+      "reference": "MO-7KQ2M9XH4T",
+      "status": "quote_requested",
+      "quantity_litres": 200,
+      "contact_name": "Sample Customer",
+      "contact_phone": "+2348000000001",
+      "delivery_address": "12 Sample Close, Independence Layout, Enugu",
+      "landmark": "Opposite the blue gate",
+      "delivery_instructions": "Tank is behind the house",
+      "preferred_delivery_date": "2026-10-16",
+      "created_at": "2026-10-14T09:30:00Z",
+      "updated_at": "2026-10-14T09:30:00Z",
+      "customer": {
+        "id": "0b8f1c5e-2a7d-4d3e-9a51-6f0c2b7e9d14",
+        "name": "Sample Customer",
+        "phone": "+2348000000001",
+        "phone_verified": false
+      },
+      "is_simulated": true
+    },
+    {
+      "id": "9a7e2b14-5c3d-4e6f-8a1b-2c3d4e5f6a7b",
+      "reference": "MO-3HV8RZ1N6D",
+      "status": "quote_requested",
+      "quantity_litres": 50,
+      "contact_name": "Second Sample",
+      "contact_phone": "+2348000000002",
+      "delivery_address": "4 Sample Street, New Haven, Enugu",
+      "landmark": null,
+      "delivery_instructions": null,
+      "preferred_delivery_date": null,
+      "created_at": "2026-10-14T08:05:00Z",
+      "updated_at": "2026-10-14T08:05:00Z",
+      "customer": {
+        "id": "5e4d3c2b-1a09-4f8e-8d7c-6b5a49382716",
+        "name": "Second Sample",
+        "phone": "+2348000000002",
+        "phone_verified": false
+      },
+      "is_simulated": true
+    }
+  ],
+  "total": 2,
+  "limit": 50,
+  "offset": 0
+}

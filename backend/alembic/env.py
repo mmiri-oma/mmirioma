@@ -13,8 +13,8 @@ from sqlalchemy import create_engine, pool
 from app.core.config import get_settings
 from app.core.models import Base
 
-# Import each module's models here so autogenerate can see their tables, e.g.:
-# from app.modules.orders import models as orders_models  # noqa: F401
+# Import each module's models here so autogenerate can see their tables.
+from app.modules.auth import models as auth_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
