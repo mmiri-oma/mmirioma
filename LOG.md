@@ -23,6 +23,73 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-14: Testing Library and jsdom added for S1-09 component tests
+
+- **Area:** tooling (frontend)
+- **Author:** Daveoski + Claude Code
+- **Symptom:** S1-09 (#10) requires component tests, but the skill said
+  Testing Library was "not installed" and should be proposed first.
+- **Cause:** The component-test tooling had not been set up yet.
+- **Fix / workaround:** Added dev-only `@testing-library/react`,
+  `@testing-library/dom`, `@testing-library/user-event` and `jsdom` on the
+  `davidui` branch. Component tests opt in with `// @vitest-environment jsdom`.
+  The skill notes were updated to match. Needs lead approval in the PR.
+- **Status:** open
+- **Refs:** #10, `frontend/package.json`, `frontend/vite.config.ts`
+
+### 2026-10-14: React Router `<Link to={{ state }}>` silently drops the state
+
+- **Area:** frontend
+- **Author:** Daveoski + Claude Code
+- **Symptom:** "Back to orders" lost the directory filters. The test failed with
+  `expected '/admin/orders' to be '/admin/orders?status=en_route'`.
+- **Cause:** `state` was put inside the `to` object. React Router ignores it
+  there. It must be the separate `state` prop.
+- **Fix / workaround:** `<Link to={path} state={{ fromSearch }}>`. Regression
+  test: "returns to the directory with the filters it came from".
+- **Status:** resolved
+- **Refs:** `frontend/src/features/admin-orders/OrderList.tsx`
+
+### 2026-10-14: ESLint `react-refresh/only-export-components` errors
+
+- **Area:** frontend (lint)
+- **Author:** Daveoski + Claude Code
+- **Symptom:** `Fast refresh only works when a file only exports components`
+  for `Button.tsx` (exported `buttonClasses`) and a test helper with an inline
+  component.
+- **Cause:** A `.tsx` file that exports components must not also export plain
+  functions or constants, and a file exporting functions must not define components.
+- **Fix / workaround:** Move shared helpers into `.ts` files
+  (`buttonVariants.ts`, `reference.ts`). The test helper uses
+  `createMemoryRouter` instead of a probe component.
+- **Status:** resolved
+- **Refs:** `frontend/src/components/ui/buttonVariants.ts`
+
+### 2026-10-14: Headless Chrome screenshots cannot go below 512 px wide
+
+- **Area:** tooling
+- **Author:** Daveoski + Claude Code
+- **Symptom:** `chrome --headless --window-size=390,…` screenshots looked
+  clipped on the right, as if the page overflowed.
+- **Cause:** Headless Chrome enforces a 512 px minimum viewport
+  (`innerWidth` reported 512). The page itself was fine.
+- **Fix / workaround:** For phone-width screenshots, load the page in a
+  390 px-wide `<iframe>` inside a local HTML file and screenshot that.
+- **Status:** workaround
+- **Refs:** S1-09 PR screenshots
+
+### 2026-10-14: `gh` CLI not installed on a Windows dev machine
+
+- **Area:** GitHub
+- **Author:** Daveoski + Claude Code
+- **Symptom:** `gh: command not found` in Git Bash.
+- **Cause:** The GitHub CLI is optional and was not installed.
+- **Fix / workaround:** Read public issues with
+  `curl https://api.github.com/repos/mmiri-oma/mmirioma/issues/<n>`. Open
+  PRs in the GitHub web UI.
+- **Status:** workaround
+- **Refs:** team GitHub guide §4
+
 ### 2026-10-14: Rate limit could be bypassed with concurrent login requests
 
 - **Area:** backend (security)
