@@ -23,6 +23,23 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Push declined due to email privacy restrictions
+
+- **Area:** GitHub
+- **Author:** chidimmamogbo + Claude Code
+- **Symptom:** `git push` failed with `! [remote rejected] ... (push declined
+  due to email privacy restrictions)`. `gh pr create` then failed with `No
+  commits between main and <branch>`, because the branch never reached GitHub.
+- **Cause:** The commit author email was a private address, and the GitHub
+  account blocks command-line pushes that would expose it.
+- **Fix / workaround:** Re-author the unpushed commit with the account's
+  no-reply address (`<id>+<login>@users.noreply.github.com`, shown by
+  `gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"'`):
+  `git -c user.email=<noreply> commit --amend --no-edit --reset-author`. To
+  avoid it next time, set that address as `user.email` for the repository.
+- **Status:** workaround
+- **Refs:** PR #28
+
 ### 2026-10-15: `Session.flush(objects)` is deprecated in SQLAlchemy 2.1
 
 - **Area:** backend
