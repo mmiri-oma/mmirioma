@@ -15,6 +15,7 @@ from app.core.models import Base
 
 # Import each module's models here so autogenerate can see their tables.
 from app.modules.auth import models as auth_models  # noqa: F401
+from app.modules.orders import models as order_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

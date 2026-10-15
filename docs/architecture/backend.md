@@ -85,7 +85,8 @@ driver. Only Alembic uses it.
     database `now()`. `updated_at` is refreshed by ORM updates only; bulk
     `UPDATE` statements must set it themselves.
 
-Tables so far: `users` and `user_sessions` (revision `0002`, auth module).
+Tables so far: `users` and `user_sessions` (revision `0002`, auth module);
+`orders` and `order_events` (revision `0003`, orders module).
 
 ### Migrations (`alembic/`)
 
