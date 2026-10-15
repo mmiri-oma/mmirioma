@@ -23,6 +23,22 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Removing several issue assignees with `gh api -f` did nothing
+
+- **Area:** tooling (GitHub)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** A loop of `gh api -X DELETE repos/.../issues/N/assignees -f
+  "assignees[]=<login>"` removed the single assignee on most issues, but on
+  #12, #13 and #19 (several assignees) the departed members were still listed,
+  with no error.
+- **Cause:** Not confirmed. The same call sent as a JSON body worked at once,
+  so the form-encoded array is the likely cause.
+- **Fix / workaround:** Send the array as JSON:
+  `echo '{"assignees":["a","b"]}' | gh api -X DELETE .../assignees --input -`.
+  Print the issue's assignees afterwards to confirm.
+- **Status:** workaround
+- **Refs:** issues #12, #13, #19
+
 ### 2026-10-15: Redirect after sign-in/sign-out lost to the route guard
 
 - **Area:** frontend
