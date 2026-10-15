@@ -641,6 +641,19 @@ That canvas copies this system's tokens because the design-system canvas could
 not be edited from the designer's account; a later token change must be applied
 to both canvases.
 
+## Additions from the admin orders design
+
+Recorded from the built admin screens with the
+[admin orders design](admin-orders.md), approved on 2026-10-15. No new tokens.
+
+- **Status toggle button:** pill button, 48 px tall, icon and label; when
+  selected, a tick and `primary-50` fill, with `aria-pressed`.
+- **Phone state line:** icon plus "Phone confirmed" or "Phone not confirmed";
+  words and icon, never colour alone.
+
+Staff badge words follow the admin design's Decision 9; staff navigation below
+desktop is a top bar (Decision 8).
+
 ## Formatting rules
 
 Times are Africa/Lagos (West Africa Time, UTC+1), **12-hour clock with am/pm**.
@@ -881,15 +894,17 @@ Made by the technical lead on 2026-10-14, after the canvas was approved:
 
 ## Open questions
 
-1. **Staff status labels.** Staff views (prompt 02) need badges for
-   "Assigned - awaiting driver", "Driver accepted" and "Disputed". The admin
-   design should add them to this system.
-2. **Staff navigation below desktop.** The sidebar note says it "moves to the
-   bottom navigation" below 1280 px; the staff top bar note says it becomes a
-   Menu button below 768 px, which matches prompt 02. The admin design should
-   settle one rule.
-3. **Touch target size in PR #15.** `docs/design/ui-system.md` in PR #15 uses
-   44 px; this approved system uses 48 px.
+None open. Resolved on 2026-10-15:
+
+1. **Staff status labels:** the admin design adds "Assigned - awaiting
+   driver", "Driver accepted" and "Disputed" to the badge words
+   ([admin-orders.md](admin-orders.md), Decision 9).
+2. **Staff navigation below desktop:** a top bar, not bottom navigation; a
+   "Menu" button is added when a second staff section exists
+   ([admin-orders.md](admin-orders.md), Decision 8). The canvas note "moves to
+   the bottom navigation" does not apply to staff.
+3. **Touch target size:** PR #15 was closed; `docs/design/ui-system.md` now
+   follows this system's 48 px.
 
 ## Changes to the design system
 
@@ -902,5 +917,8 @@ Made by the technical lead on 2026-10-14, after the canvas was approved:
   card, reference box, summary list, error summary, sticky submit bar,
   numbered steps, status box, customer desktop top bar. Approved with the
   customer ordering design on 2026-10-15.
+- Admin orders additions (recorded from built screens): status toggle button,
+  phone state line; staff badge words and staff navigation rule. Approved
+  with the admin orders design on 2026-10-15.
 
 Future changes: update the canvas, then this file, in one reviewed PR.

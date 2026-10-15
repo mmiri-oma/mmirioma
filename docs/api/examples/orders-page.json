@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "reference": "MO-7KQ2M9XH4T",
+      "status": "quote_requested",
+      "quantity_litres": 200,
+      "contact_name": "Sample Customer",
+      "contact_phone": "+2348000000001",
+      "delivery_address": "12 Sample Close, Independence Layout, Enugu",
+      "landmark": "Opposite the blue gate",
+      "delivery_instructions": "Tank is behind the house",
+      "preferred_delivery_date": "2026-10-16",
+      "created_at": "2026-10-14T09:30:00Z",
+      "updated_at": "2026-10-14T09:30:00Z"
+    },
+    {
+      "reference": "MO-3HV8RZ1N6D",
+      "status": "quote_requested",
+      "quantity_litres": 50,
+      "contact_name": "Sample Receiver",
+      "contact_phone": "+2348000000002",
+      "delivery_address": "4 Example Street, New Haven, Enugu",
+      "landmark": null,
+      "delivery_instructions": null,
+      "preferred_delivery_date": null,
+      "created_at": "2026-10-13T15:05:00Z",
+      "updated_at": "2026-10-13T15:05:00Z"
+    }
+  ],
+  "total": 2,
+  "limit": 20,
+  "offset": 0
+}
