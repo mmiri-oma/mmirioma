@@ -23,6 +23,20 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Canvas publish blocked when using the short Windows temp path
+
+- **Area:** tooling
+- **Author:** Daveoski + Claude Code
+- **Symptom:** Publishing the S1-08 design canvas from
+  `C:\Users\ORJION~1\AppData\Local\Temp\…` failed with "publishing … is
+  blocked by a Read permission rule".
+- **Cause:** The 8.3 short form of the user folder (`ORJION~1`) did not
+  match the permission rule written for the long path.
+- **Fix / workaround:** Use the full path
+  (`C:\Users\<name>\AppData\Local\Temp\…`) for files and the publish `root`.
+- **Status:** workaround
+- **Refs:** #9, docs/design/admin-orders.md
+
 ### 2026-10-15: Redirect after sign-in/sign-out lost to the route guard
 
 - **Area:** frontend
