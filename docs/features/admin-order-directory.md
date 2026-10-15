@@ -8,8 +8,10 @@ Contract: [orders.md](../api/orders.md) (agreed) · Acceptance tests: none autom
 
 The dispatcher's order queue. Staff see every order newest first, filter by
 status and creation date, open an order by its reference, and read its details.
-It is read-only and runs on **mock data** until `GET /admin/orders` exists
-(S1-03 part 2). The S1-10 integration replaces the data source. It sits behind
+It is read-only. It reads either **mock data** or the **real API**, chosen by
+`VITE_ADMIN_ORDERS_SOURCE` (see section 5): development uses mock data until
+the S1-03 part 2 endpoints exist; production builds always default to the
+API. It sits behind
 the staff route guard (`AppGate app="staff"`, see
 [authentication.md](authentication.md)).
 
@@ -32,8 +34,9 @@ the staff route guard (`AppGate app="staff"`, see
 
 | File | Responsibility |
 | --- | --- |
-| `frontend/src/lib/api/adminOrders.ts` | Types mirroring `docs/api/orders.md` (`AdminOrderRead`, `Page`, list params) |
+| `frontend/src/lib/api/adminOrders.ts` | Types mirroring `docs/api/orders.md` (`AdminOrderRead`, `Page`, list params), `listAdminOrders`, `getAdminOrder` and the list query builder |
 | `frontend/src/features/admin-orders/source.ts` | `AdminOrdersSource` interface and React context (the integration seam) |
+| `frontend/src/features/admin-orders/apiAdminOrdersSource.ts` | Source backed by the real API; `VITE_ADMIN_ORDERS_SOURCE` resolution; the app's chosen source |
 | `frontend/src/features/admin-orders/mockAdminOrders.ts` | Simulated fixtures and the mock source that filters and pages like the API |
 | `frontend/src/features/admin-orders/useOrderFilters.ts` | URL-backed filter state and date-range validation |
 | `frontend/src/features/admin-orders/useAdminOrders.ts` | TanStack Query hooks for the list and detail |
@@ -56,17 +59,27 @@ None. The frontend has no storage. Data shapes follow `AdminOrderRead` in
 
 ## 5. API endpoints
 
-Not called yet. The source interface matches these agreed endpoints:
+Called by the API source (`createApiAdminOrdersSource`) when it is selected:
 
 | Method | Path | Roles | Request | Success | Errors (status + code) |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/admin/orders` | admin | `status` (repeatable), `created_from`, `created_to`, `is_simulated`, `limit`, `offset` | 200 `Page<AdminOrderRead>` | 401 `not_authenticated`, 403 `forbidden`, 422 `validation_error` |
 | GET | `/api/v1/admin/orders/{reference}` | admin | none | 200 `AdminOrderRead` | 404 `order_not_found`, 401, 403 |
 
-To connect the real API (S1-10), add endpoint functions in `src/lib/api/` that
-call `apiClient`. Then provide an `AdminOrdersSource` with `isMock: false` through
-`<AdminOrdersSourceContext value={...}>` above the admin routes. No page or
-component changes are needed.
+`status` is repeated per value; unset filters are left out so the server
+applies its defaults. The reference is URL-encoded in the detail path.
+
+**Choosing the data** (`frontend/.env.local`):
+
+| `VITE_ADMIN_ORDERS_SOURCE` | Data |
+| --- | --- |
+| `api` | The real backend |
+| `mock` | Simulated orders (sample-data notice shown) |
+| unset | `api` in a production build, `mock` in development |
+
+`App.tsx` provides the chosen source to the admin routes through
+`<AdminOrdersSourceContext>`. Once S1-03 part 2 is merged, set `api` locally
+(S1-10); the screens need no changes.
 
 ## 6. Business rules
 
@@ -109,15 +122,17 @@ cd frontend
 npm test
 ```
 
-- `mockAdminOrders.test.ts`: status, Lagos date and paging behaviour of the mock source; `order_not_found`; abort; reference normalisation.
+- `mockAdminOrders.test.ts`: status, Lagos date, `is_simulated` and paging behaviour of the mock source; `order_not_found`; abort; reference normalisation.
+- `apiAdminOrdersSource.test.ts`: list query building (repeated `status`, optional filters), URLs, credentials and abort signal, detail path encoding, `order_not_found` passed through, and the source setting (production defaults to the API).
 - `AdminOrdersPage.test.tsx` (jsdom + Testing Library): loading, list and title count, column set with customer account, phone state and created time, staff labels, filters through the URL, Simulated filter, filter restore, empty states, invalid range (no request), error and retry, paging by 50, reference search.
 - `AdminOrderDetailPage.test.tsx`: details in Lagos time with no price, phone not confirmed, separate request/delivery/customer cards with formatted phones, "No preference" and no lifecycle, not found, back link keeps filters.
 - `lib/format.test.ts`: Lagos 12-hour time (including midnight and noon), calendar dates and litres.
 
 ## 10. Known limitations
 
-- Mock data only. Real integration is S1-10, once S1-03 part 2 provides the
-  endpoints.
+- Not yet run against the real endpoints: they arrive with S1-03 part 2 (#4).
+  The API source is tested with mocked responses; the end-to-end check is
+  S1-10.
 - The status filter is a row of toggles, not the design system's multi-select
   panel with chips (admin design fix 6, optional for Sprint 1).
 - At the narrowest tablet widths (about 768-850 px) the table is tight:
