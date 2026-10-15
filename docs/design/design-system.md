@@ -614,6 +614,33 @@ Right: user icon and name (600), then a secondary "Sign out" button. Below
 Centred logo (240 px, up to 80% wide) and a 28 px spinner in `primary`, gap
 20, with a hidden "Checking your session" label and `role="status"`.
 
+## Additions from the customer ordering design
+
+Added on the "MmiriOma Customer Ordering" canvas (version `1792057730-d1a0`)
+with the [customer ordering design](customer-ordering.md), approved with it on
+2026-10-15. No new tokens; all built from existing tokens and components.
+
+- **Order card:** reference (mono), status badge, quantity, address (one
+  truncated line), dates; the whole card is one link.
+- **Reference box:** 2 px dashed `primary-200` border, `primary-50` fill,
+  `radius-box`, mono 22/30 reference, ghost "Copy" button.
+- **Summary list** (`dl`): label over value on mobile; 200 px label column on
+  desktop.
+- **Error summary:** error alert listing links to each invalid field; takes
+  focus after a failed submit.
+- **Sticky submit bar** (mobile only): white, top border, small upward shadow.
+- **Numbered steps:** 28 px `primary-100` circles with `primary-900` numbers.
+- **Status box:** badge, explanation sentence, "Last updated".
+- **Customer desktop top bar:** brand, "My orders" and "Request water" links,
+  account button.
+- Design ahead only (not built yet): total box, delivery window row with a
+  "Full" state, vertical progress timeline, dashed placeholder chip, "Design
+  ahead" tag.
+
+That canvas copies this system's tokens because the design-system canvas could
+not be edited from the designer's account; a later token change must be applied
+to both canvases.
+
 ## Formatting rules
 
 Times are Africa/Lagos (West Africa Time, UTC+1), **12-hour clock with am/pm**.
@@ -871,5 +898,9 @@ Made by the technical lead on 2026-10-14, after the canvas was approved:
 - Authentication additions (`1792015088-aba8`): logo, password field, locked
   state, large and sunlight buttons, account menu, staff top bar, splash,
   `--spacing-touch-lg`. Approved with the authentication design.
+- Customer ordering additions (separate canvas, `1792057730-d1a0`): order
+  card, reference box, summary list, error summary, sticky submit bar,
+  numbered steps, status box, customer desktop top bar. Approved with the
+  customer ordering design on 2026-10-15.
 
 Future changes: update the canvas, then this file, in one reviewed PR.

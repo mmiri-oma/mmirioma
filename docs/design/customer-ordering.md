@@ -6,8 +6,8 @@ version 1792057730-d1a0. Workflow: docs/process/ui-driven-development.md -->
 Issue: S1-04 (#5) · Requirements: FR-001, FR-003, FR-020, FR-021, FR-023,
 FR-026, FR-027, FR-037 (design ahead), NFR-012, NFR-020, NFR-021, NFR-022 ·
 Prompt: [prompts/01-customer-ordering.md](prompts/01-customer-ordering.md)
-Designer: @Cloudcrackamara · Reviewed by: pending (@nnamdi-security) ·
-Status: draft
+Designer: @Cloudcrackamara · Reviewed by: @nnamdi-security on 2026-10-15 ·
+Status: approved
 
 This design covers the customer screens for sending a water request and
 following orders. It is built from the approved [design system](design-system.md)
@@ -188,28 +188,65 @@ work before they are built; no issue exists for them yet.
    tiles show litres only.
 8. **Separate canvas.** The design system canvas could not be edited from the
    designer's account, so this design lives on its own canvas with the same
-   tokens copied in.
+   tokens copied in. Any later design-system change must be applied to both
+   canvases.
+9. **One idempotency key per request form** (technical lead, 2026-10-15;
+   replaces the proposal in the former open question 3). The form makes one
+   `idempotency_key` when it opens and keeps it, even if the customer edits
+   fields after a failed send, until the server gives a definite answer:
+   - 201 or 200: go to O3 with the returned order;
+   - 422: show the field errors; the customer fixes them and sends again
+     with the same key (nothing was stored, so the key is still free);
+   - 409 `idempotency_key_reused`: an earlier send from this form **did**
+     reach the server, so the request exists. Open My orders (O1) with the
+     info banner "We already received this request. It is at the top of your
+     list." No new key, no second order.
+
+   A new key is made only when a new, empty form is opened. Rationale: a new
+   key after an unclear failure could create a duplicate order, which FR-026
+   and T-06 forbid. No contract change is needed.
+10. **The typed request is kept in memory only** (technical lead, 2026-10-15;
+    resolves the former open question 6 and auth open question 2 for O2).
+    The O2 draft lives in app memory (not `localStorage`, `sessionStorage` or
+    cookies), so the address and phone are never written to the device. It
+    survives the session ending while the app is open (X2: after signing in
+    again, O2 reopens filled in) and is cleared on sign-out. It is **not**
+    kept across a page reload, including "Reload" on the X3 banner; that case
+    is rare and accepted for this release.
+
+## Review findings
+
+From the technical lead's check on 2026-10-15 of the canvas (version
+`1792057730-d1a0`) against prompt 01, [orders.md](../api/orders.md) and the
+SRS:
+
+- Every screen and state in prompt 01 exists, on mobile and desktop.
+- Honesty rules hold: no price on build-now screens, "Request received" and
+  never "confirmed", no map, live location or ETA, no water-quality claim,
+  sample data tagged, every naira amount on design-ahead screens tagged.
+- Every build-now field and error code exists in the contracts, including the
+  `{items, total}` page shape and the `MO-` reference format. `assigned` shows
+  as "Confirmed" (FR-032); another customer's order shows "Order not found"
+  (T-07).
+- The new copy under "Copy written by this design" is **approved**, together
+  with the 409 banner text in Decision 9.
+- Resolved by Decisions 9 and 10: the idempotency key after an edit, and
+  keeping the typed request.
+- For later: the design-ahead price quote says "One total, no hidden fees";
+  check that against the pricing rules (FR-022) when Q1 is built.
+- For S1-05: reuse the built customer header (`CustomerHeader`) as it is; the
+  canvas shows a first name where the built header shows the full name.
 
 ## Open questions
 
-1. **Approval of new copy.** The field errors, helpers and status explanations
-   listed under "Copy written by this design" are new. The reviewer approves
-   or changes them at G2.
-2. **Preset quantities** (25, 50, 100, 200, 300, 500 L) are sample values
+1. **Preset quantities** (25, 50, 100, 200, 300, 500 L) are sample values
    pending business approval (FR-021, PRD §13). The design is unchanged if the
    values change.
-3. **New idempotency key after an edit.** After a failed send, Retry reuses the
-   same key (FR-026). If the customer edits a field and sends again, reusing the
-   key would return 409 `idempotency_key_reused`. Proposal for S1-05/S1-16: make
-   a new key whenever the body changes after a failure. If a 409 still occurs,
-   show "Your request was not sent" and start a new attempt.
-4. **Customer cancel.** Orders contract open question 1. Until decided, O4 has
+3. **Customer cancel.** Orders contract open question 1. Until decided, O4 has
    no cancel button, only contact guidance.
-5. **Contact details.** "Contact us" needs the real support number and
+4. **Contact details.** "Contact us" needs the real support number and
    WhatsApp (auth open question 1). Until then it is sample data.
-6. **Keeping a typed request** across session end or reload (auth open
-   question 2) applies to O2.
-7. **Design ahead.** What "Not now" on a quote does to the order; whether
+5. **Design ahead.** What "Not now" on a quote does to the order; whether
    customers see the staff's cancel or failure reason as written or as fixed
    wording; and the approved water category names and supported uses
    (PRD §13.2) before Q1 can be built.
@@ -234,5 +271,4 @@ styles (also listed on the canvas):
 - Design ahead only: total box, delivery window row with a "Full" state,
   vertical progress timeline, dashed placeholder chip, "Design ahead" tag.
 
-[design-system.md](design-system.md) should list these once this design is
-approved.
+Listed in [design-system.md](design-system.md#additions-from-the-customer-ordering-design).
