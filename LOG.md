@@ -23,19 +23,21 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
-### 2026-10-15: Canvas publish blocked when using the short Windows temp path
+### 2026-10-15: Removing several issue assignees with `gh api -f` did nothing
 
-- **Area:** tooling
-- **Author:** Daveoski + Claude Code
-- **Symptom:** Publishing the S1-08 design canvas from
-  `C:\Users\ORJION~1\AppData\Local\Temp\…` failed with "publishing … is
-  blocked by a Read permission rule".
-- **Cause:** The 8.3 short form of the user folder (`ORJION~1`) did not
-  match the permission rule written for the long path.
-- **Fix / workaround:** Use the full path
-  (`C:\Users\<name>\AppData\Local\Temp\…`) for files and the publish `root`.
+- **Area:** tooling (GitHub)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** A loop of `gh api -X DELETE repos/.../issues/N/assignees -f
+  "assignees[]=<login>"` removed the single assignee on most issues, but on
+  #12, #13 and #19 (several assignees) the departed members were still listed,
+  with no error.
+- **Cause:** Not confirmed. The same call sent as a JSON body worked at once,
+  so the form-encoded array is the likely cause.
+- **Fix / workaround:** Send the array as JSON:
+  `echo '{"assignees":["a","b"]}' | gh api -X DELETE .../assignees --input -`.
+  Print the issue's assignees afterwards to confirm.
 - **Status:** workaround
-- **Refs:** #9, docs/design/admin-orders.md
+- **Refs:** issues #12, #13, #19
 
 ### 2026-10-15: Redirect after sign-in/sign-out lost to the route guard
 

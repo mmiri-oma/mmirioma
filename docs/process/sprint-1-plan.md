@@ -13,6 +13,12 @@ Requirements → UI Design → Approval → API Contracts → Parallel Developme
 S1-01 to S1-12 are GitHub issues #2-#13 (restructured; #2 and #3 closed as
 done in #14). S1-13 to S1-18 are issues #17-#22.
 
+> **Team change (15 Oct 2026).** Chukwuebuka and David have left the project.
+> Their open work is reassigned to the technical lead, Chidinma and Amara (see
+> Responsibilities), with the larger items on the technical lead. The driver
+> workflow (S1-06, S1-07, S1-15) moves to the **Sprint 2** milestone, so the
+> 18 Oct demo covers the customer-to-admin slice only.
+
 ## Gates
 
 | Gate | Passed when | Recorded in |
@@ -39,11 +45,13 @@ design (item 8 of the restructure):
 
 | Person | GitHub | Owns |
 | --- | --- | --- |
-| Technical lead | nnamdi-security | Architecture, authentication (backend done; frontend session and sign-in screens), API contracts, design approvals (G2), integration lead |
-| Chidinma | chidimmamogbo | Ordering backend; reviews order contracts |
-| Amara | Cloudcrackamara | Customer UI design and build; design coordination: owns the Claude Design project and the shared design system; coordinates auth and driver designs |
-| Chukwuebuka | Bonvee120 | Delivery workflow (state machine, assignment) and foundation (simulated demo data, local setup) |
-| David | Daveoski | Administration UI design and build; contributes admin components to the design system |
+| Technical lead | nnamdi-security | Architecture, authentication, API contracts, design approvals (G2), **admin UI** (S1-08 record, S1-09 fixes and integration), integration lead (S1-10), testing and demo lead (S1-11), pilot planning (S1-12); Sprint 2: delivery state machine and assignment (S1-06, S1-07) |
+| Chidinma | chidimmamogbo | Ordering backend (S1-03 endpoints), demo seed data (S1-18), backend side of S1-10; reviews order contracts |
+| Amara | Cloudcrackamara | Customer UI design and build (S1-05); owns the Claude Design project and the shared design system; Sprint 2: driver design (S1-15) |
+
+Former members, until 15 Oct 2026: Chukwuebuka (Bonvee120: delivery workflow,
+foundation) and David (Daveoski: admin UI; built S1-09 in #26 and recorded
+S1-08 in #31).
 
 ## Dependency order
 
@@ -127,7 +135,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-08 Design administration order screens (#9, restructured)
 
-- **Assignee:** Daveoski · **Priority:** P0 · **Stage:** UI Design → Approval
+- **Assignee:** nnamdi-security (recorded by Daveoski in #31 from the built screens; finished and approved by the technical lead) · **Priority:** P0 · **Stage:** UI Design → Approval
 - **Description:** Run prompt [02-admin-orders.md](../design/prompts/02-admin-orders.md):
   layout, order directory with filters, order detail. Order history is
   deferred to the dispatch work. The screens already built in PR #15 may be
@@ -139,7 +147,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-15 Delivery-partner (driver) mobile design (#19)
 
-- **Assignee:** Cloudcrackamara (design coordination) with Bonvee120
+- **Assignee:** Cloudcrackamara · **Milestone: Sprint 2** (moved 15 Oct)
   (workflow input) · **Priority:** P1 · **Stage:** UI Design → Approval
 - **Description:** Run prompt [03-driver-deliveries.md](../design/prompts/03-driver-deliveries.md).
   Sprint 1 needs only the job list and accept/decline (for S1-07); the rest is
@@ -153,8 +161,8 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-16 Confirm order contracts against approved designs (#20)
 
-- **Assignee:** nnamdi-security (reviewers: chidimmamogbo, Cloudcrackamara,
-  Daveoski) · **Priority:** P0 · **Stage:** API Contracts
+- **Assignee:** nnamdi-security (reviewers: chidimmamogbo, Cloudcrackamara) ·
+  **Priority:** P0 · **Stage:** API Contracts
 - **Description:** Walk the screen-to-endpoint tables of S1-04 and S1-08
   against `docs/api/orders.md`. Change the contract only where a screen needs
   something the SRS allows; anything else becomes an open question. Mark the
@@ -181,7 +189,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-06 Delivery state machine and assignment contract (#7, restructured)
 
-- **Assignee:** Bonvee120 · **Priority:** P0 · **Stage:** Requirements → API Contracts
+- **Assignee:** nnamdi-security · **Milestone: Sprint 2** (moved 15 Oct) · **Priority:** P0 · **Stage:** Requirements → API Contracts
 - **Description:** Two parts.
   1. **Starts now:** delivery and assignment states and transition table
      (assignment, acceptance, pickup, transit, completion, failure,
@@ -195,7 +203,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-07 Initial driver assignment backend (#8)
 
-- **Assignee:** Bonvee120 · **Priority:** P1 · **Stage:** Parallel Development (backend)
+- **Assignee:** nnamdi-security · **Milestone: Sprint 2** (moved 15 Oct) · **Priority:** P1 · **Stage:** Parallel Development (backend)
 - **Description:** Admin assigns a confirmed order; driver accepts or
   declines. Built against the S1-06 contract.
 - **Dependencies:** S1-06 contract agreed; S1-03 part 1.
@@ -205,7 +213,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-18 Delivery and demo foundation (#22)
 
-- **Assignee:** Bonvee120 · **Priority:** P1 · **Stage:** Parallel Development (backend infrastructure)
+- **Assignee:** chidimmamogbo · **Priority:** P1 · **Stage:** Parallel Development (backend infrastructure)
 - **Description:** Tooling the vertical slice needs: a seed command that
   creates **simulated** staff, driver and customer accounts and orders, all
   flagged `is_simulated` (BR-09, NFR-031); keep local setup steps in the
@@ -243,7 +251,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-09 Build administration order directory (#10, restructured)
 
-- **Assignee:** Daveoski · **Priority:** P1 · **Stage:** Parallel Development (frontend)
+- **Assignee:** nnamdi-security · **Priority:** P1 · **Stage:** Parallel Development (frontend). Built by Daveoski in #26; the fix list in `docs/design/admin-orders.md` and the switch from mock data to the API remain
 - **Description:** PR #15 already implements this against mocks. Align it
   with the approved admin design and the agreed contract, then merge.
 - **Dependencies:** S1-08 approved (G2) and S1-16 agreed (G3).
@@ -263,7 +271,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-11 Sprint testing, quality check and demo (#12)
 
-- **Assignee:** whole team · **Priority:** P0 · **Stage:** Testing
+- **Assignee:** nnamdi-security (lead), chidimmamogbo, Cloudcrackamara · **Priority:** P0 · **Stage:** Testing
 - **Description:** Each author validates their area, runs the full checks,
   updates feature docs and `LOG.md`; the team rehearses the demo.
 - **Dependencies:** S1-10.
@@ -273,7 +281,7 @@ S1-12 pilot planning: independent, runs all sprint
 
 ### S1-12 Plan live water delivery pilot dependencies (#13)
 
-- **Assignee:** nnamdi-security, Bonvee120 · **Priority:** P0 · **Stage:** independent (not software)
+- **Assignee:** nnamdi-security · **Priority:** P0 · **Stage:** independent (not software)
 - **Description, criteria, deliverables:** unchanged from the issue.
 
 ## Timeline
@@ -292,3 +300,13 @@ then the frontend builds:
 
 If approvals slip past 15 Oct, move S1-05, S1-09 and S1-10 to Sprint 2 rather
 than starting screens before their gates.
+
+**Revised for the team change (15 Oct):** the driver workflow (S1-06, S1-07,
+S1-15) is in Sprint 2. Remaining Sprint 1 work, once #31 (G2 admin) and #32
+(G3 orders) merge:
+
+| When | Technical lead | Chidinma | Amara |
+| --- | --- | --- | --- |
+| 15-16 Oct | Merge #31 and #32; S1-09 fixes 1-4 | S1-03 part 2 endpoints | S1-05 customer UI |
+| 17 Oct | S1-09 on the real API; S1-10 integration | S1-18 seed data; S1-10 backend | S1-05 on the real API |
+| 18 Oct | S1-11 testing and demo (all three) | | |
