@@ -2,7 +2,16 @@
 
 How MmiriOma builds each feature: design the screens first, derive the API
 contract from them, then build frontend and backend in parallel against that
-contract.
+contract. Every slice goes through seven stages:
+
+```
+Requirements → UI Design → Approval → API Contracts → Parallel Development → Integration → Testing
+```
+
+Two gates protect the order: **G2 design approved** (`docs/design/<slice>.md`
+says `Status: approved`) and **G3 contract agreed** (`docs/api/<area>.md` says
+`Status: agreed`). The current sprint's issues and owners are in
+[sprint-1-plan.md](sprint-1-plan.md).
 
 **The rule:** screens decide *what data a page shows and which actions it
 offers*. The SRS decides *business rules* (prices, statuses, permissions,
@@ -20,7 +29,7 @@ not define, it goes back to the team as an open question.
 
 ## The workflow, per feature or milestone
 
-### 1. Scope the slice
+### 1. Requirements: scope the slice
 
 Open one GitHub issue naming the slice and its SRS requirement IDs and
 acceptance tests, for example "Customer order request: FR-020, FR-021, FR-026,
@@ -29,7 +38,7 @@ FR-027, T-06".
 Keep slices small and vertical (SRS §11). Follow the SRS order: ordering →
 dispatch → driver → reconciliation.
 
-### 2. Write the design prompt
+### 2. UI Design: write the prompt
 
 Create `docs/design/prompts/<NN>-<slice>.md` from the existing prompts. Every
 prompt must:
@@ -48,30 +57,43 @@ prompt must:
 Prompts start from [00-design-system.md](../design/prompts/00-design-system.md):
 every later prompt must reuse that visual system, not invent a new one.
 
-### 3. Generate and refine in Claude Design
+### 2b. UI Design: generate and refine in Claude Design
 
 The designer pastes the prompt into Claude Design, iterates on the result,
 and records it in `docs/design/<slice>.md` using the
 [template](../design/_template.md): link to the design, screen list, decisions
 and the screen-to-endpoint table.
 
-### 4. Review against the SRS
+### 3. Approval (gate G2)
 
-The technical lead checks the design before anyone builds it:
+The technical lead checks the design before anyone builds it, then sets
+`Status: approved` with their name and the date in `docs/design/<slice>.md`:
 
 - every screen and state from the prompt exists;
 - nothing contradicts the SRS (see the honesty rules below);
 - sample data is visibly marked as sample;
 - touch targets, contrast and labels meet NFR-020/NFR-021.
 
-### 5. Derive the API contract
+### 4. API Contracts (gate G3)
 
 From the screen-to-endpoint table, create or update `docs/api/<area>.md` and its
 mock JSON in `docs/api/examples/`. The frontend and backend owners both review
-it. **Nothing is built until the contract is agreed.** If the design asks for a
+it, and the document is marked `Status: agreed` with their names. **Nothing is
+built until the contract is agreed.** If the design asks for a
 field the SRS does not support, change the design, not the rules.
 
-### 6. Build in parallel
+### 5. Parallel Development
+
+**Frontend screens and UI components start only after G2 and G3.** Frontend
+PRs link the approved design and the agreed contract (PR template checklist).
+Non-visual plumbing (typed API functions, hooks, route-guard logic) may start
+at G3.
+
+Backend work that needs no design may start any time: authentication,
+infrastructure (configuration, CI, migrations, error handling, rate limits),
+and persistence taken directly from the SRS data model and state machine.
+Business endpoints wait for G3.
+
 
 - **Frontend:** typed functions in `frontend/src/lib/api/<area>.ts`, Zod
   validation where the data drives logic, screens built against mocks injected
@@ -79,11 +101,17 @@ field the SRS does not support, change the design, not the rules.
 - **Backend:** models, service, router and tests returning exactly the
   contract's shapes and error codes.
 
-### 7. Integrate and close
+### 6. Integration
 
-Swap mocks for the real API, run the slice end to end, and record an E2E or
-documented manual test. Done means: design states, contract, frontend tests,
-backend tests and `docs/features/<feature>.md` all match.
+Swap mocks for the real API and run the slice end to end, without editing the
+database by hand.
+
+### 7. Testing
+
+Record an E2E or documented manual test of the slice, run the full checks, and
+cover the slice's SRS acceptance tests (T-xx). Done means: design states,
+contract, frontend tests, backend tests and `docs/features/<feature>.md` all
+match, and new problems are in `LOG.md`.
 
 ## Honesty rules every design must follow
 
@@ -113,7 +141,8 @@ designers prepare slice N+1. Do not design the whole product up front.
 
 | Prompt | Slice | Status |
 | --- | --- | --- |
-| [00-design-system.md](../design/prompts/00-design-system.md) | Shared visual system (S1-04, S1-08) | Ready |
+| [00-design-system.md](../design/prompts/00-design-system.md) | Shared visual system (S1-04, S1-08) | Approved: [design-system.md](../design/design-system.md) |
 | [01-customer-ordering.md](../design/prompts/01-customer-ordering.md) | Customer sign-in and session states, order request, order history (S1-04) | Ready |
 | [02-admin-orders.md](../design/prompts/02-admin-orders.md) | Admin sign-in and session states, order directory and detail (S1-08) | Ready |
 | [03-driver-deliveries.md](../design/prompts/03-driver-deliveries.md) | Driver sign-in and session states, jobs, accept/decline (S1-07); pickup, proof, incidents (design ahead) | Ready; contract pending S1-06 |
+| [04-authentication.md](../design/prompts/04-authentication.md) | Canonical sign-in, registration and session screens for all three apps (S1-14) | Approved: [authentication.md](../design/authentication.md) |

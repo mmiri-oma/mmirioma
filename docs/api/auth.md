@@ -2,7 +2,9 @@
 
 Requirements: FR-001, FR-002, FR-003, NFR-001, NFR-002 · Acceptance tests: T-07
 
-Status: proposed (S1-01). Implemented in S1-02, including rate limiting.
+Status: agreed (G3) by @nnamdi-security (frontend and backend owner) on
+2026-10-15. Written in S1-01, implemented in S1-02, including rate limiting.
+Screens: [docs/design/authentication.md](../design/authentication.md).
 
 ## Roles
 

@@ -229,21 +229,36 @@ actually exists.
 ## UI-driven workflow
 
 Features are built design first. Follow
-`docs/process/ui-driven-development.md`:
+`docs/process/ui-driven-development.md` (current issues and owners:
+`docs/process/sprint-1-plan.md`):
 
-1. Slice scoped from SRS requirement IDs.
-2. Claude Design prompt written in `docs/design/prompts/`, reusing the shared
-   design system (`00-design-system.md`).
-3. Design generated, recorded in `docs/design/<slice>.md`, and reviewed against
-   the SRS by the technical lead.
-4. API contract derived from the screens and agreed in `docs/api/`.
-5. Frontend (against mocks) and backend (against the contract) built in
-   parallel, then integrated.
+```
+Requirements → UI Design → Approval → API Contracts → Parallel Development → Integration → Testing
+```
+
+1. Requirements: slice scoped from SRS requirement IDs.
+2. UI Design: Claude Design prompt in `docs/design/prompts/`, reusing the shared
+   design system (`00-design-system.md`); result recorded in
+   `docs/design/<slice>.md`.
+3. Approval (gate G2): the technical lead reviews the design against the SRS and
+   sets `Status: approved` in `docs/design/<slice>.md`.
+4. API Contracts (gate G3): contract derived from the screens, agreed by the
+   frontend and backend owners, marked `Status: agreed` in `docs/api/`.
+5. Parallel Development: frontend against mocks, backend against the contract.
+6. Integration: mocks swapped for the real API, slice run end to end.
+7. Testing: E2E or documented manual test, full checks, acceptance tests.
 
 Rules:
 
-- **Do not implement an endpoint or screen without an agreed contract in
+- **No frontend screen or UI component before its slice passes G2 and G3.**
+  Check `docs/design/<slice>.md` says `Status: approved` and the contract says
+  `Status: agreed`; if not, stop and tell the user. Non-visual frontend
+  plumbing (typed API functions, hooks, guard logic) may start at G3.
+- **Do not implement a business endpoint without an agreed contract in
   `docs/api/`.** If none exists, write or propose it first.
+- Backend work that needs no design may proceed any time: authentication,
+  infrastructure (configuration, CI, migrations, error handling, rate limits)
+  and persistence taken directly from the SRS data model and state machine.
 - Designs decide what a screen shows and which actions it offers; the SRS
   decides business rules. Never add fields, statuses, prices or permissions
   because a design "seems to need" them: raise an open question instead.

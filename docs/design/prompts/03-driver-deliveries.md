@@ -6,6 +6,10 @@ BR-04, BR-06, NFR-020, SRS §8 · Contract: **none yet**. S1-06 defines the
 delivery states and endpoints; [orders.md](../../api/orders.md) has the
 order-level statuses they map onto.
 
+> **Authentication screens:** [04-authentication.md](04-authentication.md) is
+> the canonical auth design. The sign-in and session screens below are kept so
+> this slice reads complete; once the auth design is approved, reuse it here.
+
 **Before using:** open the same Claude Design project as prompts 00-02, so the
 driver screens share the design system.
 

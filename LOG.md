@@ -23,6 +23,54 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Stacked PR #23 merged into its old base, not `main`
+
+- **Area:** GitHub
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** The Sprint 1 restructure (`docs/process/sprint-1-plan.md`,
+  prompt 04, the PR template and the G2/G3 rules in `CLAUDE.md`) was missing
+  from `main` although PR #23 showed as merged.
+- **Cause:** PR #23 was stacked on PR #16 (base `docs/ui-driven-workflow`).
+  #16 was merged into `main` first; #23 was merged six minutes later into its
+  unchanged base `docs/ui-driven-workflow`, so its commit never reached `main`.
+- **Fix / workaround:** The next PR (`docs/auth-design`) was branched from
+  `docs/ui-driven-workflow`, so it carries the restructure to `main`. For
+  stacked PRs: after merging the lower PR, change the upper PR's base to
+  `main` before merging it, or merge only from the top of the stack.
+- **Status:** workaround
+- **Refs:** PR #16, PR #23, commit 4594680
+
+### 2026-10-14: Creating issues with `gh api -f` failed with HTTP 422
+
+- **Area:** tooling (GitHub)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `gh api -X POST repos/.../issues -f "title=..." -F milestone=5
+  -f "labels[]=P0" -f "assignees[]=..."` returned `gh: Validation Failed (HTTP
+  422)`. No issue was created.
+- **Cause:** unknown. The error details were not captured; a later test showed
+  bracketed titles such as `[S1-13]` pass through `-f` unchanged, so that is
+  not it.
+- **Fix / workaround:** Build the request as a JSON file and send it with
+  `gh api -X POST repos/mmiri-oma/mmirioma/issues --input issue.json`. This also
+  avoids `gh issue create`/`edit` and their Projects (classic) bug. Print the
+  full error body (`2>&1`) next time to find the cause.
+- **Status:** workaround
+- **Refs:** issues #17-#22
+
+### 2026-10-14: Shell `while read` loop skipped the last item
+
+- **Area:** tooling (shell)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** A `while read sid n; do ...; done < targets.txt` loop updated 14
+  of 15 issues; the last one (#22) was silently skipped.
+- **Cause:** The file had no trailing newline, and `read` returns non-zero for
+  a final line without one, so the loop ends before processing it.
+- **Fix / workaround:** End generated files with a newline, or loop with
+  `while read -r a b || [ -n "$a" ]; do`. Always compare the processed count
+  with the expected count.
+- **Status:** resolved
+- **Refs:** issue #22
+
 ### 2026-10-14: Testing Library and jsdom added for S1-09 component tests
 
 - **Area:** tooling (frontend)

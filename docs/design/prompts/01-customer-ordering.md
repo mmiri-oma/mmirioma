@@ -4,6 +4,10 @@ Issue: S1-04 · Requirements: FR-003, FR-020, FR-021, FR-023, FR-026, FR-027,
 FR-037 (design ahead), NFR-012, NFR-020, NFR-022 · Contracts:
 [auth.md](../../api/auth.md), [orders.md](../../api/orders.md)
 
+> **Authentication screens:** [04-authentication.md](04-authentication.md) is
+> the canonical auth design. The sign-in and session screens below are kept so
+> this slice reads complete; once the auth design is approved, reuse it here.
+
 **Before using:** open the same Claude Design project as prompt 00, so these
 screens reuse that design system.
 
