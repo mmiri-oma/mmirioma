@@ -23,6 +23,41 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Integration tests stalled because Docker Desktop was not running
+
+- **Area:** tooling (database)
+- **Author:** chidimmamogbo + Claude Code
+- **Symptom:** `pytest tests/test_orders_integration.py` printed nothing for
+  over 6 minutes and had to be stopped. `docker ps` then failed with `failed
+  to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine
+  ... The system cannot find the file specified.`
+- **Cause:** Docker Desktop had been closed (for example after a restart), so
+  the test database container was down. pytest gives no hint of this when its
+  output is piped through `tail`.
+- **Fix / workaround:** Start Docker Desktop, wait for `docker info` to
+  succeed, start the database container, and wait for `pg_isready` before
+  running integration tests. On this machine Docker Desktop is a per-user
+  install at `%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`, not
+  under `Program Files`.
+- **Status:** resolved
+- **Refs:** S1-03 (#4)
+
+### 2026-10-15: Nested heredocs in one Git Bash command failed to parse
+
+- **Area:** tooling (shell)
+- **Author:** chidimmamogbo + Claude Code
+- **Symptom:** A single command containing a `python - <<'EOF'` heredoc
+  followed by a `cat >> file <<'EOF'` heredoc failed with
+  `bash: -c: line 136: unexpected EOF while looking for matching '''`.
+  Nothing ran, so no file was changed.
+- **Cause:** Not confirmed. Two heredocs with the same delimiter, inside one
+  `bash -c` string whose bodies contained quotes, were not parsed as expected.
+- **Fix / workaround:** Make multi-line file edits with an editor (or one
+  heredoc per command with distinct delimiters). Check `git status` after a
+  failed scripted edit to confirm nothing was half-applied.
+- **Status:** workaround
+- **Refs:** `backend/tests/test_orders_integration.py`
+
 ### 2026-10-15: Hiding a table column with `display: none` shifted the other cells
 
 - **Area:** frontend
