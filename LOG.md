@@ -23,6 +23,69 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Customer UI code found in the working tree before G2/G3
+
+- **Area:** process (frontend)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** While starting S1-04 (#5), the working tree already held
+  untracked customer screens (`frontend/src/features/order/`,
+  `frontend/src/features/orders/`, `frontend/src/components/*`, sample data)
+  and `docs/features/customer-journey-ui.md`, which says "Issue: S1-04 (#5)".
+  They show sample naira prices, a quote step and delivery windows.
+- **Cause:** Built under the original #5 scope, before the Sprint 1 restructure
+  made #5 a design-only issue. The customer design is not approved (G2) and
+  `docs/api/orders.md` is not agreed (G3); Sprint 1 orders have no price.
+- **Fix / workaround:** Left untouched (not part of this task). The owner
+  should decide whether to discard it or rework it under S1-05 after G2 and
+  G3, and drop the S1-04 label from the feature document.
+- **Status:** open
+- **Refs:** issue #5, issue #6, `docs/design/customer-ordering.md`
+
+### 2026-10-15: Design canvas could not be published from the scratchpad
+
+- **Area:** tooling (Claude Design)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** Publishing the customer ordering canvas from the agent
+  scratchpad failed: "publishing ... canvas.json is blocked by a Read
+  permission rule". Using the long path form instead failed with "root ... is
+  outside the working directory ... or your scratchpad directory".
+- **Cause:** The scratchpad is under a short (8.3) Windows path
+  (`AMARAC~1`) that a Read permission rule blocks; the long form of the same
+  path is not recognised as the scratchpad.
+- **Fix / workaround:** Stage canvas files in a git-ignored folder inside the
+  repo (`dist/design-canvas/`, ignored by `dist/`), publish with `root`
+  pointing there, then delete the folder.
+- **Status:** workaround
+- **Refs:** `docs/design/customer-ordering.md`
+
+### 2026-10-15: Design system canvas not editable from the designer's account
+
+- **Area:** tooling (Claude Design)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** Prompt 01 says to open "the same Claude Design project as
+  prompt 00". The approved canvas (<https://claude.ai/artifact/9fKnBVzgvqwm8vx1eU8Y5C>)
+  is owned outside the designer's organisation and is read-only to them, so a
+  customer artboard could not be added to it.
+- **Cause:** Canvas ownership and sharing.
+- **Fix / workaround:** Created a separate canvas
+  (<https://claude.ai/artifact/NtrG5m8XDsNHH1rj7KSPus>) with the design
+  system tokens and component styles copied exactly. To keep one project, the
+  canvas owner can grant edit access and the artboards can be moved later.
+- **Status:** workaround
+- **Refs:** issue #5, `docs/design/customer-ordering.md`
+
+### 2026-10-15: `gh` CLI not installed on a contributor machine
+
+- **Area:** tooling (GitHub)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** `gh issue view 5` failed with `gh: command not found`.
+- **Cause:** GitHub CLI is not installed in this Windows Git Bash environment.
+- **Fix / workaround:** Read the issue scope from
+  `docs/process/sprint-1-plan.md` (S1-04 = #5). Install `gh` to read issues
+  directly.
+- **Status:** workaround
+- **Refs:** issue #5
+
 ### 2026-10-15: Stacked PR #23 merged into its old base, not `main`
 
 - **Area:** GitHub

@@ -142,7 +142,7 @@ designers prepare slice N+1. Do not design the whole product up front.
 | Prompt | Slice | Status |
 | --- | --- | --- |
 | [00-design-system.md](../design/prompts/00-design-system.md) | Shared visual system (S1-04, S1-08) | Approved: [design-system.md](../design/design-system.md) |
-| [01-customer-ordering.md](../design/prompts/01-customer-ordering.md) | Customer sign-in and session states, order request, order history (S1-04) | Ready |
+| [01-customer-ordering.md](../design/prompts/01-customer-ordering.md) | Customer sign-in and session states, order request, order history (S1-04) | Designed, awaiting approval: [customer-ordering.md](../design/customer-ordering.md) |
 | [02-admin-orders.md](../design/prompts/02-admin-orders.md) | Admin sign-in and session states, order directory and detail (S1-08) | Ready |
 | [03-driver-deliveries.md](../design/prompts/03-driver-deliveries.md) | Driver sign-in and session states, jobs, accept/decline (S1-07); pickup, proof, incidents (design ahead) | Ready; contract pending S1-06 |
 | [04-authentication.md](../design/prompts/04-authentication.md) | Canonical sign-in, registration and session screens for all three apps (S1-14) | Approved: [authentication.md](../design/authentication.md) |
