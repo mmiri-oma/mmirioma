@@ -1,7 +1,7 @@
 {
   "error": {
     "code": "idempotency_key_reused",
-    "message": "This checkout was already submitted with different details. Start a new order instead.",
+    "message": "This request was already received. Check your orders before sending it again.",
     "details": null
   }
 }

@@ -115,6 +115,14 @@ async def _find_by_idempotency_key(
     )
 
 
+# Shown when an earlier send from the same request form was stored
+# (docs/design/customer-ordering.md, Decision 9): the client keeps one key per
+# form, so a 409 means the request already exists, not that it failed.
+IDEMPOTENCY_KEY_REUSED_MESSAGE = (
+    "This request was already received. Check your orders before sending it again."
+)
+
+
 def _replay(existing: Order, request: NewOrder) -> tuple[Order, bool]:
     """Resolve a repeated idempotency key (FR-026).
 
@@ -125,8 +133,7 @@ def _replay(existing: Order, request: NewOrder) -> tuple[Order, bool]:
         raise APIError(
             HTTPStatus.CONFLICT,
             "idempotency_key_reused",
-            "This checkout was already submitted with different details. "
-            "Start a new order instead.",
+            IDEMPOTENCY_KEY_REUSED_MESSAGE,
         )
     return existing, False
 
