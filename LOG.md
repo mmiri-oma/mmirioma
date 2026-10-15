@@ -23,6 +23,22 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Hiding a table column with `display: none` shifted the other cells
+
+- **Area:** frontend
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** In the admin orders table at 900 px, the "Preferred date" and
+  "Created" values overlapped after the address column was hidden below
+  desktop width (screenshot check).
+- **Cause:** With `table-layout: fixed` and a `<colgroup>`, hidden
+  (`display: none`) cells do not remove their `<col>`, so the remaining cells
+  are laid out against the wrong column widths.
+- **Fix / workaround:** Keep every column at every table width (truncate long
+  text instead), or render a different layout below the breakpoint. Check
+  table layouts at 768, 900 and 1280 px with a screenshot.
+- **Status:** resolved
+- **Refs:** S1-09, `frontend/src/features/admin-orders/OrderList.tsx`
+
 ### 2026-10-15: Removing several issue assignees with `gh api -f` did nothing
 
 - **Area:** tooling (GitHub)
@@ -100,14 +116,23 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 - **Symptom:** The agent environment has no browser tool and no Chrome or
   Chromium install, so the S1-17 screens could not be clicked through or
   screenshotted.
-- **Cause:** Environment limitation.
+- **Cause:** Wrong diagnosis: only `google-chrome`/`chromium` on `PATH` were
+  checked. Playwright's browsers are cached in `~/.cache/ms-playwright`
+  (found during S1-09). The full `chromium-*/chrome-linux64/chrome` hangs
+  with `--headless=new`; the dedicated
+  `chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell`
+  works: `chrome-headless-shell --no-sandbox --disable-gpu --hide-scrollbars
+  --window-size=1280,1000 --virtual-time-budget=8000 --screenshot=out.png URL`.
+  For signed-in staff pages, a local stand-in for `GET /api/v1/auth/me` (with
+  CORS for the dev origin) avoids needing a database.
 - **Fix / workaround:** Verified instead with typecheck, lint, build, the
   generated CSS, static-HTML screen tests, every module served by the dev
   server, and the exact API calls (CORS preflight, register, duplicate, me,
   logout with and without CSRF, wrong password, 429 with
   `retry_after_seconds`) made with curl from the dev-server origin. A person
-  must still click through the screens in a browser before merge.
-- **Status:** open
+  must still click through the screens in a browser before merge. Since S1-09,
+  screenshots are possible with the headless shell above.
+- **Status:** resolved
 - **Refs:** S1-17
 
 ### 2026-10-15: LOG.md entry lost its heading in a merge

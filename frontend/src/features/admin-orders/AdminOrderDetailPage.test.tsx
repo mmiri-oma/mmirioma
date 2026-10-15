@@ -20,22 +20,31 @@ describe('AdminOrderDetailPage', () => {
     expect(screen.queryByText(/₦/)).toBeNull()
   })
 
-  it('flags an unverified phone (FR-003)', async () => {
+  it('flags a phone that is not confirmed yet (FR-003)', async () => {
     renderAdminOrders('/admin/orders/MO-7KQ2M9XH4T')
-    expect(await screen.findByText('Phone unverified')).toBeTruthy()
-    expect(screen.getByText(/must be verified before this order can be confirmed/i)).toBeTruthy()
+    expect(await screen.findByText('Not confirmed')).toBeTruthy()
+    expect(screen.getByText(/must be confirmed before this order can be confirmed/i)).toBeTruthy()
+    expect(screen.queryByText(/verified/i)).toBeNull()
   })
 
-  it('marks the current lifecycle step', async () => {
-    renderAdminOrders('/admin/orders/MO-1ZN9QE6K4V')
-    const current = await screen.findByText((_, element) => element?.getAttribute('aria-current') === 'step')
-    expect(current.textContent).toMatch(/en route/i)
+  it('shows request, receiver and customer account separately, phones as 0800 000 0001', async () => {
+    renderAdminOrders('/admin/orders/MO-9TPW4C7M2A')
+    expect(await screen.findByRole('heading', { name: 'Request' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Delivery' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Customer account' })).toBeTruthy()
+    // Receiver (Delivery) and account holder (Customer account) differ here.
+    expect(screen.getByText('Ngozi Nwosu')).toBeTruthy()
+    expect(screen.getByText('Obiageli Nwosu')).toBeTruthy()
+    expect(screen.getByText('0800 000 0003')).toBeTruthy()
+    expect(screen.getByText('0800 000 0099')).toBeTruthy()
+    expect(screen.queryByText(/\+234/)).toBeNull()
+    expect(screen.getByText('No price yet - this is a quote request.')).toBeTruthy()
   })
 
-  it('explains cancelled orders instead of showing the progression', async () => {
-    renderAdminOrders('/admin/orders/MO-9JA4RC7X5D')
-    expect(await screen.findByText(/cancelled with a recorded reason/i)).toBeTruthy()
-    expect(screen.queryByRole('list')).toBeNull()
+  it('says "No preference" when no date was given, and has no lifecycle (Decision 11)', async () => {
+    renderAdminOrders('/admin/orders/MO-3HV8RZ1N6D')
+    expect(await screen.findByText('No preference')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Lifecycle' })).toBeNull()
   })
 
   it('shows a not-found state for an unknown reference', async () => {

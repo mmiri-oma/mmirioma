@@ -4,7 +4,7 @@ import { Input } from '../../components/ui/Input'
 import { cn } from '../../lib/cn'
 import type { OrderStatus } from '../../lib/api/adminOrders'
 import { ORDER_STATUS_META, ORDER_STATUSES } from './orderStatus'
-import type { OrderFilters as Filters } from './useOrderFilters'
+import type { OrderFilters as Filters, RecordFilter } from './useOrderFilters'
 
 interface OrderFiltersProps {
   filters: Filters
@@ -17,9 +17,9 @@ interface OrderFiltersProps {
 /**
  * Status and creation-date filters for the dispatcher queue (FR-030).
  *
- * The design system's filter bar uses a "Status" multi-select panel; whether
- * the admin directory adopts it is for the admin design (S1-08) to decide, so
- * the status toggles stay until then, restyled to the system's tokens.
+ * Statuses are toggle buttons (docs/design/admin-orders.md, Decision 4); the
+ * design system's multi-select panel is an optional later change (fix 6). The
+ * "Records" select filters demo records with `is_simulated` (Decision 12).
  *
  * Zone filtering is not offered yet: orders have no service zone until FR-010
  * lands (docs/api/orders.md "Planned").
@@ -93,6 +93,21 @@ export function OrderFilters({ filters, dateRangeInvalid, hasFilters, onChange, 
             onChange={(event) => onChange({ createdTo: event.target.value })}
             className="min-[420px]:w-45"
           />
+        </div>
+        <div className="w-full min-[420px]:w-auto">
+          <label htmlFor="records" className="mb-1.5 block font-semibold text-text-primary">
+            Records
+          </label>
+          <select
+            id="records"
+            value={filters.records}
+            onChange={(event) => onChange({ records: event.target.value as RecordFilter })}
+            className="min-h-touch w-full cursor-pointer rounded-md border-2 border-border-strong bg-surface px-3.5 text-body text-text-primary hover:border-neutral-800 focus-visible:border-primary min-[420px]:w-48"
+          >
+            <option value="all">All records</option>
+            <option value="real">Real orders only</option>
+            <option value="simulated">Simulated only</option>
+          </select>
         </div>
         {hasFilters && (
           <Button variant="ghost" onClick={onClear}>

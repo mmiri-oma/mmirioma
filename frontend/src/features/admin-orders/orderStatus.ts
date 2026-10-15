@@ -16,7 +16,7 @@ import type { BadgeTone } from '../../components/ui/Badge'
 import type { OrderStatus } from '../../lib/api/adminOrders'
 
 interface StatusMeta {
-  /** Staff-facing label. Customer wording differs (docs/api/orders.md). */
+  /** Staff-facing label ("Staff see it as" in docs/api/orders.md). */
   label: string
   /** What the status means for the dispatcher. */
   description: string
@@ -25,18 +25,16 @@ interface StatusMeta {
 }
 
 /**
- * Display metadata per order status. Meanings follow FR-033 and the status
- * table in docs/api/orders.md; `assigned` is labelled "not accepted" because
+ * Display metadata per order status. Meanings follow FR-033; labels are the
+ * staff wording approved in docs/design/admin-orders.md (Decision 9) and listed
+ * in docs/api/orders.md. `assigned` reads "Assigned - awaiting driver" because
  * nobody may treat it as driver acceptance (FR-032).
  *
- * Tones and icons follow the design system's status badges for the matching
- * customer label. The staff labels for `assigned`, `accepted` and `disputed`
- * are not in the design system yet (design-system.md open question 1); the
- * admin design (S1-08) settles them.
+ * Tones and icons follow the design system's status badges.
  */
 export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
   quote_requested: {
-    label: 'Quote requested',
+    label: 'Request received',
     description: 'Request received. No accepted price yet.',
     tone: 'info',
     icon: Inbox,
@@ -54,7 +52,7 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
     icon: Check,
   },
   assigned: {
-    label: 'Assigned, not accepted',
+    label: 'Assigned - awaiting driver',
     description: 'A driver is assigned but has not accepted yet.',
     tone: 'brand',
     icon: UserRound,
@@ -72,7 +70,7 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
     icon: Droplet,
   },
   en_route: {
-    label: 'En route',
+    label: 'On the way',
     description: 'Driver reported travelling to the customer. Not live tracking.',
     tone: 'info',
     icon: Truck,
@@ -90,7 +88,7 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
     icon: Ban,
   },
   failed: {
-    label: 'Failed',
+    label: 'Delivery failed',
     description: 'Delivery attempt failed.',
     tone: 'danger',
     icon: CircleX,
@@ -105,18 +103,6 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
 
 /** All statuses in queue order: the ordinary FR-033 progression, then exceptions. */
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS_META) as OrderStatus[]
-
-/** The ordinary progression from FR-033, used for the lifecycle view. */
-export const ORDINARY_PROGRESSION: OrderStatus[] = [
-  'quote_requested',
-  'awaiting_confirmation',
-  'confirmed',
-  'assigned',
-  'accepted',
-  'collected',
-  'en_route',
-  'delivered',
-]
 
 /** Narrow an untrusted string (e.g. a URL parameter) to an `OrderStatus`. */
 export function isOrderStatus(value: string): value is OrderStatus {

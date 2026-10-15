@@ -3,20 +3,26 @@ import { useSearchParams } from 'react-router-dom'
 import type { AdminOrderListParams, OrderStatus } from '../../lib/api/adminOrders'
 import { isOrderStatus } from './orderStatus'
 
-export const PAGE_SIZE = 10
+/** 50 per page (docs/design/admin-orders.md, Decision 13; the API default). */
+export const PAGE_SIZE = 50
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+/** Which records to list (`is_simulated`): both, real orders only, or demo only. */
+export type RecordFilter = 'all' | 'real' | 'simulated'
 
 export interface OrderFilters {
   statuses: OrderStatus[]
   createdFrom: string
   createdTo: string
+  records: RecordFilter
   /** 1-based. */
   page: number
 }
 
 /**
- * Directory filters stored in the URL (`?status=…&created_from=…&page=2`), so a
+ * Directory filters stored in the URL
+ * (`?status=…&created_from=…&is_simulated=false&page=2`), so a
  * filtered queue can be shared, bookmarked and restored with Back.
  *
  * Parameter names match `GET /admin/orders`. Unknown or malformed values are
@@ -35,10 +41,12 @@ export function useOrderFilters() {
       return DATE_PATTERN.test(value) ? value : ''
     }
     const page = Number.parseInt(searchParams.get('page') ?? '1', 10)
+    const simulated = searchParams.get('is_simulated')
     return {
       statuses: [...new Set(searchParams.getAll('status').filter(isOrderStatus))],
       createdFrom: date('created_from'),
       createdTo: date('created_to'),
+      records: simulated === 'true' ? 'simulated' : simulated === 'false' ? 'real' : 'all',
       page: Number.isFinite(page) && page > 0 ? page : 1,
     }
   }, [searchParams])
@@ -52,6 +60,7 @@ export function useOrderFilters() {
       status: filters.statuses,
       created_from: filters.createdFrom || undefined,
       created_to: filters.createdTo || undefined,
+      is_simulated: filters.records === 'all' ? undefined : filters.records === 'simulated',
       limit: PAGE_SIZE,
       offset: (filters.page - 1) * PAGE_SIZE,
     }
@@ -67,6 +76,10 @@ export function useOrderFilters() {
         }
         if (changes.createdFrom !== undefined) setOrDelete(next, 'created_from', changes.createdFrom)
         if (changes.createdTo !== undefined) setOrDelete(next, 'created_to', changes.createdTo)
+        if (changes.records !== undefined) {
+          const value = changes.records === 'all' ? '' : String(changes.records === 'simulated')
+          setOrDelete(next, 'is_simulated', value)
+        }
         const page = changes.page ?? 1
         setOrDelete(next, 'page', page > 1 ? String(page) : '')
         return next
@@ -75,9 +88,16 @@ export function useOrderFilters() {
     [setSearchParams],
   )
 
-  const clear = useCallback(() => update({ statuses: [], createdFrom: '', createdTo: '' }), [update])
+  const clear = useCallback(
+    () => update({ statuses: [], createdFrom: '', createdTo: '', records: 'all' }),
+    [update],
+  )
 
-  const hasFilters = filters.statuses.length > 0 || filters.createdFrom !== '' || filters.createdTo !== ''
+  const hasFilters =
+    filters.statuses.length > 0 ||
+    filters.createdFrom !== '' ||
+    filters.createdTo !== '' ||
+    filters.records !== 'all'
 
   return { filters, params, dateRangeInvalid, hasFilters, update, clear }
 }

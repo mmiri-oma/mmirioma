@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../lib/api/client'
-import { createMockAdminOrdersSource } from './mockAdminOrders'
+import { createMockAdminOrdersSource, MOCK_ADMIN_ORDERS } from './mockAdminOrders'
 import type { AdminOrdersSource } from './source'
 import { renderAdminOrders } from './testUtils'
 
@@ -21,9 +21,63 @@ describe('AdminOrdersPage', () => {
     expect(screen.getByText(/loading orders/i)).toBeTruthy()
 
     const rows = within(await findTable()).getAllByRole('row').slice(1)
-    expect(rows).toHaveLength(10)
+    expect(rows).toHaveLength(22)
     expect(within(rows[0]).getByRole('link', { name: 'MO-7KQ2M9XH4T' })).toBeTruthy()
-    expect(screen.getByText(/showing/i).textContent).toMatch(/1–10\s*of\s*22/)
+    expect(screen.getByText(/showing/i).textContent).toMatch(/1–22\s*of\s*22/)
+    // Total in the title (admin design fix 5).
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Orders · 22')
+  })
+
+  it('shows the customer account, phone state and created time in their own columns', async () => {
+    renderAdminOrders('/admin/orders')
+    const table = await findTable()
+    const headers = within(table)
+      .getAllByRole('columnheader')
+      .map((header) => header.textContent)
+    expect(headers).toEqual([
+      'Order',
+      'Status',
+      'Customer',
+      'Quantity',
+      'Delivery address',
+      'Preferred date',
+      'Created',
+      'Open',
+    ])
+    // The account holder, not the receiver, for an order received by someone else.
+    const row = within(table).getByRole('link', { name: 'MO-9TPW4C7M2A' }).closest('tr')
+    if (!row) throw new Error('row not found')
+    expect(within(row).getByText('Obiageli Nwosu')).toBeTruthy()
+    expect(within(row).queryByText('Ngozi Nwosu')).toBeNull()
+    expect(within(row).getByText('Phone confirmed')).toBeTruthy()
+    expect(within(row).getByText('Wed 14 Oct 2026, 8:42 am')).toBeTruthy()
+    expect(screen.queryByText('Verified')).toBeNull()
+  })
+
+  it('uses the approved staff status labels (Decision 9)', async () => {
+    renderAdminOrders('/admin/orders')
+    await findTable()
+    for (const label of ['Request received', 'Assigned - awaiting driver', 'On the way', 'Delivery failed']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
+    for (const old of ['Quote requested', 'Assigned, not accepted', 'En route']) {
+      expect(screen.queryByRole('button', { name: old })).toBeNull()
+    }
+  })
+
+  it('filters simulated records with is_simulated (Decision 12)', async () => {
+    const user = userEvent.setup()
+    const { currentUrl } = renderAdminOrders('/admin/orders')
+    await findTable()
+
+    await user.selectOptions(screen.getByLabelText('Records'), 'real')
+    expect(currentUrl()).toBe('/admin/orders?is_simulated=false')
+    // Every mock order is simulated, so no real orders match.
+    expect(await screen.findByText('No orders match these filters')).toBeTruthy()
+
+    await user.selectOptions(screen.getByLabelText('Records'), 'simulated')
+    expect(currentUrl()).toBe('/admin/orders?is_simulated=true')
+    expect(await findTable()).toBeTruthy()
   })
 
   it('labels mock data as simulated (BR-09)', async () => {
@@ -35,9 +89,10 @@ describe('AdminOrdersPage', () => {
   it('filters by status through the URL and resets to page 1', async () => {
     const user = userEvent.setup()
     const { currentUrl } = renderAdminOrders('/admin/orders?page=2')
-    await findTable()
+    // 22 orders fit on page 1, so page 2 is empty until the filter resets it.
+    expect(await screen.findByText('This page has no orders')).toBeTruthy()
 
-    const failed = screen.getByRole('button', { name: 'Failed' })
+    const failed = screen.getByRole('button', { name: 'Delivery failed' })
     await user.click(failed)
 
     expect(failed.getAttribute('aria-pressed')).toBe('true')
@@ -45,7 +100,7 @@ describe('AdminOrdersPage', () => {
     await waitFor(async () => {
       const rows = within(await findTable()).getAllByRole('row').slice(1)
       expect(rows).toHaveLength(1)
-      expect(within(rows[0]).getByText('Failed')).toBeTruthy()
+      expect(within(rows[0]).getByText('Delivery failed')).toBeTruthy()
     })
   })
 
@@ -95,19 +150,30 @@ describe('AdminOrdersPage', () => {
     expect(alert.textContent).toMatch(/could not be loaded/i)
     expect(alert.textContent).toMatch(/unable to reach the server/i)
 
-    await user.click(screen.getByRole('button', { name: /try again/i }))
+    await user.click(screen.getByRole('button', { name: /retry/i }))
     expect(await findTable()).toBeTruthy()
     expect(listOrders).toHaveBeenCalledTimes(2)
   })
 
-  it('moves between pages', async () => {
+  it('moves between pages of 50 (Decision 13)', async () => {
     const user = userEvent.setup()
-    const { currentUrl } = renderAdminOrders('/admin/orders')
-    await findTable()
+    // 60 orders: two pages of 50.
+    const orders = Array.from({ length: 60 }, (_, index) => ({
+      ...MOCK_ADMIN_ORDERS[0],
+      id: `id-${index}`,
+      reference: `MO-${String(index).padStart(10, '0')}`,
+      created_at: new Date(Date.UTC(2026, 9, 14, 12) - index * 60_000).toISOString(),
+    }))
+    const { currentUrl } = renderAdminOrders(
+      '/admin/orders',
+      createMockAdminOrdersSource({ latencyMs: 0, orders }),
+    )
+    const rows = within(await findTable()).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(50)
 
     await user.click(screen.getByRole('button', { name: /next/i }))
     expect(currentUrl()).toBe('/admin/orders?page=2')
-    await waitFor(() => expect(screen.getByText(/showing/i).textContent).toMatch(/11–20/))
+    await waitFor(() => expect(screen.getByText(/showing/i).textContent).toMatch(/51–60/))
     expect((screen.getByRole('button', { name: /previous/i }) as HTMLButtonElement).disabled).toBe(false)
   })
 

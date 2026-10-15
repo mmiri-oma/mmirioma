@@ -23,14 +23,20 @@ interface BadgeProps {
   icon?: LucideIcon
   children: React.ReactNode
   className?: string
+  /**
+   * Let a long label wrap onto a second line (in narrow table columns)
+   * instead of overflowing into the next column.
+   */
+  wrap?: boolean
 }
 
 /** Pill-shaped status or attribute label. */
-export function Badge({ tone = 'off', icon: Icon, children, className }: BadgeProps) {
+export function Badge({ tone = 'off', icon: Icon, children, className, wrap = false }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex min-h-7 items-center gap-1 rounded-full border py-0.5 pr-3 pl-2 text-small font-semibold whitespace-nowrap',
+        'inline-flex min-h-7 items-center gap-1 border py-0.5 pr-3 pl-2 text-small font-semibold',
+        wrap ? 'rounded-box whitespace-normal' : 'rounded-full whitespace-nowrap',
         toneClasses[tone],
         className,
       )}

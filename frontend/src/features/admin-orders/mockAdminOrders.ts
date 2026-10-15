@@ -70,8 +70,10 @@ export const MOCK_ADMIN_ORDERS: AdminOrderRead[] = ROWS.map(
       updated_at: createdAt,
       customer: {
         id: `00000000-0000-4000-9000-${String(index + 1).padStart(12, '0')}`,
-        name: contactName,
-        phone,
+        // One order is received by someone other than the account holder, so
+        // the Customer column and the Delivery card's receiver can be checked.
+        name: reference === 'MO-9TPW4C7M2A' ? 'Obiageli Nwosu' : contactName,
+        phone: reference === 'MO-9TPW4C7M2A' ? '+2348000000099' : phone,
         phone_verified: phoneVerified,
       },
       is_simulated: true,
@@ -105,7 +107,8 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
 
 /**
  * Filter and page fixture orders the way `GET /admin/orders` is specified to:
- * any of the given statuses, inclusive Lagos creation dates, newest first.
+ * any of the given statuses, inclusive Lagos creation dates, the
+ * `is_simulated` filter, newest first.
  */
 export function queryMockOrders(
   orders: AdminOrderRead[],
@@ -113,6 +116,7 @@ export function queryMockOrders(
 ): Page<AdminOrderRead> {
   const matching = orders
     .filter((order) => params.status.length === 0 || params.status.includes(order.status))
+    .filter((order) => params.is_simulated === undefined || order.is_simulated === params.is_simulated)
     .filter((order) => {
       const createdOn = toLagosDate(order.created_at)
       if (params.created_from && createdOn < params.created_from) return false
