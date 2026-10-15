@@ -23,6 +23,96 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Redirect after sign-in/sign-out lost to the route guard
+
+- **Area:** frontend
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** New jsdom flow tests failed: staff returned to `/admin/orders`
+  without their filters after signing in (`expected '/admin/orders' to be
+  '/admin/orders?status=quote_requested'`); the one-time notice after
+  creating an account and the "You've signed out." toast never appeared.
+  The static-HTML tests could not catch this.
+- **Cause:** The screens set the session, then called `navigate()`. React
+  Router v7 runs navigations as transitions (low priority), so React first
+  rendered the new session at the old URL, and that screen's own redirect
+  (`<Navigate>` to the app home, or the guard's redirect to sign-in) won.
+- **Fix / workaround:** Redirect declaratively from session state instead of
+  calling `navigate()` after the change: the sign-in page renders
+  `<Navigate to={from ?? home}>` once signed in; account creation passes the
+  one-time-notice state in its own `<Navigate>`; sign-out only clears the
+  session, marked "by user", and the guard shows the signed-out landing with
+  the toast. Regression tests in `flows.test.tsx`.
+- **Status:** resolved
+- **Refs:** S1-17, PR #29
+
+### 2026-10-15: Passing `login` directly as a TanStack `mutationFn`
+
+- **Area:** frontend
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `tsc -b` failed: `Type '(input: LoginInput, client?: ApiClient)
+  => Promise<Session>' is not assignable to type 'MutationFunction<Session,
+  LoginInput>'. Types of parameters 'client' and 'context' are incompatible.`
+- **Cause:** TanStack Query v5 calls `mutationFn(variables, context)`. The
+  API functions take an optional second `client` argument, so passing them
+  directly would have sent requests through the mutation context object
+  instead of the API client.
+- **Fix / workaround:** Wrap them: `mutationFn: (values) => login(values)`.
+  Do the same for any API function with optional extra parameters (queries
+  too: `queryFn` receives a context object).
+- **Status:** resolved
+- **Refs:** S1-17, `frontend/src/features/auth/pages/`
+
+### 2026-10-15: Static-HTML screen tests: camelCase attributes, no form defaults
+
+- **Area:** frontend (tests)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `expected '<link rel="preload"…' to contain
+  'autocomplete="new-password"'` and `… to contain 'value="0800 000 0001"'`.
+- **Cause:** `react-dom/server` writes some attributes in React's camelCase
+  (`autoComplete`, `readOnly`, `maxLength`). React Hook Form sets default
+  values through refs after mount, so they never appear in static HTML.
+- **Fix / workaround:** Assert the camelCase spelling. Do not test form
+  default values with static rendering; they need a DOM test environment
+  (not installed; needs approval).
+- **Status:** workaround
+- **Refs:** S1-17, `frontend/src/features/auth/screens.test.tsx`
+
+### 2026-10-15: No browser available to check the auth screens visually
+
+- **Area:** tooling
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** The agent environment has no browser tool and no Chrome or
+  Chromium install, so the S1-17 screens could not be clicked through or
+  screenshotted.
+- **Cause:** Environment limitation.
+- **Fix / workaround:** Verified instead with typecheck, lint, build, the
+  generated CSS, static-HTML screen tests, every module served by the dev
+  server, and the exact API calls (CORS preflight, register, duplicate, me,
+  logout with and without CSRF, wrong password, 429 with
+  `retry_after_seconds`) made with curl from the dev-server origin. A person
+  must still click through the screens in a browser before merge.
+- **Status:** open
+- **Refs:** S1-17
+
+### 2026-10-15: LOG.md entry lost its heading in a merge
+
+- **Area:** process (GitHub)
+- **Author:** Daveoski + Claude Code
+- **Symptom:** Merging `origin/docs/auth-design` into `davidui` conflicted in
+  `LOG.md`. On `docs/auth-design`, the rate-limit entry ("Rate limit could be
+  bypassed with concurrent login requests") carries the heading "GitHub API
+  briefly unreachable", which has no body of its own.
+- **Cause:** An earlier merge of new entries placed above the rate-limit
+  entry kept the new heading and dropped the old one.
+- **Fix / workaround:** On `davidui`, both sides' entries were kept, newest
+  first, and the rate-limit heading restored. The "GitHub API briefly
+  unreachable" entry's body needs to be recovered by its author. When
+  resolving `LOG.md` conflicts, check that every heading still sits on its own
+  body.
+- **Status:** resolved (the "GitHub API briefly unreachable" entry was
+  restored from commit 67cf95a in PR #29)
+- **Refs:** PR #25, `LOG.md`
+
 ### 2026-10-15: Push declined due to email privacy restrictions
 
 - **Area:** GitHub
@@ -90,6 +180,19 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
   `main` before merging it, or merge only from the top of the stack.
 - **Status:** workaround
 - **Refs:** PR #16, PR #23, commit 4594680
+
+### 2026-10-14: GitHub API briefly unreachable
+
+- **Area:** tooling (GitHub)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `error connecting to api.github.com ... check your internet
+  connection or https://githubstatus.com` right after a successful `git push`.
+- **Cause:** Transient network or GitHub outage; it recovered within minutes.
+- **Fix / workaround:** Retry. When a fetch-edit-write sequence fails part way,
+  check that nothing was half-applied (here an empty PR body was caught before
+  it was sent).
+- **Status:** resolved
+- **Refs:** PR #16
 
 ### 2026-10-14: Creating issues with `gh api -f` failed with HTTP 422
 

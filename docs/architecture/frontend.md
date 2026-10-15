@@ -1,7 +1,32 @@
-# Frontend API client
+# Frontend architecture
 
-How the React app calls the backend. All API calls go through
-`src/lib/api/client.ts`; components must not call `fetch` directly.
+How the React app is put together and how it calls the backend. All API calls
+go through `src/lib/api/client.ts`; components must not call `fetch` directly.
+
+## App structure
+
+One React app serves every area (CLAUDE.md, "Architecture"):
+
+| Path | Area | Guard |
+| --- | --- | --- |
+| `/`, `/sign-in`, `/create-account` | Customer app | `AppGate app="customer"` (role `customer`) |
+| `/admin/sign-in`, `/admin/orders`, `/admin/orders/:reference` | Staff (dispatcher) app, in `AdminShell` | `AppGate app="staff"` (role `admin`) |
+
+The driver app joins with S1-15. `src/main.tsx` mounts, outermost first:
+`QueryClientProvider` (TanStack Query, `src/lib/queryClient.ts`),
+`BrowserRouter` (React Router), `SessionProvider` (the current session from
+`GET /auth/me`), then `AppRoutes` (`src/App.tsx`). Session handling, guards
+and the auth screens are described in
+[docs/features/authentication.md](../features/authentication.md).
+
+- **Data fetching:** TanStack Query is now configured. New server data should
+  use `useQuery`/`useMutation` with typed functions from `src/lib/api/`.
+  Queries retry once for network and 5xx failures, never for 4xx; mutations
+  are never retried. Any 401 `not_authenticated` re-checks the session, so a
+  session that ended shows "Your session has ended" on its own.
+- **Forms:** React Hook Form with Zod schemas (`@hookform/resolvers/zod`).
+- **Features** live in `src/features/<feature>/`; shared design-system
+  components in `src/components/ui/`.
 
 Versions this document was written against: React 19.2, TypeScript 6.0,
 Vite 8.3, Vitest 5.0.
@@ -14,8 +39,8 @@ Vite 8.3, Vitest 5.0.
 | `src/lib/api/health.ts`           | Typed `getHealth()` for `GET /api/v1/health`           |
 | `src/lib/api/auth.ts`             | `register`, `login`, `getMe`, `logout`; stores the CSRF token |
 | `src/components/ApiStatus.tsx`    | Shows API reachability (in the admin sidebar)          |
-| `src/main.tsx`, `src/App.tsx`     | Providers (TanStack Query, router) and the route table |
-| `src/lib/queryClient.ts`          | Query client defaults (retry policy)                   |
+| `src/main.tsx`, `src/App.tsx`     | Providers (TanStack Query, router, session) and the route table |
+| `src/lib/queryClient.ts`          | Query client defaults (retry policy) and the global 401 handling |
 | `src/vite-env.d.ts`               | Types for `import.meta.env.VITE_API_BASE_URL`          |
 | `src/lib/api/client.test.ts`      | Vitest tests with a mocked `fetch`                     |
 
@@ -70,18 +95,18 @@ Apart from cancellation, every failure is thrown as `ApiError`:
   the backend does not add CORS headers to them (see
   [backend.md](backend.md#error-handling-appcoreerrorspy)).
 
-## Example component
+## API status component
 
-`ApiStatus` calls `getHealth` once on mount and shows loading, success, or the
-`ApiError` message. It aborts the request on unmount. In development, React
+`ApiStatus` (in the admin sidebar) calls `getHealth` once on mount and shows
+loading, success, or the `ApiError` message. It aborts the request on unmount. In development, React
 StrictMode mounts components twice, so the first request is aborted and its
 result ignored. It still uses `useEffect`; new data fetching uses TanStack Query
 (see below).
 
 ## App shell, routing and data fetching
 
-`main.tsx` wraps the app in `QueryClientProvider` and `BrowserRouter`; `App.tsx`
-holds the route table. Server data is read with TanStack Query hooks inside each
+`main.tsx` wraps the app in `QueryClientProvider`, `BrowserRouter` and
+`SessionProvider`; `App.tsx` holds the route table (see "App structure"). Server data is read with TanStack Query hooks inside each
 feature (e.g. `features/admin-orders/useAdminOrders.ts`), passing the query's
 `signal` through to the API call. `createQueryClient()` retries network and 5xx
 failures once and never retries 4xx errors (a 404 will not fix itself). Window
@@ -93,11 +118,21 @@ Design tokens: [docs/design/design-system.md](../design/design-system.md)
 
 ## Styling (Tailwind CSS v4)
 
+Design tokens from the approved design system
+([docs/design/design-system.md](../design/design-system.md)) are the
+`@theme` block in `src/index.css`, so utilities such as `bg-primary`,
+`text-text-secondary`, `rounded-box`, `text-h1` and the `tablet:` / `desktop:`
+variants exist. They extend Tailwind's defaults rather than replace them.
+Checked against the build output: `--text-*--line-height` and
+`--text-*--font-weight` apply with the `text-*` utility, and
+`--breakpoint-tablet` produces `@media (width >= 48rem)`. Change tokens in the
+design document first, then here. The app is light theme only.
+
 Tailwind is enabled the way its official Vite guide describes: the
 `@tailwindcss/vite` plugin in `vite.config.ts` and `@import "tailwindcss";` at the
 top of `src/index.css`. There is no `tailwind.config.js`; v4 is configured in CSS
 (e.g. `@theme`) when needed. Tailwind's base reset lives in `@layer base`, so the
-unlayered rules in `index.css` / `App.css` still take precedence over it.
+unlayered rules in `index.css` still take precedence over it.
 
 ## Testing
 
@@ -108,6 +143,8 @@ npm test          # Vitest; node by default, jsdom for component tests
 
 Component tests opt in to a DOM with `// @vitest-environment jsdom` at the top
 of the file and use Testing Library (`@testing-library/react`, `user-event`).
+Simpler screen tests render to static HTML with `react-dom/server` in the
+node environment.
 
 Tests create a client with `createApiClient({ baseUrl, fetch: mockFetch })`; no
 server is needed. They cover the health call (URL, method, credentials), JSON

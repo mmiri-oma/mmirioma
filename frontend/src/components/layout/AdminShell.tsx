@@ -1,5 +1,13 @@
-import { ClipboardList, Droplet } from 'lucide-react'
+import { ClipboardList, Droplet, User } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import {
+  AccountPanel,
+  SignOutButton,
+  SignOutFailedToast,
+  SignOutSecurityProblem,
+} from '../../features/auth/components/AccountControls'
+import { useSignOut } from '../../features/auth/useSignOut'
+import type { User as SessionUser } from '../../lib/api/auth'
 import { cn } from '../../lib/cn'
 import { ApiStatus } from '../ApiStatus'
 
@@ -36,8 +44,14 @@ function navLinkClasses({ isActive }: { isActive: boolean }) {
  * sidebar from the desktop breakpoint, a top bar below it (NFR-020). The rule
  * for staff navigation below desktop is still open (design-system.md open
  * question 2). Pages render in the `<Outlet />`.
+ *
+ * The signed-in staff member's name and "Sign out" (authentication design
+ * X5) sit at the foot of the sidebar on desktop, and in an account panel in
+ * the top bar below it. The shell is only rendered behind the staff
+ * `AppGate`, so `user` is always an admin.
  */
-export function AdminShell() {
+export function AdminShell({ user }: { user: SessionUser }) {
+  const signOut = useSignOut()
   return (
     <div className="min-h-svh desktop:pl-60">
       <a
@@ -63,7 +77,15 @@ export function AdminShell() {
             ))}
           </ul>
         </nav>
-        <div className="rounded-md bg-neutral-50 px-3 py-2.5 text-text-secondary [&_p]:text-caption [&_p]:font-normal">
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <p className="flex items-center gap-2 px-1 font-semibold">
+            <User aria-hidden className="size-5 shrink-0" />
+            <span className="truncate">{user.name}</span>
+          </p>
+          <SignOutSecurityProblem signOut={signOut} />
+          <SignOutButton signOut={signOut} fullWidth />
+        </div>
+        <div className="mt-4 rounded-md bg-neutral-50 px-3 py-2.5 text-text-secondary [&_p]:text-caption [&_p]:font-normal">
           <ApiStatus />
         </div>
       </aside>
@@ -82,11 +104,27 @@ export function AdminShell() {
             ))}
           </ul>
         </nav>
+        <AccountPanel
+          triggerShape="square"
+          keepOpen={signOut.signingOut || signOut.problem !== null}
+          trigger={
+            <>
+              <User aria-hidden className="size-5 shrink-0" />
+              <span className="sr-only tablet:not-sr-only">Account</span>
+            </>
+          }
+        >
+          <p className="text-lg leading-[26px] font-bold">{user.name}</p>
+          <div className="h-px bg-border" />
+          <SignOutSecurityProblem signOut={signOut} />
+          <SignOutButton signOut={signOut} fullWidth />
+        </AccountPanel>
       </header>
 
       <main id="main" className="mx-auto max-w-300 px-4 py-6 tablet:px-6 desktop:py-10">
         <Outlet />
       </main>
+      <SignOutFailedToast signOut={signOut} />
     </div>
   )
 }

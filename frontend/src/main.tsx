@@ -2,17 +2,22 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { AppRoutes } from './App'
+import { SessionProvider } from './features/auth/SessionProvider'
 import './index.css'
-import App from './App.tsx'
 import { createQueryClient } from './lib/queryClient'
 
 const queryClient = createQueryClient()
+const root = document.getElementById('root')
+if (root === null) throw new Error('Missing #root element in index.html')
 
-createRoot(document.getElementById('root')!).render(
+createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
