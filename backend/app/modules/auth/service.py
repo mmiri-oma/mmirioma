@@ -12,6 +12,8 @@ Rules implemented here (docs/api/auth.md):
 """
 
 import asyncio
+import uuid
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import cache
@@ -211,3 +213,24 @@ async def set_user_active(session: AsyncSession, *, phone: str, active: bool) ->
         )
     await session.commit()
     return user
+
+
+async def get_users_by_ids(
+    session: AsyncSession, user_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, User]:
+    """Return the accounts with the given IDs, keyed by ID.
+
+    Lets other modules (for example orders, for the staff view of an order's
+    customer) read accounts without querying this module's tables.
+
+    Args:
+        session: Database session.
+        user_ids: IDs to look up. Unknown IDs are simply absent from the result.
+
+    Returns:
+        A mapping from ID to user.
+    """
+    if not user_ids:
+        return {}
+    users = await session.scalars(select(User).where(User.id.in_(set(user_ids))))
+    return {user.id: user for user in users}

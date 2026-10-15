@@ -18,7 +18,8 @@ uvicorn app.main:app
        └─ api_router (/api/v1)         app/api/v1/router.py
             ├─ health.router           /health, /health/ready
             │    └─ Depends(get_db_session) -> AsyncSession (asyncpg)
-            └─ auth.router             /auth/* (app/modules/auth)
+            ├─ auth.router             /auth/* (app/modules/auth)
+            └─ orders.router           /orders*, /admin/orders* (app/modules/orders)
 ```
 
 On shutdown, the `lifespan` handler calls `dispose_engine()` to close pooled

@@ -7,7 +7,9 @@ from fastapi import APIRouter
 
 from app.api.v1 import health
 from app.modules.auth import router as auth
+from app.modules.orders import router as orders
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router)
 api_router.include_router(auth.router)
+api_router.include_router(orders.router)
