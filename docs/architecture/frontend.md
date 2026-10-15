@@ -13,7 +13,9 @@ Vite 8.3, Vitest 5.0.
 | `src/lib/api/client.ts`           | `createApiClient`, the shared `apiClient`, `ApiError`  |
 | `src/lib/api/health.ts`           | Typed `getHealth()` for `GET /api/v1/health`           |
 | `src/lib/api/auth.ts`             | `register`, `login`, `getMe`, `logout`; stores the CSRF token |
-| `src/components/ApiStatus.tsx`    | Example component showing API reachability             |
+| `src/components/ApiStatus.tsx`    | Shows API reachability (in the admin sidebar)          |
+| `src/main.tsx`, `src/App.tsx`     | Providers (TanStack Query, router) and the route table |
+| `src/lib/queryClient.ts`          | Query client defaults (retry policy)                   |
 | `src/vite-env.d.ts`               | Types for `import.meta.env.VITE_API_BASE_URL`          |
 | `src/lib/api/client.test.ts`      | Vitest tests with a mocked `fetch`                     |
 
@@ -73,8 +75,21 @@ Apart from cancellation, every failure is thrown as `ApiError`:
 `ApiStatus` calls `getHealth` once on mount and shows loading, success, or the
 `ApiError` message. It aborts the request on unmount. In development, React
 StrictMode mounts components twice, so the first request is aborted and its
-result ignored. It uses `useEffect` because the app has no data-fetching layer
-configured yet; when TanStack Query is set up, data fetching should move there.
+result ignored. It still uses `useEffect`; new data fetching uses TanStack Query
+(see below).
+
+## App shell, routing and data fetching
+
+`main.tsx` wraps the app in `QueryClientProvider` and `BrowserRouter`; `App.tsx`
+holds the route table. Server data is read with TanStack Query hooks inside each
+feature (e.g. `features/admin-orders/useAdminOrders.ts`), passing the query's
+`signal` through to the API call. `createQueryClient()` retries network and 5xx
+failures once and never retries 4xx errors (a 404 will not fix itself). Window
+focus refetching is off to save mobile data.
+
+Design tokens: [docs/design/design-system.md](../design/design-system.md)
+(approved; `src/index.css` copies its `@theme` block). Shared components:
+[docs/design/ui-system.md](../design/ui-system.md).
 
 ## Styling (Tailwind CSS v4)
 
@@ -88,8 +103,11 @@ unlayered rules in `index.css` / `App.css` still take precedence over it.
 
 ```bash
 cd frontend
-npm test          # Vitest, node environment, mocked fetch
+npm test          # Vitest; node by default, jsdom for component tests
 ```
+
+Component tests opt in to a DOM with `// @vitest-environment jsdom` at the top
+of the file and use Testing Library (`@testing-library/react`, `user-event`).
 
 Tests create a client with `createApiClient({ baseUrl, fetch: mockFetch })`; no
 server is needed. They cover the health call (URL, method, credentials), JSON
