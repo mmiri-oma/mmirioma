@@ -10,6 +10,8 @@ import {
 export interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   /** Visible label above the control (never placeholder-only). */
   label: string
+  /** Shows a muted "(optional)" after the label. */
+  optional?: boolean
   /** Helper text below the control, hidden while an error shows. */
   help?: string
   /** Inline error text; also sets `aria-invalid`. */
@@ -35,6 +37,7 @@ export interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
  */
 export function Field({
   label,
+  optional = false,
   help,
   error,
   leading,
@@ -63,6 +66,7 @@ export function Field({
         className={`font-semibold ${large ? 'text-lg leading-7' : ''}`}
       >
         {label}
+        {optional ? <span className="font-normal text-text-secondary"> (optional)</span> : null}
       </label>
       <div
         className={[

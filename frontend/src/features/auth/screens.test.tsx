@@ -11,7 +11,7 @@ import { AuthBannerView } from './components/AuthBannerView'
 import { SessionSplash, WrongAppScreen } from './components/StatusScreens'
 import { CreateAccountPage } from './pages/CreateAccountPage'
 import { AdminShell } from '../../components/layout/AdminShell'
-import { CustomerHome } from './pages/HomePages'
+import { MyOrdersPage } from '../customer-orders/pages/MyOrdersPage'
 import { SignInPage } from './pages/SignInPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { SessionContext } from './sessionContext'
@@ -221,7 +221,7 @@ describe('session and access states', () => {
 
 describe('signed-in homes', () => {
   it('customer home: unconfirmed-phone banner without a close button (X6)', () => {
-    const html = render(<CustomerHome session={SESSION} />, {
+    const html = render(<MyOrdersPage session={SESSION} />, {
       status: { kind: 'signed-in', role: 'customer' },
       session: SESSION,
     })
@@ -233,7 +233,7 @@ describe('signed-in homes', () => {
   })
 
   it('customer home: one-time notice after creating an account', () => {
-    const html = render(<CustomerHome session={SESSION} />, {
+    const html = render(<MyOrdersPage session={SESSION} />, {
       status: { kind: 'signed-in', role: 'customer' },
       session: SESSION,
       state: { justRegistered: true },
@@ -246,7 +246,7 @@ describe('signed-in homes', () => {
 
   it('customer home: no banner once the phone is confirmed', () => {
     const confirmed = { ...SESSION, user: { ...SESSION.user, phone_verified: true } }
-    const html = render(<CustomerHome session={confirmed} />, {
+    const html = render(<MyOrdersPage session={confirmed} />, {
       status: { kind: 'signed-in', role: 'customer' },
       session: confirmed,
     })
