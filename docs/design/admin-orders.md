@@ -168,24 +168,71 @@ Only the Simulated filter (a gap) would need a change.
 
 ## Open questions
 
+Each question ends with the designer's recommendation. The technical lead
+decides at review.
+
 1. **Staff navigation below desktop width.** The design system says bottom
    navigation; prompt 02 and the authentication design say a top bar with a
    menu. The build uses a top bar with an inline "Orders" link and an account
-   button, no menu button. Technical lead to decide at review.
+   button, no menu button.
+   **Recommendation:** keep the top bar. It matches prompt 02 and the
+   authentication design's Decision 5, and a bottom bar with one item adds
+   nothing. Add a "Menu" button when a second staff section exists. Drop the
+   design system's "moves to the bottom navigation" note for staff.
 2. **Staff status labels.** Prompt 02 uses the customer wording plus three
    staff labels ("Assigned - awaiting driver", "Driver accepted", "Disputed").
    The build uses "Quote requested", "Awaiting confirmation", "Confirmed",
    "Assigned, not accepted", "Driver accepted", "Water collected", "En route",
    "Delivered", "Cancelled", "Failed", "Disputed". Which set is approved? This
    also answers design-system open question 1.
+   **Recommendation:** adopt prompt 02's set: "Request received",
+   "Awaiting confirmation", "Confirmed", "Assigned - awaiting driver",
+   "Driver accepted", "Water collected", "On the way", "Delivered",
+   "Cancelled", "Delivery failed", "Disputed". It matches the design-system
+   badges, so staff and customers use the same words, and "Assigned - awaiting
+   driver" still never reads as accepted (FR-032).
 3. **"Find by reference".** Built but not in prompt 02. Keep it?
+   **Recommendation:** keep it. Customers phone in with a reference, and it
+   uses only `GET /admin/orders/{reference}` (no contract change). Record it
+   as an approved addition to this design.
 4. **"Lifecycle" card.** Prompt 02 says no status history section in this
    release. The card shows only where the current status sits, without times
    or actors. Keep it, or remove it until order history exists?
+   **Recommendation:** remove it. Prompt 02 asks for no status section, and
+   ticked steps without times can be read as recorded history, which does not
+   exist yet. Order history (prompt 02 screen 7) replaces it later.
 5. **Simulated filter.** Needs `is_simulated` on `GET /admin/orders` (S1-16,
    #20). Add it, or accept the Simulated tag alone for the demo?
+   **Recommendation:** add an optional boolean `is_simulated` query parameter
+   in S1-16. It is additive (not breaking) and supports BR-09: keeping demo
+   orders out of real results. If S1-16 cannot take it before the demo, ship
+   with the tag alone and leave the filter as a known gap.
 6. **Page size.** Prompt 02 says 50 per page; the build uses 10. Change to
    50?
+   **Recommendation:** change to 50, as in prompt 02 and the contract's
+   default `limit`.
+
+## Recommended fixes for S1-09
+
+If the recommendations above are accepted, S1-09 (#10) makes these changes,
+and only after this design is approved (G2) and the contract agreed (G3):
+
+1. Status labels as in question 2, in the filter, badges and detail.
+2. Status filter: the design system's "Status" multi-select panel with a
+   count pill, plus removable chips for each active filter; keep "Clear
+   filters".
+3. 50 per page, and the total in the title ("Orders · 128").
+4. Customer column: account name (`customer.name`) with "Phone confirmed" /
+   "Phone not confirmed"; created date in its own column; table fits at
+   1280 px. Mobile cards add the created date.
+5. Detail: separate "Request" card (quantity, preferred date or "No
+   preference"); "Delivery" card always shows the receiver's name and phone;
+   "Customer account" card says "Confirmed" / "Not confirmed" with the
+   explanation; phones shown as `0800 000 0001`; Price text "No price yet -
+   this is a quote request."; remove the Lifecycle card.
+6. Error buttons say "Retry".
+7. Simulated filter, only once `is_simulated` is in the agreed contract.
+8. Update the component tests for each change.
 
 ## Changes to the design system
 
