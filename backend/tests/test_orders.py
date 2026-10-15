@@ -6,6 +6,7 @@ from sqlalchemy import CheckConstraint, UniqueConstraint
 
 from app.modules.orders.models import Order, OrderEvent, OrderStatus
 from app.modules.orders.service import (
+    IDEMPOTENCY_KEY_REUSED_MESSAGE,
     REFERENCE_ALPHABET,
     generate_order_reference,
 )
@@ -77,3 +78,10 @@ def test_simulated_flag_defaults_to_false() -> None:
     column = Order.__table__.c.is_simulated
     assert column.server_default is not None
     assert not column.nullable
+
+
+def test_reused_key_message_says_the_request_was_received() -> None:
+    # A 409 means an earlier send from the same form was stored
+    # (customer-ordering.md, Decision 9); the message must not invite a new order.
+    assert "already received" in IDEMPOTENCY_KEY_REUSED_MESSAGE
+    assert "new order" not in IDEMPOTENCY_KEY_REUSED_MESSAGE.lower()

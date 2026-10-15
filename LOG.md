@@ -23,6 +23,24 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: `git switch main` failed on a stale local `main`
+
+- **Area:** tooling (git)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `git switch main` failed with `Your local changes to the
+  following files would be overwritten by checkout: .gitignore`, and a
+  following `git merge --ff-only origin/main` silently fast-forwarded the
+  feature branch instead of `main`.
+- **Cause:** The local `main` branch had not been updated since the first
+  commits, so its `.gitignore` differed from the uncommitted local change.
+  Work had been done on feature branches created from `origin/main`.
+- **Fix / workaround:** Move the branch without a checkout, then switch:
+  `git fetch origin && git branch -f main origin/main && git switch main`
+  (safe when the current branch already contains `origin/main`). Check
+  `git branch --show-current` after every switch in scripts.
+- **Status:** resolved
+- **Refs:** S1-10 integration check
+
 ### 2026-10-15: Integration tests stalled because Docker Desktop was not running
 
 - **Area:** tooling (database)
