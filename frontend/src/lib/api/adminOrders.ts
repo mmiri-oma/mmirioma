@@ -1,11 +1,11 @@
 /**
- * Types for the admin order endpoints, mirroring docs/api/orders.md (S1-01).
+ * Types for the admin order endpoints, mirroring docs/api/orders.md (agreed in
+ * S1-16).
  *
- * That contract is still "proposed", and `GET /admin/orders` is not implemented
- * yet (S1-03). The admin UI therefore reads from an `AdminOrdersSource`
- * (src/features/admin-orders/source.ts) that is backed by mock data until the
- * S1-10 integration supplies functions calling these endpoints. If the contract
- * changes, update these types in the same PR.
+ * `GET /admin/orders` is being built in S1-03 part 2. Until it exists the admin
+ * UI reads from an `AdminOrdersSource` (src/features/admin-orders/source.ts)
+ * backed by mock data; the S1-10 integration supplies a source calling these
+ * endpoints. If the contract changes, update these types in the same PR.
  */
 
 /** Order statuses from FR-033. Terminal: `delivered`, `cancelled`, `failed`. */
@@ -74,6 +74,8 @@ export interface AdminOrderListParams {
   created_from?: string
   /** Inclusive Lagos calendar date `YYYY-MM-DD`. */
   created_to?: string
+  /** `true`: only demo records; `false`: only real orders; omitted: both (BR-09). */
+  is_simulated?: boolean
   /** 1–100. */
   limit: number
   offset: number

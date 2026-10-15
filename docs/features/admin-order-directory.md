@@ -1,21 +1,27 @@
 # Admin order directory
 
 Requirements: FR-030 (list/filter/inspect), FR-033 (status meanings), FR-027, FR-003, BR-09, NFR-020, NFR-021, NFR-022 ·
-Issues: S1-08 (#9), S1-09 (#10) · Acceptance tests: none automated yet (T-xx cover backend behaviour)
+Issues: S1-08 (#9), S1-09 (#10) · Design: [admin-orders.md](../design/admin-orders.md) (approved) ·
+Contract: [orders.md](../api/orders.md) (agreed) · Acceptance tests: none automated yet (T-xx cover backend behaviour)
 
 ## 1. Overview and purpose
 
 The dispatcher's order queue. Staff see every order newest first, filter by
 status and creation date, open an order by its reference, and read its details.
 It is read-only and runs on **mock data** until `GET /admin/orders` exists
-(S1-03). The S1-10 integration replaces the data source.
+(S1-03 part 2). The S1-10 integration replaces the data source. It sits behind
+the staff route guard (`AppGate app="staff"`, see
+[authentication.md](authentication.md)).
 
 ## 2. Feature workflow
 
-1. `/admin/orders` loads page 1 (10 orders) from the `AdminOrdersSource`.
-2. Status chips (multi-select) and the "Created from/to" dates update the URL
-   (`?status=…&created_from=…&created_to=…&page=…`). Changing a filter resets to
-   page 1. Back, reload and shared links restore the same view.
+1. `/admin/orders` loads page 1 (50 orders) from the `AdminOrdersSource`. The
+   title shows the total ("Orders · 22").
+2. Status toggles, the "Created from/to" dates and the "Records" select (all,
+   real only, simulated only) update the URL
+   (`?status=…&created_from=…&created_to=…&is_simulated=…&page=…`). Changing a
+   filter resets to page 1. Back, reload and shared links restore the same
+   view.
 3. The previous page stays visible, dimmed, while the next one loads.
 4. A row or card opens `/admin/orders/:reference`. "Back to orders" returns to
    the same filters.
@@ -32,10 +38,11 @@ It is read-only and runs on **mock data** until `GET /admin/orders` exists
 | `frontend/src/features/admin-orders/useOrderFilters.ts` | URL-backed filter state and date-range validation |
 | `frontend/src/features/admin-orders/useAdminOrders.ts` | TanStack Query hooks for the list and detail |
 | `frontend/src/features/admin-orders/AdminOrdersPage.tsx` | Directory page and its loading, empty and error states |
-| `frontend/src/features/admin-orders/AdminOrderDetailPage.tsx` | Detail page: delivery, price notice, customer, lifecycle |
-| `frontend/src/features/admin-orders/OrderList.tsx` | Table (≥ `tablet`, 768 px) and list rows (phones), plus the skeleton |
+| `frontend/src/features/admin-orders/AdminOrderDetailPage.tsx` | Detail page: request, delivery (receiver), price notice, customer account |
+| `frontend/src/features/admin-orders/PhoneState.tsx` | "Phone confirmed" / "Phone not confirmed" line and badge |
+| `frontend/src/features/admin-orders/OrderList.tsx` | Fixed-layout table (≥ `tablet`, 768 px; fits 1280 px beside the sidebar) and list rows (phones), plus the skeleton |
 | `frontend/src/features/admin-orders/OrderFilters.tsx`, `ReferenceSearch.tsx`, `Pagination.tsx` | Filter controls, reference lookup, paging |
-| `frontend/src/features/admin-orders/orderStatus.ts` | Staff labels, icons and tones per status; FR-033 progression |
+| `frontend/src/features/admin-orders/orderStatus.ts` | Staff labels (admin design Decision 9), icons and tones per status |
 | `frontend/src/lib/queryClient.ts` | Query client: one retry for network/5xx errors, none for 4xx |
 
 The screens use the approved design system
@@ -49,11 +56,11 @@ None. The frontend has no storage. Data shapes follow `AdminOrderRead` in
 
 ## 5. API endpoints
 
-Not called yet. The source interface matches these proposed endpoints:
+Not called yet. The source interface matches these agreed endpoints:
 
 | Method | Path | Roles | Request | Success | Errors (status + code) |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/admin/orders` | admin | `status` (repeatable), `created_from`, `created_to`, `limit`, `offset` | 200 `Page<AdminOrderRead>` | 401 `not_authenticated`, 403 `forbidden`, 422 `validation_error` |
+| GET | `/api/v1/admin/orders` | admin | `status` (repeatable), `created_from`, `created_to`, `is_simulated`, `limit`, `offset` | 200 `Page<AdminOrderRead>` | 401 `not_authenticated`, 403 `forbidden`, 422 `validation_error` |
 | GET | `/api/v1/admin/orders/{reference}` | admin | none | 200 `AdminOrderRead` | 404 `order_not_found`, 401, 403 |
 
 To connect the real API (S1-10), add endpoint functions in `src/lib/api/` that
@@ -64,26 +71,28 @@ component changes are needed.
 ## 6. Business rules
 
 - No price is shown. Sprint 1 orders are manual quote requests, so the detail page shows a "No price yet" notice instead of an amount (FR-021, FR-022).
-- `assigned` is labelled "Assigned, not accepted" so it cannot be read as acceptance (FR-032).
-- Simulated records carry a "Simulated" badge. While the mock source is active, a sample-data notice is shown on every screen (BR-09).
-- An unverified phone is flagged, with a note that it must be verified before confirmation (FR-003).
+- Staff status labels follow the admin design (Decision 9): "Request received", "Awaiting confirmation", "Confirmed", "Assigned - awaiting driver", "Driver accepted", "Water collected", "On the way", "Delivered", "Cancelled", "Delivery failed", "Disputed". `assigned` never reads as acceptance (FR-032).
+- Simulated records carry a "Simulated" badge, and the "Records" filter can hide or isolate them (`is_simulated`, BR-09). While the mock source is active, a sample-data notice is shown on every screen.
+- The list shows the **customer account** (`customer.name`); the detail page shows the account and the receiver separately, because someone else may receive the water.
+- A phone staff have not confirmed is shown as "Phone not confirmed", with a note that it must be confirmed before the order can be (FR-003). "Confirmed", not "verified", so nothing suggests automated SMS checks.
+- Phone numbers are shown as `0800 000 0001` (design-system formatting rules).
 - The preferred date is labelled as a customer preference, not a booked slot (FR-025 slots do not exist yet).
 - Times are shown in Africa/Lagos on a 12-hour clock (`Wed 14 Oct 2026, 10:30 am`); quantities as `200 litres` (design-system.md formatting rules). Date filters are inclusive Lagos calendar dates, as in the contract.
-- The lifecycle view is derived from the current status only. It shows no times, because there is no event history endpoint yet.
+- No status history or lifecycle view (admin design Decision 11): it waits for the order history work.
 - Zone filtering is not offered: orders have no service zone until FR-010.
 
 ## 7. Authentication and authorization
 
-Not enforced in the UI yet. The routes are open in the frontend, and the mock
-data contains no real customer data. Access control is the server's job (FR-001).
-When S1-02 auth lands, the admin routes must be guarded for the admin role.
+The admin routes are behind the staff route guard: signed-out visitors go to
+`/admin/sign-in`, and other roles see "You do not have access to this page."
+The server enforces the admin role on every endpoint (FR-001).
 
 ## 8. Error handling and edge cases
 
 | Case | Behaviour |
 | --- | --- |
 | Loading | Skeleton rows and a screen-reader "Loading orders…" status |
-| Network or 5xx error | Retried once, then an alert with the `ApiError` message and "Try again" |
+| Network or 5xx error | Retried once, then an alert with the `ApiError` message and "Retry" |
 | No orders at all | "No orders yet" |
 | Filters match nothing | "No orders match these filters" and "Clear filters" |
 | "Created from" after "Created to" | Inline alert. No request is made |
@@ -101,18 +110,19 @@ npm test
 ```
 
 - `mockAdminOrders.test.ts`: status, Lagos date and paging behaviour of the mock source; `order_not_found`; abort; reference normalisation.
-- `AdminOrdersPage.test.tsx` (jsdom + Testing Library): loading, list, filters through the URL, filter restore, empty states, invalid range (no request), error and retry, paging, reference search.
-- `AdminOrderDetailPage.test.tsx`: details in Lagos time with no price, unverified phone, lifecycle step, cancelled order, not found, back link keeps filters.
+- `AdminOrdersPage.test.tsx` (jsdom + Testing Library): loading, list and title count, column set with customer account, phone state and created time, staff labels, filters through the URL, Simulated filter, filter restore, empty states, invalid range (no request), error and retry, paging by 50, reference search.
+- `AdminOrderDetailPage.test.tsx`: details in Lagos time with no price, phone not confirmed, separate request/delivery/customer cards with formatted phones, "No preference" and no lifecycle, not found, back link keeps filters.
 - `lib/format.test.ts`: Lagos 12-hour time (including midnight and noon), calendar dates and litres.
 
 ## 10. Known limitations
 
-- The screens are not yet checked against an approved admin design: S1-08
-  (`docs/design/admin-orders.md`) does not exist yet, and `docs/api/orders.md`
-  is still `proposed`, not `agreed` (S1-16). S1-09 cannot merge until both
-  gates pass.
-- Mock data only. Real integration is S1-10.
+- Mock data only. Real integration is S1-10, once S1-03 part 2 provides the
+  endpoints.
+- The status filter is a row of toggles, not the design system's multi-select
+  panel with chips (admin design fix 6, optional for Sprint 1).
+- At the narrowest tablet widths (about 768-850 px) the table is tight:
+  customer names and addresses are truncated (full text in the tooltip and
+  on the detail page).
 - Read-only: confirm, assign and cancel come with their APIs.
-- No admin route guard until auth is integrated.
 - No zone filter (FR-010) and no event history (NFR-004 events are not exposed yet).
 - Mobile date inputs use the browser's native picker and locale format.

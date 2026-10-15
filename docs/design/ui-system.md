@@ -18,7 +18,8 @@ Stack: Tailwind CSS v4 and lucide-react only. There is no UI kit.
 | --- | --- | --- |
 | `Button` | `components/ui/Button.tsx` | Buttons: `primary` (one per screen), `secondary`, `ghost`, `destructive`, `icon` (48 × 48, needs `aria-label`); `loading` keeps the label and adds a spinner |
 | `buttonClasses` | `components/ui/buttonVariants.ts` | Button styling for router `<Link>`s |
-| `Badge` | `components/ui/Badge.tsx` | Status badge: tones `info`, `warning`, `brand`, `success`, `off`, `danger`, `review` (dashed) |
+| `Badge` | `components/ui/Badge.tsx` | Status badge: tones `info`, `warning`, `brand`, `success`, `off`, `danger`, `review` (dashed); `wrap` lets a long label wrap in narrow table columns |
+| `PhoneState`, `PhoneStateBadge` | `features/admin-orders/PhoneState.tsx` | "Phone confirmed" / "Phone not confirmed" line and badge (admin design, phone state line) |
 | `Tag` | `components/ui/Tag.tsx` | Sample data and Simulated tags |
 | `Card` | `components/ui/Card.tsx` | Card |
 | `Input` | `components/ui/Input.tsx` | Form fields (text, date, search); `invalid` sets `aria-invalid` and the error style |

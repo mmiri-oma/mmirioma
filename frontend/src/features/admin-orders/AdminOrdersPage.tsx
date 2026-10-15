@@ -25,7 +25,12 @@ export function AdminOrdersPage() {
     <div className="space-y-5">
       <header className="flex flex-col gap-4 tablet:flex-row tablet:items-end tablet:justify-between">
         <div>
-          <h1 className="text-h1 text-text-primary">Orders</h1>
+          <h1 className="text-h1 text-text-primary">
+            Orders
+            {query.data && !query.isPlaceholderData && (
+              <span className="font-normal text-text-secondary"> · {query.data.total}</span>
+            )}
+          </h1>
           <p className="mt-1 text-text-secondary">Every customer request, newest first. Times are Lagos time.</p>
         </div>
         <ReferenceSearch />
@@ -92,7 +97,7 @@ function ListBody({ query, hasFilters, dateRangeInvalid, onClear, onFirstPage }:
         action={
           <Button variant="secondary" onClick={() => query.refetch()} loading={query.isFetching}>
             {!query.isFetching && <RefreshCw aria-hidden className="size-5" />}
-            Try again
+            Retry
           </Button>
         }
       />

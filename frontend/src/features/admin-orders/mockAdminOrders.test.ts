@@ -23,6 +23,14 @@ describe('mock admin orders', () => {
     expect(items.map((order) => order.status).sort()).toEqual(['disputed', 'failed'])
   })
 
+  it('filters by is_simulated like the agreed contract (BR-09)', () => {
+    const real = { ...MOCK_ADMIN_ORDERS[0], id: 'real-1', reference: 'MO-REAL000001', is_simulated: false }
+    const orders = [...MOCK_ADMIN_ORDERS, real]
+    expect(queryMockOrders(orders, { ...allParams, is_simulated: false }).items).toEqual([real])
+    expect(queryMockOrders(orders, { ...allParams, is_simulated: true }).total).toBe(MOCK_ADMIN_ORDERS.length)
+    expect(queryMockOrders(orders, allParams).total).toBe(MOCK_ADMIN_ORDERS.length + 1)
+  })
+
   it('filters by inclusive Lagos creation dates', () => {
     // MO-4NB9DQ6R3Y was created 2026-10-09T23:30Z, which is 10 Oct in Lagos.
     const { items } = queryMockOrders(MOCK_ADMIN_ORDERS, {
