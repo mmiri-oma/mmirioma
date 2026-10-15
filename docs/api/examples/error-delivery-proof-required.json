@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "delivery_proof_required",
+    "message": "Record the delivered quantity and the receiver's acknowledgement before marking this order delivered",
+    "details": null
+  }
+}

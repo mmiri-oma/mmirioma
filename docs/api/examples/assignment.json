@@ -1,0 +1,18 @@
+{
+  "id": "7d2c9e41-3b6a-4f0e-9c18-5a4b3c2d1e0f",
+  "order_reference": "MO-7KQ2M9XH4T",
+  "driver": {
+    "id": "a41f0c9b-6e2d-4b7a-8f35-0d9c8b7a6e51",
+    "name": "Sample Driver"
+  },
+  "status": "declined",
+  "assigned_by": {
+    "id": "c9e8d7f6-5a4b-4c3d-9e2f-1a0b9c8d7e6f",
+    "name": "Sample Dispatcher"
+  },
+  "reason": "Vehicle cannot carry this quantity",
+  "created_at": "2026-10-16T08:00:00Z",
+  "accepted_at": null,
+  "declined_at": "2026-10-16T08:12:00Z",
+  "ended_at": null
+}

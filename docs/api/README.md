@@ -7,11 +7,12 @@ Shared contracts that backend and frontend build against. Agree changes here
 | --- | --- | --- |
 | [auth.md](auth.md) | Roles, sessions, CSRF, register/login/logout/me | S1-02 |
 | [orders.md](orders.md) | Order statuses and transitions, order create/read, admin list/detail | S1-03 |
+| [deliveries.md](deliveries.md) | Delivery-phase state machine: assignment statuses, order transitions from `confirmed` onwards, guards, exceptions (part 1); driver endpoints (part 2, pending the driver design) | S1-07 and later |
 | [examples/](examples/) | Mock JSON responses for frontend work (S1-05, S1-09) | n/a |
 
-Delivery assignment states (assignment, acceptance, pickup, transit, proof,
-failure, reassignment) are defined in S1-06. [orders.md](orders.md) only fixes
-the order-level statuses they must map onto.
+[orders.md](orders.md) fixes the order statuses; [deliveries.md](deliveries.md)
+defines how an order moves through them once confirmed, and the assignment
+statuses that run alongside.
 
 **Status:** proposed for review by Chidinma (orders) and Chukwuebuka (delivery).
 A contract is agreed once both reviews are done. Each document ends with its own

@@ -23,6 +23,23 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: No backend virtualenv; first install outlasted a 10-minute command limit
+
+- **Area:** tooling (backend)
+- **Author:** Bonvee120 + Claude Code
+- **Symptom:** `ruff: command not found` when running the backend checks for
+  S1-06. `backend/.venv` did not exist on this machine. Creating it and running
+  `pip install -r requirements-dev.txt` plus the checks in one command took
+  longer than the agent's 10-minute foreground limit, so it had to finish in
+  the background.
+- **Cause:** First-time setup on this machine; the full dependency install is
+  slow on a cold pip cache.
+- **Fix / workaround:** Follow README §3 once (`python -m venv .venv`,
+  `source .venv/Scripts/activate`, `pip install -r requirements-dev.txt`), and
+  run long installs in the background. Later runs only need the activate step.
+- **Status:** resolved
+- **Refs:** S1-06 (#7), `README.md` §3
+
 ### 2026-10-15: Redirect after sign-in/sign-out lost to the route guard
 
 - **Area:** frontend

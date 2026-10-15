@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "invalid_order_transition",
+    "message": "This order cannot move from quote_requested to assigned",
+    "details": null
+  }
+}

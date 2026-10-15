@@ -36,7 +36,7 @@ Stored as an explicit enumeration. Names follow FR-033.
 | `delivered` | Delivered **with proof** of quantity and acknowledgement (FR-035, BR-06) | "Delivered" |
 | `cancelled` | Cancelled with a recorded reason (FR-036) | "Cancelled" |
 | `failed` | Delivery attempt failed (FR-036) | "Delivery failed" |
-| `disputed` | Customer or dispatcher disputes the delivery (T-12) | "Under review" |
+| `disputed` | Customer or dispatcher disputes the delivery (T-12), or less water was delivered than ordered ([deliveries.md](deliveries.md#order-transitions-in-the-delivery-phase), D12) | "Under review" |
 
 FR-033 lists `draft` alongside `quote_requested`. The server does not store
 drafts: an unsubmitted form exists only in the browser. Terminal statuses are
@@ -54,19 +54,15 @@ actor, time, from/to status and reason (NFR-004).
 | (none) | `quote_requested` | customer | Valid request (`POST /orders`) | **1** |
 | `quote_requested` | `awaiting_confirmation` | customer | Accepts a server quote (FR-023) | later |
 | `awaiting_confirmation` | `confirmed` | admin | Phone verified (FR-003); eligible source (FR-012); slot reserved (FR-025) | later |
-| `confirmed` | `assigned` | admin | Driver active, capacity and area fit (FR-031) | S1-07 |
-| `assigned` | `accepted` | assigned driver | none | S1-07 |
-| `assigned` | `confirmed` | assigned driver (reject) or admin (timeout) | Returns to dispatcher queue (SRS §8) | S1-07 |
-| `accepted` | `collected` | assigned driver or admin | Pickup record (FR-034) | later |
-| `collected` | `en_route` | assigned driver | none | later |
-| `en_route` | `delivered` | assigned driver | Delivery proof present (FR-035, T-08) | later |
+| `confirmed` onwards | delivery phase | admin, assigned driver, system | See [deliveries.md](deliveries.md#order-transitions-in-the-delivery-phase) rows D1-D9, D12 (short delivery to `disputed`), D13 (driver deactivated) and D14 (delivery attempt failed, customer unreachable) | S1-07 and later |
 | any non-terminal | `cancelled` | admin | Reason required (FR-036) | later |
-| `assigned`, `accepted`, `collected`, `en_route` | `failed` | admin | Reason required (FR-036) | later |
 | `delivered` | `disputed` | customer or admin | Reason required (T-12) | later |
 
-S1-06 owns the final delivery-phase rows (`assigned` through `delivered`,
-`failed`) and the separate assignment statuses. If S1-06 changes them, update
-this table in the same PR.
+The delivery phase (assignment, acceptance, decline, timeout, reassignment,
+pickup, transit, delivery and failure) and the separate assignment statuses are
+specified in [deliveries.md](deliveries.md) (S1-06). It uses only the order
+statuses above. Cancelling also withdraws an active driver assignment
+(deliveries.md, D10).
 
 ## Order object
 
@@ -177,5 +173,6 @@ Examples: [examples/order.json](examples/order.json),
    PRD nor the SRS says. Until decided, only admins cancel.
 2. Should the dispatcher queue filter on creation date (Sprint 1) or delivery
    date (once slots exist)? FR-030 says "date".
-3. Confirm with S1-06 that `assigned → confirmed` is the right way to model a
-   driver rejection.
+3. ~~Confirm with S1-06 that `assigned → confirmed` is the right way to model a
+   driver rejection.~~ Proposed yes in [deliveries.md](deliveries.md#order-transitions-in-the-delivery-phase)
+   (D3, SRS §8), pending the S1-06 review.
