@@ -30,7 +30,7 @@ from app.modules.auth.dependencies import CSRF_HEADER_NAME
 from app.modules.auth.models import User, UserRole
 from app.modules.orders import service
 from app.modules.orders.models import Order, OrderEvent, OrderStatus
-from app.modules.orders.service import NewOrder
+from app.modules.orders.service import IDEMPOTENCY_KEY_REUSED_MESSAGE, NewOrder
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
@@ -400,6 +400,7 @@ def test_t06_http_duplicate_checkout_creates_one_order(
     assert retry.json() == first.json()
     assert changed.status_code == 409
     assert changed.json()["error"]["code"] == "idempotency_key_reused"
+    assert changed.json()["error"]["message"] == IDEMPOTENCY_KEY_REUSED_MESSAGE
     page = http.get("/api/v1/orders").json()
     assert page["total"] == 1
     assert page["items"] == [first.json()]
