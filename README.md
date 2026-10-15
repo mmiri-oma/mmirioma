@@ -155,6 +155,9 @@ npm run build
   database, migrations, error envelope, CORS, health endpoints.
 - [`docs/architecture/frontend.md`](docs/architecture/frontend.md): API client and
   error handling.
+- [`docs/process/ui-driven-development.md`](docs/process/ui-driven-development.md):
+  how features are built (design in Claude Design, then contract, then code).
+  Design prompts live in [`docs/design/prompts/`](docs/design/prompts/).
 - [`docs/api/`](docs/api/README.md): agreed API contracts and mock JSON samples
   for frontend work.
 - `docs/features/`: one document per implemented feature, e.g.

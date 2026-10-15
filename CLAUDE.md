@@ -226,6 +226,33 @@ Write "None" for a section that genuinely does not apply rather than omitting it
 Do not create placeholder feature documents: only document functionality that
 actually exists.
 
+## UI-driven workflow
+
+Features are built design first. Follow
+`docs/process/ui-driven-development.md`:
+
+1. Slice scoped from SRS requirement IDs.
+2. Claude Design prompt written in `docs/design/prompts/`, reusing the shared
+   design system (`00-design-system.md`).
+3. Design generated, recorded in `docs/design/<slice>.md`, and reviewed against
+   the SRS by the technical lead.
+4. API contract derived from the screens and agreed in `docs/api/`.
+5. Frontend (against mocks) and backend (against the contract) built in
+   parallel, then integrated.
+
+Rules:
+
+- **Do not implement an endpoint or screen without an agreed contract in
+  `docs/api/`.** If none exists, write or propose it first.
+- Designs decide what a screen shows and which actions it offers; the SRS
+  decides business rules. Never add fields, statuses, prices or permissions
+  because a design "seems to need" them: raise an open question instead.
+- Frontend work implements every state in the approved design (empty, loading,
+  error, success, each error code).
+- When writing a design prompt, include the honesty rules from the process
+  document (no invented prices, no false confirmation or tracking, no
+  water-quality claims, sample data labelled).
+
 ## Issue log (`LOG.md`)
 
 `LOG.md` at the repo root records every problem hit while working on the

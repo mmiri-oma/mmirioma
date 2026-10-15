@@ -219,7 +219,7 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 - **Status:** resolved (pending confirmation that `Bonvee120` is Chukwuebuka)
 - **Refs:** issues #7, #8, #12, #13
 
-### 2026-10-14: `gh issue create --project` fails
+### 2026-10-14: `gh issue create --project` and `gh pr edit` fail
 
 - **Area:** GitHub / tooling
 - **Author:** nnamdi-security + Claude Code
@@ -229,5 +229,9 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 - **Fix / workaround:** Create the issue without `--project`, then run
   `gh project item-add 1 --owner mmiri-oma --url <issue-url>`. Needs the
   `project` token scope (`gh auth refresh -s project`).
+  `gh pr edit` fails the same way (`... (repository.pullRequest.projectCards)`).
+  Edit PRs through the REST API instead:
+  `gh api -X PATCH repos/mmiri-oma/mmirioma/pulls/<n> -F "body=@body.md"`.
+  Upgrading `gh` may remove the need for both workarounds.
 - **Status:** workaround
-- **Refs:** issues #2–#13, project "MmiriOma — MVP Development"
+- **Refs:** issues #2–#13, PR #16, project "MmiriOma — MVP Development"

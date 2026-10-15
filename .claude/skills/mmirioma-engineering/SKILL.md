@@ -19,8 +19,9 @@ Task: $ARGUMENTS
 2. Read the requirement sources at the repo root: `MmiriOma_MVP_SRS.md` (normative) and `MmiriOma_MVP_PRD.md`. Use [references/requirements.md](references/requirements.md) to find the relevant sections, then read them in the source files.
 3. Identify the requirement IDs the task implements (`FR-`, `BR-`, `NFR-`, `PR-`) and the acceptance tests (`T-01`…`T-14`).
 4. Check the open decisions (PRD §13, SRS §12). If the task depends on an unresolved one, or the documents do not answer a business question, **stop and ask the user**. Never invent business rules, prices, limits, or state names.
-5. Read the existing module code and `docs/features/<feature>.md` if present. Reuse existing patterns (`APIError`, `get_db_session`, `Base` + mixins, `apiClient`).
-6. For review tasks: get the diff (`git diff`, `git diff main...HEAD`, or the named files), then go to step 6.
+5. For feature work, check the UI-driven workflow (`docs/process/ui-driven-development.md`): an agreed contract in `docs/api/` and, for screens, an approved design in `docs/design/<slice>.md`. If the contract is missing, write or propose it before coding. Never add fields or rules because a design seems to need them.
+6. Read the existing module code and `docs/features/<feature>.md` if present. Reuse existing patterns (`APIError`, `get_db_session`, `Base` + mixins, `apiClient`).
+7. For review tasks: get the diff (`git diff`, `git diff main...HEAD`, or the named files), then go to step 6.
 
 ## 2. Verify framework usage against installed versions
 
