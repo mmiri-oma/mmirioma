@@ -150,7 +150,8 @@ Every endpoint also returns 401 `not_authenticated` and 403 `forbidden`;
   transaction as the order.
 - **Simulated data (BR-09):** `is_simulated` defaults to false, cannot be set
   through the API, appears only in admin responses, and can be filtered there.
-  Seed scripts (S1-18) will set it.
+  Only the demo seed sets it, through `create_order(..., is_simulated=True)`
+  (see [demo data](demo-data.md)).
 
 ## 7. Authentication and authorization requirements
 

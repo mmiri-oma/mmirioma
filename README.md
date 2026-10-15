@@ -62,6 +62,11 @@ docker compose logs -f postgres
 docker compose down           # stop (data is kept in the postgres_data volume)
 ```
 
+If `docker compose up` fails with `Bind for 127.0.0.1:5432 failed: port is
+already allocated`, another Postgres (often another project's container) is
+using the port. Check with `docker ps` and stop it while working here;
+otherwise `DATABASE_URL` reaches the wrong database (see `LOG.md`).
+
 ## 3. Backend
 
 ```bash
@@ -108,6 +113,23 @@ python -m app.modules.auth.cli activate --phone 080...
 ```
 
 See [`docs/features/authentication.md`](docs/features/authentication.md).
+
+### Demo data
+
+For local work and demos, seed simulated accounts and orders from `backend/`
+with the virtualenv active (after `alembic upgrade head`):
+
+```bash
+python -m app.modules.demo.seed     # prompts once for the demo accounts' password
+```
+
+It creates a demo dispatcher (`08000090001`), driver (`08000090002`) and two
+customers (`08000090011`, `08000090012`), plus order requests flagged
+`is_simulated`. Running it again adds nothing. It refuses to run when
+`APP_ENV=production`. The phone block `080000900NN` is reserved for demo
+accounts; do not use it for anything else. Integration tests delete everything
+in that block, so re-run the seed after running them against your local
+database. See [`docs/features/demo-data.md`](docs/features/demo-data.md).
 
 ## 4. Frontend
 

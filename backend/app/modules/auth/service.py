@@ -234,3 +234,16 @@ async def get_users_by_ids(
         return {}
     users = await session.scalars(select(User).where(User.id.in_(set(user_ids))))
     return {user.id: user for user in users}
+
+
+async def get_user_by_phone(session: AsyncSession, phone: str) -> User | None:
+    """Return the account with this phone, active or not.
+
+    Args:
+        session: Database session.
+        phone: Normalized E.164 phone number.
+
+    Returns:
+        The user, or None if no account has this phone.
+    """
+    return await session.scalar(select(User).where(User.phone == phone))

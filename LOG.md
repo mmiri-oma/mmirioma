@@ -23,6 +23,21 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: ruff S608 flagged SQL built with an f-string in a test
+
+- **Area:** backend (tests)
+- **Author:** chidimmamogbo + Claude Code
+- **Symptom:** `ruff check .` failed with `S608 Possible SQL injection vector
+  through string-based query construction` in the demo seed integration test's
+  cleanup, which spliced a shared subquery into three `DELETE` statements.
+- **Cause:** The values were bound parameters, but the statement text was
+  assembled with f-strings, which the rule (rightly) cannot tell apart from
+  unsafe interpolation.
+- **Fix / workaround:** Write each statement out in full as a constant string
+  with `%(name)s` parameters. Do not silence S608 with `noqa`.
+- **Status:** resolved
+- **Refs:** `backend/tests/test_demo_seed_integration.py`
+
 ### 2026-10-15: Integration tests stalled because Docker Desktop was not running
 
 - **Area:** tooling (database)
