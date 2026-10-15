@@ -23,10 +23,10 @@ export function AdminOrdersPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-4 tablet:flex-row tablet:items-end tablet:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Orders</h1>
-          <p className="mt-1 text-sm text-ink-muted">Every customer request, newest first. Times are in Lagos (WAT).</p>
+          <h1 className="text-h1 text-text-primary">Orders</h1>
+          <p className="mt-1 text-text-secondary">Every customer request, newest first. Times are Lagos time.</p>
         </div>
         <ReferenceSearch />
       </header>
@@ -34,7 +34,7 @@ export function AdminOrdersPage() {
       {isMock && <SimulatedDataNotice />}
 
       <Card>
-        <div className="border-b border-line p-4 md:p-5">
+        <div className="border-b border-neutral-200 p-4">
           <OrderFilters
             filters={filters}
             dateRangeInvalid={dateRangeInvalid}
@@ -46,8 +46,8 @@ export function AdminOrdersPage() {
 
         <div className="relative">
           {query.isFetching && !query.isPending && (
-            <span role="status" className="absolute top-2 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-surface px-2 py-1 text-xs text-ink-muted shadow-card">
-              <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
+            <span role="status" className="absolute top-2 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-caption text-text-secondary shadow-md">
+              <LoaderCircle aria-hidden className="size-4 motion-safe:animate-spin" />
               Updating…
             </span>
           )}
@@ -90,8 +90,8 @@ function ListBody({ query, hasFilters, dateRangeInvalid, onClear, onFirstPage }:
         title="Orders could not be loaded"
         description={message}
         action={
-          <Button variant="secondary" onClick={() => query.refetch()} disabled={query.isFetching}>
-            <RefreshCw aria-hidden className={query.isFetching ? 'size-4 animate-spin' : 'size-4'} />
+          <Button variant="secondary" onClick={() => query.refetch()} loading={query.isFetching}>
+            {!query.isFetching && <RefreshCw aria-hidden className="size-5" />}
             Try again
           </Button>
         }

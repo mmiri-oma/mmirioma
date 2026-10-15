@@ -12,7 +12,7 @@ interface StateMessageProps {
   className?: string
 }
 
-/** Centered empty, error or not-found message with an optional recovery action. */
+/** Centred empty, error or not-found message with an optional recovery action (design-system.md "Empty state"). */
 export function StateMessage({
   icon: Icon,
   title,
@@ -24,19 +24,19 @@ export function StateMessage({
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cn('flex flex-col items-center px-6 py-14 text-center', className)}
+      className={cn('flex flex-col items-center gap-3 px-4 py-8 text-center', className)}
     >
       <span
         className={cn(
-          'mb-4 grid size-12 place-items-center rounded-full',
-          tone === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-brand-50 text-brand-600',
+          'grid size-14 place-items-center rounded-full',
+          tone === 'error' ? 'bg-danger-50 text-danger-700' : 'bg-primary-50 text-primary-700',
         )}
       >
-        <Icon aria-hidden className="size-6" />
+        <Icon aria-hidden className="size-7" />
       </span>
-      <p className="text-base font-semibold text-ink">{title}</p>
-      {description && <p className="mt-1 max-w-sm text-sm text-ink-muted">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      <p className="max-w-[32ch] font-semibold text-text-primary">{title}</p>
+      {description && <p className="max-w-sm text-small text-text-secondary">{description}</p>}
+      {action && <div>{action}</div>}
     </div>
   )
 }

@@ -1,39 +1,139 @@
 @import "tailwindcss";
 
 /*
- * Shared MmiriOma design tokens (S1-08). Customer and admin screens use these
- * same tokens so there is one visual system. Inventory and usage rules:
- * docs/design/ui-system.md.
+ * Shared MmiriOma design tokens, copied from the approved design system
+ * (S1-13): docs/design/design-system.md "Tailwind CSS v4 theme". Change the
+ * canvas and that document first, then this block, in one reviewed PR.
  *
- * System fonts only: the PRD targets low-bandwidth Android browsers (PRD §9),
- * so no web-font download.
+ * Noto Sans is not self-hosted yet (design-system.md Decision 3), so the
+ * stack falls back to the phone's system font until the subset is added.
  */
 @theme {
-  --font-sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+  /* Color: brand primary */
+  --color-primary-50: #EEF8FB;
+  --color-primary-100: #D4EDF4;
+  --color-primary-200: #A9DAE8;
+  --color-primary-300: #74C0D6;
+  --color-primary-400: #3FA0BE;
+  --color-primary-500: #1D82A3;
+  --color-primary-600: #0B6786;
+  --color-primary-700: #095370;
+  --color-primary-800: #08425A;
+  --color-primary-900: #073647;
 
-  /* Brand: clear-water blue ("mmiri" is Igbo for water). */
-  --color-brand-50: oklch(0.97 0.02 230);
-  --color-brand-100: oklch(0.93 0.04 230);
-  --color-brand-200: oklch(0.87 0.07 230);
-  --color-brand-300: oklch(0.79 0.11 230);
-  --color-brand-400: oklch(0.69 0.14 235);
-  --color-brand-500: oklch(0.6 0.15 240);
-  --color-brand-600: oklch(0.52 0.15 245);
-  --color-brand-700: oklch(0.45 0.13 248);
-  --color-brand-800: oklch(0.37 0.1 250);
-  --color-brand-900: oklch(0.3 0.08 252);
-  --color-brand-950: oklch(0.21 0.06 255);
+  /* Color: brand states */
+  --color-primary: #0B6786;
+  --color-primary-hover: #095370;
+  --color-primary-pressed: #08425A;
 
-  /* Neutral ink and surfaces. */
-  --color-ink: oklch(0.22 0.03 255);
-  --color-ink-muted: oklch(0.47 0.03 255);
-  --color-surface: oklch(1 0 0);
-  --color-canvas: oklch(0.975 0.006 240);
-  --color-line: oklch(0.91 0.01 245);
+  /* Color: neutral */
+  --color-neutral-50: #F7F9FA;
+  --color-neutral-100: #EEF2F4;
+  --color-neutral-200: #DFE5E9;
+  --color-neutral-300: #C6D0D6;
+  --color-neutral-400: #98A6AF;
+  --color-neutral-500: #6A7983;
+  --color-neutral-600: #4F5C66;
+  --color-neutral-700: #3B464E;
+  --color-neutral-800: #263037;
+  --color-neutral-900: #151D23;
 
-  --radius-card: 0.875rem;
-  --shadow-card: 0 1px 2px oklch(0.22 0.03 255 / 0.06), 0 1px 3px oklch(0.22 0.03 255 / 0.08);
+  /* Color: surface, text, border, focus */
+  --color-background: #F7F9FA;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #EEF2F4;
+  --color-text-primary: #151D23;
+  --color-text-secondary: #4F5C66;
+  --color-text-disabled: #6A7983;
+  --color-text-inverse: #FFFFFF;
+  --color-border: #C6D0D6;
+  --color-border-strong: #6A7983;
+  --color-focus-ring: #2A4BD7;
+
+  /* Color: semantic */
+  --color-success-50: #E9F7EF;
+  --color-success-200: #A9DCBF;
+  --color-success-600: #1B7A43;
+  --color-success-700: #14602F;
+  --color-warning-50: #FFF5DC;
+  --color-warning-200: #F5D48A;
+  --color-warning-500: #F2A900;
+  --color-warning-700: #8A5200;
+  --color-warning-800: #6B4000;
+  --color-danger-50: #FDEDEB;
+  --color-danger-200: #F4B5AE;
+  --color-danger-600: #BE2A1E;
+  --color-danger-700: #9B1F15;
+  --color-danger-800: #7C190F;
+  --color-info-50: #EAF1FD;
+  --color-info-200: #B4CCF3;
+  --color-info-600: #1F5FBF;
+  --color-info-700: #184C99;
+
+  /* Font */
+  --font-sans: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale */
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--font-weight: 700;
+  --text-display-lg: 2.5rem;
+  --text-display-lg--line-height: 3rem;
+  --text-display-lg--font-weight: 700;
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 2.25rem;
+  --text-h1--font-weight: 700;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.875rem;
+  --text-h2--font-weight: 600;
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.625rem;
+  --text-h3--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-body--font-weight: 400;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+  --text-small--font-weight: 400;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.125rem;
+  --text-caption--font-weight: 400;
+
+  /* Spacing (4 px base) */
+  --spacing: 0.25rem;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-touch: 3rem;
+  --spacing-touch-lg: 3.5rem;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-box: 0.75rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-full: 9999px;
+
+  /* Shadow */
+  --shadow-xs: 0 1px 2px 0 rgb(21 29 35 / 0.06);
+  --shadow-sm: 0 1px 3px 0 rgb(21 29 35 / 0.08), 0 1px 2px -1px rgb(21 29 35 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(21 29 35 / 0.10), 0 2px 4px -2px rgb(21 29 35 / 0.06);
+  --shadow-lg: 0 16px 32px -8px rgb(21 29 35 / 0.20), 0 4px 8px -4px rgb(21 29 35 / 0.10);
+
+  /* Breakpoints */
+  --breakpoint-mobile: 22.5rem;
+  --breakpoint-tablet: 48rem;
+  --breakpoint-desktop: 80rem;
 }
 
 @layer base {
@@ -44,11 +144,11 @@
   }
 
   body {
-    @apply bg-canvas font-sans text-ink;
+    @apply bg-background font-sans text-body text-text-primary;
   }
 
-  /* One visible focus style everywhere (NFR-021 keyboard support). */
+  /* 3 px focus ring, 2 px offset, on every control reached by keyboard (NFR-021). */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    @apply outline-3 outline-offset-2 outline-focus-ring;
   }
 }

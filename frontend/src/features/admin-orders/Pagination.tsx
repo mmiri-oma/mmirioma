@@ -17,19 +17,19 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
   const last = Math.min(page * pageSize, total)
 
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 md:px-5">
-      <p className="text-sm text-ink-muted" aria-live="polite">
-        Showing <span className="font-semibold text-ink tabular-nums">{first}–{last}</span> of{' '}
-        <span className="font-semibold text-ink tabular-nums">{total}</span>
+    <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200 px-4 py-3">
+      <p className="text-small text-text-secondary" aria-live="polite">
+        Showing <span className="font-semibold text-text-primary tabular-nums">{first}–{last}</span> of{' '}
+        <span className="font-semibold text-text-primary tabular-nums">{total}</span>
       </p>
       <div className="flex gap-2">
         <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          <ChevronLeft aria-hidden className="size-4" />
-          <span className="max-sm:sr-only">Previous</span>
+          <ChevronLeft aria-hidden className="size-5" />
+          <span className="max-tablet:sr-only">Previous</span>
         </Button>
         <Button variant="secondary" size="sm" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>
-          <span className="max-sm:sr-only">Next</span>
-          <ChevronRight aria-hidden className="size-4" />
+          <span className="max-tablet:sr-only">Next</span>
+          <ChevronRight aria-hidden className="size-5" />
         </Button>
       </div>
     </nav>

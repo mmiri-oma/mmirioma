@@ -1,12 +1,12 @@
 import {
+  Ban,
+  Check,
   CircleCheck,
   CircleX,
+  Clock,
   Droplet,
-  Hourglass,
   Inbox,
-  MessageSquareWarning,
-  PackageCheck,
-  TriangleAlert,
+  Search,
   Truck,
   UserCheck,
   UserRound,
@@ -28,36 +28,41 @@ interface StatusMeta {
  * Display metadata per order status. Meanings follow FR-033 and the status
  * table in docs/api/orders.md; `assigned` is labelled "not accepted" because
  * nobody may treat it as driver acceptance (FR-032).
+ *
+ * Tones and icons follow the design system's status badges for the matching
+ * customer label. The staff labels for `assigned`, `accepted` and `disputed`
+ * are not in the design system yet (design-system.md open question 1); the
+ * admin design (S1-08) settles them.
  */
 export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
   quote_requested: {
     label: 'Quote requested',
     description: 'Request received. No accepted price yet.',
-    tone: 'neutral',
+    tone: 'info',
     icon: Inbox,
   },
   awaiting_confirmation: {
     label: 'Awaiting confirmation',
     description: 'Customer accepted a price. Source, slot and contact still need confirming.',
     tone: 'warning',
-    icon: Hourglass,
+    icon: Clock,
   },
   confirmed: {
     label: 'Confirmed',
     description: 'Source, price, slot and contact confirmed. Ready to assign.',
-    tone: 'info',
-    icon: CircleCheck,
+    tone: 'brand',
+    icon: Check,
   },
   assigned: {
     label: 'Assigned, not accepted',
     description: 'A driver is assigned but has not accepted yet.',
-    tone: 'violet',
+    tone: 'brand',
     icon: UserRound,
   },
   accepted: {
     label: 'Driver accepted',
     description: 'The assigned driver accepted the job.',
-    tone: 'violet',
+    tone: 'brand',
     icon: UserCheck,
   },
   collected: {
@@ -69,32 +74,32 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
   en_route: {
     label: 'En route',
     description: 'Driver reported travelling to the customer. Not live tracking.',
-    tone: 'brand',
+    tone: 'info',
     icon: Truck,
   },
   delivered: {
     label: 'Delivered',
     description: 'Delivered with proof of quantity and acknowledgement.',
     tone: 'success',
-    icon: PackageCheck,
+    icon: CircleCheck,
   },
   cancelled: {
     label: 'Cancelled',
     description: 'Cancelled with a recorded reason.',
-    tone: 'neutral',
-    icon: CircleX,
+    tone: 'off',
+    icon: Ban,
   },
   failed: {
     label: 'Failed',
     description: 'Delivery attempt failed.',
     tone: 'danger',
-    icon: TriangleAlert,
+    icon: CircleX,
   },
   disputed: {
     label: 'Disputed',
     description: 'Delivery is under review after a dispute.',
-    tone: 'warning',
-    icon: MessageSquareWarning,
+    tone: 'review',
+    icon: Search,
   },
 }
 

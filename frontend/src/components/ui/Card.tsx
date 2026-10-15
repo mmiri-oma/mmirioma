@@ -12,10 +12,10 @@ interface CardProps {
 /** White surface that groups related content. */
 export function Card({ title, aside, children, className }: CardProps) {
   return (
-    <section className={cn('rounded-card border border-line bg-surface shadow-card', className)}>
+    <section className={cn('rounded-lg border border-border bg-surface shadow-xs', className)}>
       {title && (
-        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3">
+          <h2 className="text-h3 font-bold text-text-primary">{title}</h2>
           {aside}
         </header>
       )}

@@ -87,7 +87,9 @@ feature (e.g. `features/admin-orders/useAdminOrders.ts`), passing the query's
 failures once and never retries 4xx errors (a 404 will not fix itself). Window
 focus refetching is off to save mobile data.
 
-Shared tokens and components: [docs/design/ui-system.md](../design/ui-system.md).
+Design tokens: [docs/design/design-system.md](../design/design-system.md)
+(approved; `src/index.css` copies its `@theme` block). Shared components:
+[docs/design/ui-system.md](../design/ui-system.md).
 
 ## Styling (Tailwind CSS v4)
 

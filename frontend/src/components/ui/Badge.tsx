@@ -1,16 +1,17 @@
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '../../lib/cn'
 
-export type BadgeTone = 'neutral' | 'brand' | 'info' | 'success' | 'warning' | 'danger' | 'violet'
+/** Status badge styles from the approved design system ("Status badge"). */
+export type BadgeTone = 'info' | 'warning' | 'brand' | 'success' | 'off' | 'danger' | 'review'
 
 const toneClasses: Record<BadgeTone, string> = {
-  neutral: 'bg-slate-100 text-slate-700 ring-slate-500/20',
-  brand: 'bg-brand-50 text-brand-800 ring-brand-600/20',
-  info: 'bg-sky-50 text-sky-800 ring-sky-600/20',
-  success: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20',
-  warning: 'bg-amber-50 text-amber-900 ring-amber-600/25',
-  danger: 'bg-rose-50 text-rose-800 ring-rose-600/20',
-  violet: 'bg-violet-50 text-violet-800 ring-violet-600/20',
+  info: 'border-info-200 bg-info-50 text-info-700',
+  warning: 'border-warning-200 bg-warning-50 text-warning-800',
+  brand: 'border-primary-200 bg-primary-50 text-primary-800',
+  success: 'border-success-200 bg-success-50 text-success-700',
+  off: 'border-neutral-300 bg-neutral-200 text-neutral-700',
+  danger: 'border-danger-200 bg-danger-50 text-danger-700',
+  review: 'border-dashed border-neutral-500 bg-surface text-neutral-800',
 }
 
 interface BadgeProps {
@@ -24,17 +25,17 @@ interface BadgeProps {
   className?: string
 }
 
-/** Compact status or attribute label. */
-export function Badge({ tone = 'neutral', icon: Icon, children, className }: BadgeProps) {
+/** Pill-shaped status or attribute label. */
+export function Badge({ tone = 'off', icon: Icon, children, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
+        'inline-flex min-h-7 items-center gap-1 rounded-full border py-0.5 pr-3 pl-2 text-small font-semibold whitespace-nowrap',
         toneClasses[tone],
         className,
       )}
     >
-      {Icon && <Icon aria-hidden className="size-3.5 shrink-0" />}
+      {Icon && <Icon aria-hidden className="size-4 shrink-0" />}
       {children}
     </span>
   )

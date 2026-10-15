@@ -11,10 +11,10 @@ describe('AdminOrderDetailPage', () => {
     renderAdminOrders('/admin/orders/MO-7KQ2M9XH4T')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'MO-7KQ2M9XH4T' })).toBeTruthy()
-    expect(screen.getByText('200 L')).toBeTruthy()
+    expect(screen.getByText('200 litres')).toBeTruthy()
     expect(screen.getByText(/12 Palm Close, Independence Layout, Enugu/)).toBeTruthy()
-    expect(screen.getByText(/14 Oct 2026, 10:30/)).toBeTruthy()
-    expect(screen.getByText('Fri, 16 Oct 2026')).toBeTruthy()
+    expect(screen.getByText(/Wed 14 Oct 2026, 10:30 am/)).toBeTruthy()
+    expect(screen.getByText('Fri 16 Oct 2026')).toBeTruthy()
     expect(screen.getByText(/not a booked slot/i)).toBeTruthy()
     expect(screen.getByText(/no price yet/i)).toBeTruthy()
     expect(screen.queryByText(/₦/)).toBeNull()

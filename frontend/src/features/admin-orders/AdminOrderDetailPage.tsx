@@ -11,6 +11,7 @@ import {
   SearchX,
   ShieldAlert,
   ShieldCheck,
+  TriangleAlert,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
@@ -44,7 +45,7 @@ export function AdminOrderDetailPage() {
   const fromSearch = (location.state as { fromSearch?: string } | null)?.fromSearch ?? ''
   const backLink = (
     <Link to={`/admin/orders${fromSearch}`} className={cn(buttonClasses('ghost', 'sm'), '-ml-3')}>
-      <ArrowLeft aria-hidden className="size-4" />
+      <ArrowLeft aria-hidden className="size-5" />
       Back to orders
     </Link>
   )
@@ -70,7 +71,7 @@ export function AdminOrderDetailPage() {
               title="Order not found"
               description={
                 <>
-                  No order has the reference <span className="font-mono font-semibold text-ink">{reference}</span>.
+                  No order has the reference <span className="font-mono font-semibold text-text-primary">{reference}</span>.
                   Check it with the customer and try again.
                 </>
               }
@@ -82,8 +83,8 @@ export function AdminOrderDetailPage() {
               title="This order could not be loaded"
               description={query.error instanceof ApiError ? query.error.message : 'Something went wrong.'}
               action={
-                <Button variant="secondary" onClick={() => query.refetch()} disabled={query.isFetching}>
-                  <RefreshCw aria-hidden className="size-4" />
+                <Button variant="secondary" onClick={() => query.refetch()} loading={query.isFetching}>
+                  {!query.isFetching && <RefreshCw aria-hidden className="size-5" />}
                   Try again
                 </Button>
               }
@@ -100,13 +101,13 @@ export function AdminOrderDetailPage() {
       {backLink}
       {isMock && <SimulatedDataNotice />}
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-4 tablet:flex-row tablet:items-start tablet:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-mono text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{order.reference}</h1>
+            <h1 className="font-mono text-h1 text-text-primary">{order.reference}</h1>
             <CopyButton text={order.reference} />
           </div>
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-1 text-small text-text-secondary">
             Created <time dateTime={order.created_at}>{formatLagosDateTime(order.created_at)}</time>
             {order.updated_at !== order.created_at && (
               <> · Updated <time dateTime={order.updated_at}>{formatLagosDateTime(order.updated_at)}</time></>
@@ -119,15 +120,15 @@ export function AdminOrderDetailPage() {
         </div>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
+      <div className="grid gap-5 desktop:grid-cols-3">
+        <div className="space-y-5 desktop:col-span-2">
           <DeliveryCard order={order} />
           <Card title="Price">
-            <div className="flex items-start gap-3 px-5 py-4 text-sm">
-              <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-brand-600" />
+            <div className="flex items-start gap-3 p-4">
+              <Info aria-hidden className="mt-0.5 size-5 shrink-0 text-info-600" />
               {/* No invented prices: Sprint 1 orders are manual quote requests (FR-021, FR-022). */}
-              <p className="text-ink-muted">
-                <span className="font-medium text-ink">No price yet.</span> This is a quote request. A price is set
+              <p className="text-text-secondary">
+                <span className="font-semibold text-text-primary">No price yet.</span> This is a quote request. A price is set
                 once pricing rules are agreed.
               </p>
             </div>
@@ -145,10 +146,10 @@ export function AdminOrderDetailPage() {
 function Detail({ icon: Icon, label, children }: { icon: typeof MapPin; label: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3">
-      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+      <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-text-secondary" />
       <div className="min-w-0">
-        <dt className="text-xs font-semibold text-ink-muted">{label}</dt>
-        <dd className="mt-0.5 text-sm wrap-break-word text-ink">{children}</dd>
+        <dt className="text-small text-text-secondary">{label}</dt>
+        <dd className="mt-0.5 font-semibold wrap-break-word text-text-primary">{children}</dd>
       </div>
     </div>
   )
@@ -157,28 +158,28 @@ function Detail({ icon: Icon, label, children }: { icon: typeof MapPin; label: s
 function DeliveryCard({ order }: { order: AdminOrderRead }) {
   return (
     <Card title="Delivery">
-      <div className="grid gap-5 p-5 sm:grid-cols-[auto_1fr]">
-        <div className="self-start rounded-xl bg-linear-to-br from-brand-500 to-brand-700 px-6 py-5 text-white shadow-sm sm:min-w-40">
-          <p className="text-xs font-medium tracking-wide text-brand-100 uppercase">Quantity</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{formatLitres(order.quantity_litres)}</p>
+      <div className="grid gap-5 p-4 tablet:grid-cols-[auto_1fr]">
+        <div className="self-start rounded-box border border-primary-200 bg-primary-50 px-5 py-4 text-primary-800 tablet:min-w-40">
+          <p className="text-small font-semibold">Quantity</p>
+          <p className="mt-1 text-h2 font-bold tabular-nums">{formatLitres(order.quantity_litres)}</p>
         </div>
         <dl className="space-y-4">
           <Detail icon={MapPin} label="Address">
             {order.delivery_address}
-            {order.landmark && <span className="block text-ink-muted">Landmark: {order.landmark}</span>}
+            {order.landmark && <span className="block font-normal text-text-secondary">Landmark: {order.landmark}</span>}
           </Detail>
           <Detail icon={NotebookPen} label="Instructions">
-            {order.delivery_instructions ?? <span className="text-ink-muted">None given</span>}
+            {order.delivery_instructions ?? <span className="font-normal text-text-secondary">None given</span>}
           </Detail>
           <Detail icon={CalendarDays} label="Preferred date">
             {order.preferred_delivery_date ? (
               <>
                 {formatCalendarDate(order.preferred_delivery_date)}
                 {/* Slots (FR-025) do not exist yet; this is only the customer's wish. */}
-                <span className="block text-xs text-ink-muted">Customer preference, not a booked slot.</span>
+                <span className="block text-small font-normal text-text-secondary">Customer preference, not a booked slot.</span>
               </>
             ) : (
-              <span className="text-ink-muted">Not given</span>
+              <span className="font-normal text-text-secondary">Not given</span>
             )}
           </Detail>
         </dl>
@@ -201,24 +202,24 @@ function CustomerCard({ order }: { order: AdminOrderRead }) {
         )
       }
     >
-      <dl className="space-y-4 p-5">
+      <dl className="space-y-4 p-4">
         <div>
-          <dt className="text-xs font-semibold text-ink-muted">Account holder</dt>
-          <dd className="mt-0.5 font-medium text-ink">{customer.name}</dd>
+          <dt className="text-small text-text-secondary">Account holder</dt>
+          <dd className="mt-0.5 font-semibold text-text-primary">{customer.name}</dd>
           <dd>
-            <a href={`tel:${customer.phone}`} className="inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline">
-              <Phone aria-hidden className="size-3.5" />
+            <a href={`tel:${customer.phone}`} className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-primary-700 underline-offset-2 hover:underline">
+              <Phone aria-hidden className="size-4" />
               {customer.phone}
             </a>
           </dd>
         </div>
         {receiverDiffers && (
           <div>
-            <dt className="text-xs font-semibold text-ink-muted">Receiving the delivery</dt>
-            <dd className="mt-0.5 font-medium text-ink">{order.contact_name}</dd>
+            <dt className="text-small text-text-secondary">Receiving the delivery</dt>
+            <dd className="mt-0.5 font-semibold text-text-primary">{order.contact_name}</dd>
             <dd>
-              <a href={`tel:${order.contact_phone}`} className="inline-flex items-center gap-1.5 text-sm text-brand-700 hover:underline">
-                <Phone aria-hidden className="size-3.5" />
+              <a href={`tel:${order.contact_phone}`} className="inline-flex min-h-touch items-center gap-1.5 font-semibold text-primary-700 underline-offset-2 hover:underline">
+                <Phone aria-hidden className="size-4" />
                 {order.contact_phone}
               </a>
             </dd>
@@ -226,7 +227,8 @@ function CustomerCard({ order }: { order: AdminOrderRead }) {
         )}
         {!customer.phone_verified && (
           // FR-003: contact must be verified before a real order is confirmed.
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="flex items-start gap-2 rounded-box border border-warning-200 bg-warning-50 px-3 py-2.5 text-small text-warning-800">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning-700" />
             The phone must be verified before this order can be confirmed.
           </p>
         )}
@@ -246,9 +248,9 @@ function LifecycleCard({ order }: { order: AdminOrderRead }) {
 
   return (
     <Card title="Lifecycle">
-      <div className="p-5">
+      <div className="p-4">
         {offPath || order.status === 'disputed' ? (
-          <p className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink">
+          <p className="mb-4 rounded-box border border-border bg-neutral-50 px-3 py-2.5 text-small text-text-primary">
             <span className="font-semibold">{ORDER_STATUS_META[order.status].label}.</span>{' '}
             {ORDER_STATUS_META[order.status].description}
           </p>
@@ -261,21 +263,21 @@ function LifecycleCard({ order }: { order: AdminOrderRead }) {
               return (
                 <li key={status} aria-current={state === 'current' ? 'step' : undefined} className="relative flex gap-3 pb-4 last:pb-0">
                   {!isLast && (
-                    <span aria-hidden className={cn('absolute top-6 left-2.75 h-[calc(100%-1.25rem)] w-px', state === 'done' ? 'bg-brand-500' : 'bg-line')} />
+                    <span aria-hidden className={cn('absolute top-6 left-2.75 h-[calc(100%-1.25rem)] w-0.5', state === 'done' ? 'bg-primary' : 'bg-border')} />
                   )}
                   <span
                     aria-hidden
                     className={cn(
                       'relative grid size-6 shrink-0 place-items-center rounded-full border-2',
-                      state === 'done' && 'border-brand-500 bg-brand-500 text-white',
-                      state === 'current' && 'border-brand-500 bg-surface ring-4 ring-brand-100',
-                      state === 'upcoming' && 'border-line bg-surface',
+                      state === 'done' && 'border-primary bg-primary text-text-inverse',
+                      state === 'current' && 'border-primary bg-surface ring-4 ring-primary-100',
+                      state === 'upcoming' && 'border-border-strong bg-surface',
                     )}
                   >
-                    {state === 'done' && <Check className="size-3.5" strokeWidth={3} />}
-                    {state === 'current' && <span className="size-2 rounded-full bg-brand-500" />}
+                    {state === 'done' && <Check className="size-4" strokeWidth={3} />}
+                    {state === 'current' && <span className="size-2 rounded-full bg-primary" />}
                   </span>
-                  <span className={cn('pt-0.5 text-sm', state === 'upcoming' ? 'text-ink-muted' : 'font-medium text-ink')}>
+                  <span className={cn('pt-0.5 text-small', state === 'upcoming' ? 'text-text-secondary' : 'font-semibold text-text-primary', state === 'current' && 'font-bold')}>
                     {ORDER_STATUS_META[status].label}
                     <span className="sr-only">
                       {state === 'done' ? ' (completed)' : state === 'current' ? ' (current)' : ' (not reached)'}
@@ -307,25 +309,24 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <Button
-      variant="ghost"
-      size="sm"
+      variant="icon"
       aria-label={copied ? 'Reference copied' : 'Copy reference'}
       onClick={() => {
         navigator.clipboard.writeText(text).then(() => setCopied(true), () => setCopied(false))
       }}
     >
-      {copied ? <Check aria-hidden className="size-4 text-emerald-600" /> : <Copy aria-hidden className="size-4" />}
+      {copied ? <Check aria-hidden className="size-5 text-success-600" /> : <Copy aria-hidden className="size-5" />}
     </Button>
   )
 }
 
 function DetailSkeleton() {
   return (
-    <div role="status" aria-live="polite" className="space-y-5">
+    <div role="status" aria-live="polite" aria-busy="true" className="space-y-5">
       <span className="sr-only">Loading order…</span>
       <Skeleton className="h-9 w-64" />
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Skeleton className="h-56 lg:col-span-2" />
+      <div className="grid gap-5 desktop:grid-cols-3">
+        <Skeleton className="h-56 desktop:col-span-2" />
         <Skeleton className="h-56" />
       </div>
     </div>

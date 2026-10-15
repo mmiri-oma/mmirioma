@@ -33,12 +33,14 @@ It is read-only and runs on **mock data** until `GET /admin/orders` exists
 | `frontend/src/features/admin-orders/useAdminOrders.ts` | TanStack Query hooks for the list and detail |
 | `frontend/src/features/admin-orders/AdminOrdersPage.tsx` | Directory page and its loading, empty and error states |
 | `frontend/src/features/admin-orders/AdminOrderDetailPage.tsx` | Detail page: delivery, price notice, customer, lifecycle |
-| `frontend/src/features/admin-orders/OrderList.tsx` | Table (≥ `md`) and cards (phones), plus the skeleton |
+| `frontend/src/features/admin-orders/OrderList.tsx` | Table (≥ `tablet`, 768 px) and list rows (phones), plus the skeleton |
 | `frontend/src/features/admin-orders/OrderFilters.tsx`, `ReferenceSearch.tsx`, `Pagination.tsx` | Filter controls, reference lookup, paging |
 | `frontend/src/features/admin-orders/orderStatus.ts` | Staff labels, icons and tones per status; FR-033 progression |
 | `frontend/src/lib/queryClient.ts` | Query client: one retry for network/5xx errors, none for 4xx |
 
-Shared components are listed in [docs/design/ui-system.md](../design/ui-system.md).
+The screens use the approved design system
+([docs/design/design-system.md](../design/design-system.md)); shared components
+are listed in [docs/design/ui-system.md](../design/ui-system.md).
 
 ## 4. Database models and relationships
 
@@ -66,7 +68,7 @@ component changes are needed.
 - Simulated records carry a "Simulated" badge. While the mock source is active, a sample-data notice is shown on every screen (BR-09).
 - An unverified phone is flagged, with a note that it must be verified before confirmation (FR-003).
 - The preferred date is labelled as a customer preference, not a booked slot (FR-025 slots do not exist yet).
-- Times are shown in Africa/Lagos. Date filters are inclusive Lagos calendar dates, as in the contract.
+- Times are shown in Africa/Lagos on a 12-hour clock (`Wed 14 Oct 2026, 10:30 am`); quantities as `200 litres` (design-system.md formatting rules). Date filters are inclusive Lagos calendar dates, as in the contract.
 - The lifecycle view is derived from the current status only. It shows no times, because there is no event history endpoint yet.
 - Zone filtering is not offered: orders have no service zone until FR-010.
 
@@ -101,10 +103,14 @@ npm test
 - `mockAdminOrders.test.ts`: status, Lagos date and paging behaviour of the mock source; `order_not_found`; abort; reference normalisation.
 - `AdminOrdersPage.test.tsx` (jsdom + Testing Library): loading, list, filters through the URL, filter restore, empty states, invalid range (no request), error and retry, paging, reference search.
 - `AdminOrderDetailPage.test.tsx`: details in Lagos time with no price, unverified phone, lifecycle step, cancelled order, not found, back link keeps filters.
-- `lib/format.test.ts`: Lagos time and calendar-date formatting.
+- `lib/format.test.ts`: Lagos 12-hour time (including midnight and noon), calendar dates and litres.
 
 ## 10. Known limitations
 
+- The screens are not yet checked against an approved admin design: S1-08
+  (`docs/design/admin-orders.md`) does not exist yet, and `docs/api/orders.md`
+  is still `proposed`, not `agreed` (S1-16). S1-09 cannot merge until both
+  gates pass.
 - Mock data only. Real integration is S1-10.
 - Read-only: confirm, assign and cancel come with their APIs.
 - No admin route guard until auth is integrated.

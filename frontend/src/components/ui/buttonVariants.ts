@@ -1,17 +1,30 @@
 import { cn } from '../../lib/cn'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost'
+/** Variants from the approved design system; `icon` is the 48 × 48 icon-only button. */
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'icon'
+/** Both sizes keep the 48 px touch target; `sm` only narrows the padding. */
 export type ButtonSize = 'sm' | 'md'
 
 /** Shared button classes, also used to style router `<Link>`s as buttons. */
 export function buttonClasses(variant: ButtonVariant = 'primary', size: ButtonSize = 'md') {
   return cn(
-    'inline-flex items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap',
-    'transition-colors disabled:pointer-events-none disabled:opacity-50',
-    // 44px minimum touch target on the default size (PRD §9).
-    size === 'md' ? 'min-h-11 px-4 text-sm' : 'min-h-9 px-3 text-sm',
-    variant === 'primary' && 'bg-brand-600 text-white shadow-sm hover:bg-brand-700',
-    variant === 'secondary' && 'border border-line bg-surface text-ink shadow-sm hover:bg-canvas',
-    variant === 'ghost' && 'text-ink-muted hover:bg-brand-50 hover:text-ink',
+    // 48 px minimum touch target on every button (design-system.md, NFR-020).
+    'inline-flex min-h-touch min-w-touch items-center justify-center gap-2 rounded-md border-2',
+    'text-body font-semibold whitespace-nowrap transition-colors active:translate-y-px',
+    'disabled:translate-y-0 disabled:cursor-not-allowed',
+    variant !== 'icon' && (size === 'md' ? 'px-5' : 'px-3'),
+    variant === 'primary' &&
+      'border-primary bg-primary text-text-inverse hover:border-primary-hover hover:bg-primary-hover active:border-primary-pressed active:bg-primary-pressed',
+    variant === 'secondary' &&
+      'border-primary bg-surface text-primary-700 hover:border-primary-hover hover:bg-primary-50 hover:text-primary-800 active:border-primary-pressed active:bg-primary-100 active:text-primary-900',
+    variant === 'ghost' &&
+      'border-transparent bg-transparent text-primary-700 hover:bg-primary-50 hover:text-primary-800 active:bg-primary-100 active:text-primary-900',
+    variant === 'destructive' &&
+      'border-danger-600 bg-danger-600 text-text-inverse hover:border-danger-700 hover:bg-danger-700 active:border-danger-800 active:bg-danger-800',
+    variant === 'icon' &&
+      'border-transparent bg-transparent text-text-primary hover:bg-neutral-100 active:bg-neutral-200',
+    variant === 'ghost' || variant === 'icon'
+      ? 'disabled:bg-transparent disabled:text-text-disabled'
+      : 'disabled:border-border disabled:bg-surface-muted disabled:text-text-disabled',
   )
 }

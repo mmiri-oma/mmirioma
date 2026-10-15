@@ -23,6 +23,24 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: LOG.md entry lost its heading in a merge
+
+- **Area:** process (GitHub)
+- **Author:** Daveoski + Claude Code
+- **Symptom:** Merging `origin/docs/auth-design` into `davidui` conflicted in
+  `LOG.md`. On `docs/auth-design`, the rate-limit entry ("Rate limit could be
+  bypassed with concurrent login requests") carries the heading "GitHub API
+  briefly unreachable", which has no body of its own.
+- **Cause:** An earlier merge of new entries placed above the rate-limit
+  entry kept the new heading and dropped the old one.
+- **Fix / workaround:** On `davidui`, both sides' entries were kept, newest
+  first, and the rate-limit heading restored. The "GitHub API briefly
+  unreachable" entry's body needs to be recovered by its author. When
+  resolving `LOG.md` conflicts, check that every heading still sits on its own
+  body.
+- **Status:** workaround
+- **Refs:** PR #25, `LOG.md`
+
 ### 2026-10-15: Stacked PR #23 merged into its old base, not `main`
 
 - **Area:** GitHub

@@ -1,5 +1,5 @@
-import { FlaskConical } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
+import { Tag } from '../../components/ui/Tag'
 import type { OrderStatus } from '../../lib/api/adminOrders'
 import { ORDER_STATUS_META } from './orderStatus'
 
@@ -17,9 +17,5 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
 
 /** Marks a demo/test record so it is never mistaken for a real order (BR-09). */
 export function SimulatedBadge() {
-  return (
-    <Badge tone="warning" icon={FlaskConical}>
-      Simulated
-    </Badge>
-  )
+  return <Tag kind="simulated" />
 }

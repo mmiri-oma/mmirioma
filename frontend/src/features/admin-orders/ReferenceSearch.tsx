@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react'
+import { CircleAlert, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Input } from '../../components/ui/Input'
@@ -14,7 +14,7 @@ export function ReferenceSearch() {
     <form
       role="search"
       noValidate
-      className="w-full sm:w-72"
+      className="w-full tablet:w-80"
       onSubmit={(event) => {
         event.preventDefault()
         const reference = normaliseReference(value)
@@ -22,11 +22,12 @@ export function ReferenceSearch() {
         if (reference) navigate(`/admin/orders/${reference}`)
       }}
     >
+      {/* Visually hidden label: the page header gives this field its context. */}
       <label htmlFor="reference-search" className="sr-only">
         Find order by reference
       </label>
       <div className="relative">
-        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-text-secondary" />
         <Input
           id="reference-search"
           type="search"
@@ -40,11 +41,12 @@ export function ReferenceSearch() {
             setValue(event.target.value)
             setInvalid(false)
           }}
-          className="pl-9 font-mono placeholder:font-sans"
+          className="pl-11 font-mono placeholder:font-sans"
         />
       </div>
       {invalid && (
-        <p id="reference-search-error" role="alert" className="mt-1 text-xs text-rose-700">
+        <p id="reference-search-error" role="alert" className="mt-1.5 flex items-center gap-1.5 text-small font-semibold text-danger-700">
+          <CircleAlert aria-hidden className="size-4 shrink-0" />
           References look like MO- followed by 10 letters or digits.
         </p>
       )}

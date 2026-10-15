@@ -6,14 +6,17 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean
 }
 
-/** Text, date or search input with the shared field styling. Always pair with a `<label>`. */
+/** Text, date or search input with the shared field styling. Always pair with a visible `<label>`. */
 export function Input({ invalid, className, ...props }: InputProps) {
   return (
     <input
       aria-invalid={invalid || undefined}
       className={cn(
-        'min-h-11 w-full rounded-lg border bg-surface px-3 text-sm text-ink shadow-sm placeholder:text-ink-muted/70',
-        invalid ? 'border-rose-400' : 'border-line hover:border-slate-300',
+        // 16 px text so phones do not zoom in; 48 px tall (design-system.md "Form fields").
+        'min-h-touch w-full rounded-md border-2 bg-surface px-3.5 py-2.5 text-body text-text-primary',
+        'placeholder:text-text-secondary focus-visible:border-primary',
+        'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-muted disabled:text-text-disabled',
+        invalid ? 'border-danger-600 bg-danger-50' : 'border-border-strong hover:border-neutral-800',
         className,
       )}
       {...props}
