@@ -23,6 +23,55 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-15: Passing `login` directly as a TanStack `mutationFn`
+
+- **Area:** frontend
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `tsc -b` failed: `Type '(input: LoginInput, client?: ApiClient)
+  => Promise<Session>' is not assignable to type 'MutationFunction<Session,
+  LoginInput>'. Types of parameters 'client' and 'context' are incompatible.`
+- **Cause:** TanStack Query v5 calls `mutationFn(variables, context)`. The
+  API functions take an optional second `client` argument, so passing them
+  directly would have sent requests through the mutation context object
+  instead of the API client.
+- **Fix / workaround:** Wrap them: `mutationFn: (values) => login(values)`.
+  Do the same for any API function with optional extra parameters (queries
+  too: `queryFn` receives a context object).
+- **Status:** resolved
+- **Refs:** S1-17, `frontend/src/features/auth/pages/`
+
+### 2026-10-15: Static-HTML screen tests: camelCase attributes, no form defaults
+
+- **Area:** frontend (tests)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** `expected '<link rel="preload"…' to contain
+  'autocomplete="new-password"'` and `… to contain 'value="0800 000 0001"'`.
+- **Cause:** `react-dom/server` writes some attributes in React's camelCase
+  (`autoComplete`, `readOnly`, `maxLength`). React Hook Form sets default
+  values through refs after mount, so they never appear in static HTML.
+- **Fix / workaround:** Assert the camelCase spelling. Do not test form
+  default values with static rendering; they need a DOM test environment
+  (not installed; needs approval).
+- **Status:** workaround
+- **Refs:** S1-17, `frontend/src/features/auth/screens.test.tsx`
+
+### 2026-10-15: No browser available to check the auth screens visually
+
+- **Area:** tooling
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** The agent environment has no browser tool and no Chrome or
+  Chromium install, so the S1-17 screens could not be clicked through or
+  screenshotted.
+- **Cause:** Environment limitation.
+- **Fix / workaround:** Verified instead with typecheck, lint, build, the
+  generated CSS, static-HTML screen tests, every module served by the dev
+  server, and the exact API calls (CORS preflight, register, duplicate, me,
+  logout with and without CSRF, wrong password, 429 with
+  `retry_after_seconds`) made with curl from the dev-server origin. A person
+  must still click through the screens in a browser before merge.
+- **Status:** open
+- **Refs:** S1-17
+
 ### 2026-10-15: Stacked PR #23 merged into its old base, not `main`
 
 - **Area:** GitHub

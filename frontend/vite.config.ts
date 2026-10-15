@@ -7,8 +7,9 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
-    // API client tests mock fetch and need no DOM.
+    // Tests need no DOM: API tests mock fetch, and screen tests render to
+    // static HTML with react-dom/server.
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })

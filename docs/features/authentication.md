@@ -1,8 +1,11 @@
 # Authentication and role authorization
 
-Requirements: FR-001, FR-002, FR-003 (partial), NFR-001 (partial), NFR-002 (auth endpoints) ·
+Requirements: FR-001, FR-002, FR-003 (partial), NFR-001 (partial), NFR-002 (auth endpoints),
+NFR-012, NFR-020, NFR-021, NFR-022 ·
 Acceptance tests: T-07 (guard only; the order-level test lands with S1-03) ·
-Contract: [docs/api/auth.md](../api/auth.md) · Issue: S1-02
+Contract: [docs/api/auth.md](../api/auth.md) · Design:
+[docs/design/authentication.md](../design/authentication.md) · Issues: S1-02 (backend),
+S1-17 (frontend)
 
 ## 1. Overview and purpose
 
@@ -15,6 +18,10 @@ Customers register themselves. Admin and driver accounts are created by the
 technical lead with a command-line tool. Deactivating an account signs it out
 everywhere at once (FR-002). Login and registration are rate limited
 (NFR-002).
+
+The frontend (S1-17) implements the approved sign-in, account and session
+screens for the **customer app** (`/`) and the **staff app** (`/staff`) of
+the single React app. The driver app's screens follow with S1-15.
 
 ## 2. Feature workflow
 
@@ -36,6 +43,24 @@ Frontend keeps csrf_token in memory      handler runs with the User
 after a page reload.                     POST /auth/logout -> revoke row, clear cookie
 ```
 
+Frontend, on every page load and navigation:
+
+```
+main.tsx: QueryClientProvider > BrowserRouter > SessionProvider > AppRoutes
+SessionProvider: useQuery(['auth','session'], GET /auth/me)
+  pending                  -> status checking    -> splash (X1)
+  401                      -> null, signed-out   -> welcome (C1) or sign-in
+  network failure          -> status unavailable -> "Unable to reach the server" + Retry
+  200                      -> signed-in(role)    -> AppGate checks the app's role
+  was signed in, now null,
+  not chosen by the person -> signed-out, ended  -> sign-in with X2 banner
+AppGate(app): decideAccess(status, app)
+  allowed -> page | wrong-app -> X4 | sign-in -> Navigate(sign-in, {from})
+Any other request with 401 not_authenticated -> re-check the session (lib/queryClient.ts)
+Sign in / create account -> store session in the query cache -> app home (or `from`)
+Sign out -> POST /auth/logout -> clear session -> welcome or staff sign-in + toast
+```
+
 ## 3. Important files
 
 | File | Responsibility |
@@ -53,6 +78,17 @@ after a page reload.                     POST /auth/logout -> revoke row, clear 
 | `backend/alembic/versions/20261014_0002_add_users_and_user_sessions.py` | Migration `0002` |
 | `frontend/src/lib/api/client.ts` | `setCsrfToken`, sends `X-CSRF-Token` on non-GET requests |
 | `frontend/src/lib/api/auth.ts` | Typed `register`, `login`, `getMe`, `logout` |
+| `frontend/src/main.tsx`, `frontend/src/App.tsx` | Providers and routes (`/`, `/sign-in`, `/create-account`, `/staff`, `/staff/sign-in`) |
+| `frontend/src/lib/queryClient.ts` | TanStack Query client; re-checks the session after any 401 |
+| `frontend/src/features/auth/SessionProvider.tsx`, `sessionContext.ts`, `sessionQuery.ts` | Session query, status (checking, unavailable, signed out/ended, signed in) |
+| `frontend/src/features/auth/access.ts` | `decideAccess` route-guard decision, app roles and paths, X4 messages |
+| `frontend/src/features/auth/components/AppGate.tsx` | Route guard component |
+| `frontend/src/features/auth/pages/` | C1 welcome, C2 create account, C3/S1 sign in, customer and staff homes |
+| `frontend/src/features/auth/components/` | Auth layout, banners with rate-limit wait, splash, X4 screen, signed-in header and account panel |
+| `frontend/src/features/auth/useSignOut.ts` | Sign-out and its failure states |
+| `frontend/src/features/auth/phone.ts`, `schemas.ts`, `messages.ts`, `waitTime.ts`, `contact.ts` | Phone check and display, form rules, exact texts and error mapping, wait wording, support links |
+| `frontend/src/components/ui/` | Design-system components: `Button`, `Field`/`PasswordField`, `Alert`, `Toast`, `Logo` |
+| `frontend/src/index.css` | Tailwind `@theme` tokens from the approved design system |
 
 ## 4. Database models and relationships
 
@@ -161,6 +197,11 @@ examples are in [docs/api/auth.md](../api/auth.md).
   Role guards answer "may this role call this endpoint?". Ownership checks
   ("is this *their* order?") stay in each module's service.
 - **CORS** now allows the `X-CSRF-Token` request header for `FRONTEND_URL`.
+- **Frontend guards** only decide what to show; the server enforces every
+  rule. The customer app admits `customer`, the staff app `admin`. Any other
+  signed-in role sees the X4 "wrong app" screen with only "Sign out".
+- **CSRF token in the browser** stays in memory in the API client (never in
+  storage) and is restored by `GET /auth/me` on every page load.
 
 ## 8. Error handling and edge cases
 
@@ -178,6 +219,23 @@ examples are in [docs/api/auth.md](../api/auth.md).
 
 Passwords and session tokens are never logged or returned. Phone numbers are not
 logged.
+
+Frontend (exact texts in [the design](../design/authentication.md)):
+
+| Situation | Screen behaviour |
+| --- | --- |
+| Form fields fail the client check | Inline errors under each field; nothing is sent |
+| 401 `invalid_credentials`, 409 `phone_already_registered` | Error banner with the server's text; "Sign in instead" (C2) carries the phone to C3 |
+| 429 `too_many_attempts` | Warning banner and "Try again in N minutes" (seconds rounded up to minutes, at least 1); submit is off until the wait ends |
+| No connection while submitting | Error banner with Retry; Retry focuses the cleared password field first |
+| Any failed attempt | The phone number (and name) are kept, the password is cleared (NFR-012) |
+| Submitting | Fields read-only, button spinner, extra taps ignored (NFR-022) |
+| Session check cannot reach the server | Splash with the no-connection alert and Retry; the app does not claim the person is signed out |
+| Session ends while the app is open (expiry, deactivation, any 401) | The app's sign-in screen with "Your session has ended. Please sign in again." Staff return to the page they were on, with its query string |
+| Sign-out: 403 `csrf_failed` | X3 banner with "Reload" in the account panel or staff top bar (Decision 7) |
+| Sign-out: 401 | Treated as signed out (the session was already gone) |
+| Sign-out: no connection | Error toast "Couldn't sign out…" with "Try again"; the person stays signed in |
+| Customer phone not confirmed | X6 banner on the home screen, no close button |
 
 ## 9. Testing
 
@@ -207,7 +265,22 @@ TEST_DATABASE_URL="$(grep '^DATABASE_URL=' ../.env | cut -d= -f2-)" pytest tests
 - Migration: `alembic upgrade head`, `alembic downgrade -1`,
   `alembic upgrade head`, `alembic check`.
 
-Frontend (from `frontend/`): `npm test` runs `src/lib/api/auth.test.ts`.
+Frontend (from `frontend/`): `npm test`.
+
+- `src/lib/api/auth.test.ts`: storing, sending and clearing the CSRF token.
+- `src/features/auth/logic.test.ts`: phone formats (same cases as the server),
+  wait wording (Decision 8), error-to-banner mapping with exact texts, route
+  guard decisions for every app and role, form rules, support links.
+- `src/features/auth/session.test.ts`: 401 on load means signed out; network
+  failure is rethrown; any other 401 re-checks the session, sign-out does not.
+- `src/features/auth/screens.test.tsx`: renders each designed state to static
+  HTML (no DOM library is installed) and checks its content: C1, C2, C3, S1,
+  X1, X2, X4, X6, the one-time notice, the staff top bar, banners and field
+  accessibility attributes.
+
+Manual check in a browser: run the backend and `npm run dev`, open
+`http://localhost:5173` (customer) and `http://localhost:5173/staff` (staff;
+create an admin with `python -m app.modules.auth.cli create-user`).
 
 Manual check:
 
@@ -239,3 +312,21 @@ curl -b /tmp/jar http://localhost:8000/api/v1/auth/me
   cleanup job can be added when it matters.
 - **Absolute session lifetime only.** No idle timeout.
 - **No request IDs in logs yet (NFR-015).**
+- **Frontend: "session ended" is only detected while the app is open.** A
+  person who reopens the app after the session expired sees the normal
+  sign-in screen: nothing is kept in storage that could tell the cases apart.
+- **Frontend: the X2 customer line "Your request has not been sent. What you
+  typed is kept."** is not shown yet: there is no request form until S1-05,
+  and where to keep a draft is an open question.
+- **Frontend: support contacts** come from `VITE_SUPPORT_PHONE` and
+  `VITE_SUPPORT_WHATSAPP`. Until the real numbers are decided they are unset,
+  and the Call/WhatsApp buttons and the "Contact us" link are hidden ("Contact
+  us" shows as plain text).
+- **Frontend: no interaction tests.** Screen tests render static HTML only;
+  clicking, typing and timers are not exercised automatically. That needs a
+  DOM test environment (for example jsdom and Testing Library), which is a new
+  dependency awaiting approval.
+- **Frontend: Noto Sans is not loaded yet.** The font stack falls back to the
+  phone's system font until the self-hosted subset is added.
+- **Frontend: driver app screens** (D1 and the driver variants of X1-X5) come
+  with S1-15.
