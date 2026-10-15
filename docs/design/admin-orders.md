@@ -1,255 +1,200 @@
 # Admin orders design
 
-<!-- Recorded from the Claude Design canvas "MmiriOma Admin Orders",
-version 1792077161-4805. Workflow: docs/process/ui-driven-development.md -->
+<!-- Recorded from the built screens (PR #26), not a Claude Design canvas.
+Workflow: docs/process/ui-driven-development.md -->
 
 Issue: S1-08 (#9) · Requirements: FR-001, FR-002, FR-003, FR-030, FR-032,
 FR-033, BR-09, NFR-020, NFR-021, NFR-022 · Prompt:
 [prompts/02-admin-orders.md](prompts/02-admin-orders.md)
-Designer: @Daveoski · Reviewed by: (pending, technical lead) · Status: draft
+Designer: @Daveoski · Reviewed by: @nnamdi-security (pending) · Status: draft
 
-This design covers the staff (dispatcher) screens for listing water requests
-and reading one request. It is built from the approved
-[design system](design-system.md) and reuses the approved
-[authentication design](authentication.md) for every sign-in and session
-screen. It sets what each screen shows and which actions it offers; business
-rules stay in the SRS and the [orders contract](../api/orders.md).
+This records the staff (dispatcher) order screens **as built** as the S1-08
+design. It lists every prompt 02 screen with the states that exist, and marks
+what is missing as a gap. Business rules stay in the SRS and the
+[orders contract](../api/orders.md).
 
 ## Design link
 
-- Claude Design canvas: <https://claude.ai/artifact/Mc4aot56epgEJTcSywWz4A>,
-  title "MmiriOma Admin Orders". Four artboards, each 1440 px wide:
-  - **"Admin orders: layout, status labels, components (build now)"**
-    (`Main.dc.html`): A1 layout at 1280, 768 and 360 px, the staff status
-    labels and the component list.
-  - **"A2 Order directory (build now)"** (`Directory.dc.html`).
-  - **"A3 Order detail (build now)"** (`Detail.dc.html`).
-  - **"A4-A6 Design ahead (not in current build)"** (`DesignAhead.dc.html`).
-- Version recorded here: `1792077161-4805`.
-- The canvas copies the design system's tokens and component styles exactly
-  (colours, type, spacing, radii, shadows); it adds no tokens.
-- The canvas is private until the designer shares it from its Share menu. The
-  reviewer needs access before G2.
-- Every frame has numbered notes saying which field or server response each
-  element uses, and every frame with example people or numbers carries the
-  Sample data tag. No screenshots are committed.
+- **Source:** the screens built in PR #26 (`frontend/src/features/admin-orders/`,
+  `frontend/src/components/layout/AdminShell.tsx`), as on `main` at `46d1a8d`.
+- **Why not a Claude Design canvas:** S1-08 blocks S1-16 (confirming the
+  orders contract) before the 18 Oct demo, and the screens already exist.
+  Designing first and then rebuilding would cost time we do not have
+  (technical lead, issue #9 comment, 2026-10-15).
+- **Screenshots:** `docs/design/assets/admin-orders/`, taken from a production
+  build on mock data. Desktop at 1280 px wide, phone at 360 px. Every name,
+  phone and address is fictional sample data, and every order is flagged
+  Simulated.
+
+  | File | Shows |
+  | --- | --- |
+  | [01-directory-desktop.png](assets/admin-orders/01-directory-desktop.png) | Directory, populated |
+  | [02-directory-filtered-desktop.png](assets/admin-orders/02-directory-filtered-desktop.png) | Two statuses selected, "Clear filters" |
+  | [03-directory-loading-desktop.png](assets/admin-orders/03-directory-loading-desktop.png) | Loading skeleton |
+  | [04-directory-no-orders-desktop.png](assets/admin-orders/04-directory-no-orders-desktop.png) | "No orders yet" |
+  | [05-directory-no-matches-desktop.png](assets/admin-orders/05-directory-no-matches-desktop.png) | "No orders match these filters" + "Clear filters" |
+  | [06-directory-error-desktop.png](assets/admin-orders/06-directory-error-desktop.png) | Could not load, "Try again" |
+  | [07-directory-invalid-dates-desktop.png](assets/admin-orders/07-directory-invalid-dates-desktop.png) | "Created from" after "Created to" |
+  | [08-detail-desktop.png](assets/admin-orders/08-detail-desktop.png) | Order detail, phone not verified |
+  | [09-detail-not-found-desktop.png](assets/admin-orders/09-detail-not-found-desktop.png) | "Order not found" |
+  | [10-directory-mobile.png](assets/admin-orders/10-directory-mobile.png) | Directory on a phone |
+  | [11-detail-mobile.png](assets/admin-orders/11-detail-mobile.png) | Order detail on a phone |
+
+  The sidebar's API line in the screenshots reads "screenshot stand-in, not
+  the real API": a local stand-in answered `GET /auth/me` with a sample staff
+  session so the signed-in screens could render without a database.
+
+- **Open any state in the running app:** sign in as staff at `/admin/sign-in`,
+  then use these addresses (the order screens still read mock data):
+
+  | State | Address |
+  | --- | --- |
+  | Populated | `/admin/orders` |
+  | Filtered | `/admin/orders?status=quote_requested&status=awaiting_confirmation` |
+  | Loading (slow) | `/admin/orders?mock=slow` |
+  | No orders yet | `/admin/orders?mock=empty` |
+  | No matches | `/admin/orders?status=failed&created_from=2026-10-14` |
+  | Could not load | `/admin/orders?mock=error` |
+  | Date range wrong way round | `/admin/orders?created_from=2026-10-14&created_to=2026-10-01` |
+  | Page beyond the last | `/admin/orders?page=9` |
+  | Order detail | `/admin/orders/MO-7KQ2M9XH4T` |
+  | Order not found | `/admin/orders/MO-0000000000` |
+
+  For the phone layout, use the browser's device toolbar at 360 px.
 
 ## Screens and states
 
-Desktop frames are 1280 px (states are drawn as the content area, with the
-shell as A2-a); phone frames are 360 px.
+One row per prompt 02 screen. **Gap** = in prompt 02 but not built (or built
+differently); fixing a gap is S1-09 work after approval.
 
-| Screen | States designed | Build now / design ahead |
+| Prompt 02 screen | States built | Gaps |
 | --- | --- | --- |
-| Prompt screens 1 and 1A (staff sign in, session and access states) | Not redrawn: the approved [authentication design](authentication.md) (S1, X1 to X5) is canonical | Build now (S1-17) |
-| A1 Layout | Desktop sidebar with "Orders" current and Drivers, Sources, Payments, Reports greyed "Coming later"; staff top bar with name and Sign out; tablet top bar with Menu; mobile Menu closed and open | Build now |
-| Staff status labels | One badge per API status (11) | Build now |
-| A2 Order directory | Populated with real and Simulated rows (A2-a); status panel open with filters applied and removable chips (A2-b); loading (A2-c); no orders yet (A2-d); no orders match these filters (A2-e); could not load, Retry (A2-f); date range the wrong way round (A2-g); mobile populated (A2-h); mobile status panel and chips (A2-i); mobile loading, no matches, could not load (A2-j) | Build now |
-| A3 Order detail | Request received with phone not confirmed (A3-a); Simulated, receiver differs, optional fields empty (A3-b); loading (A3-c); order not found (A3-d); could not load, Retry (A3-e); mobile loaded (A3-f); mobile loading, not found, could not load (A3-g) | Build now |
-| A4 Actions on order detail | Action area with "Confirm order" disabled and its reasons; Send price dialog (sample amounts); Assign driver dialog with eligible and ineligible drivers; Cancel order dialog with the reason error; driver declined or no response banner | Design ahead |
-| A5 Confirm customer phone | Dialog recording a manual check: who, when, note | Design ahead |
-| A6 Order history | History section, newest first, with status changes and assignment events | Design ahead (deferred to the dispatch work) |
+| 1 Staff sign in | Covered by the approved [authentication design](authentication.md) (S1), built in S1-17 (#29) at `/admin/sign-in` | None |
+| 1A Session and access states | Covered by the authentication design (X1 to X5), built in S1-17 | None |
+| 2 Layout | Desktop (≥1280 px): sidebar with "Orders" (current), staff name and full-width "Sign out" at the foot. Below 1280 px: top bar with brand, an "Orders" link and an account button opening the name and "Sign out" | **Gap:** no greyed "Drivers", "Sources", "Payments", "Reports" items marked "Coming later". **Gap:** on desktop the name and "Sign out" are at the foot of the sidebar, not in a top bar. **Gap:** below desktop there is no menu button for navigation (see Open question 1) |
+| 3 Order directory | Populated (01); filtered (02); loading skeleton (03); "No orders yet" (04); "No orders match these filters" + "Clear filters" (05); error with "Try again" (06); extra: date range error (07), page beyond the last ("Go to first page"), "Updating…" while a new page loads; mobile list (10) | See [Directory gaps](#directory-gaps) |
+| 4 Order detail | Loaded (08, 11); loading skeleton; "Order not found" (09); error with "Try again"; "Back to orders" keeps the filters | See [Detail gaps](#detail-gaps) |
+| 5 Actions (design ahead) | Not built, as intended | Design ahead |
+| 6 Confirm customer phone (design ahead) | Not built, as intended | Design ahead |
+| 7 Order history (design ahead) | Not built, as intended; deferred to the dispatch work | Design ahead |
 
-### Behaviour shown on the screens
+### Directory gaps
 
-- **A1** From 1280 px: a 240 px sidebar and the staff top bar (name, Sign out).
-  From 768 to 1279 px: the staff top bar plus a Menu button that opens the
-  navigation. Below 768 px: one Menu button opens the navigation and then the
-  account (name, full-width Sign out). Later sections are plain text, not
-  links, with a "Coming later" label, so nothing clickable leads nowhere.
-- **A2** Newest first, 50 per page, "Showing 1-50 of 128" with Previous and
-  Next. The title shows the total for the current filters. Every filter
-  change applies at once and returns to page 1. Filters live in the page
-  address, so Back, reload and a shared link keep them.
-  - Filter bar: "Status" multi-select (11 choices, count pill, panel up to
-    264 px tall), "From" and "To" dates (Africa/Lagos, inclusive), "Show"
-    (All orders / Real orders only / Simulated only). Active filters show as
-    removable chips; "Clear filters" appears only when a filter is set.
-  - Table columns: Reference (the row's link), Status, Customer (name,
-    Simulated tag beside it, and "Phone confirmed" or "Phone not confirmed"
-    with an icon), Quantity, Delivery address (truncated), Preferred date (or
-    "No preference"), Created.
-  - Phone numbers are not shown in the list, only on the detail page.
-  - While a new page or filter loads, the old rows stay visible and dimmed.
-  - A "From" date after "To" shows a field error and sends no request.
-- **A3** Read only. "Back to orders" returns with the same filters and page.
-  Cards: Request, Delivery, Customer account, Price (two columns on desktop,
-  stacked on mobile). A Simulated order also shows the design system's
-  demo-records warning. The reference has a "Copy" button.
-
-### Exact text
-
-Server messages (from [orders.md](../api/orders.md) and the
-[API README](../api/README.md#errors)):
-
-| Situation | Text | Source |
+| Prompt 02 asks for | Built | Gap |
 | --- | --- | --- |
-| Order not found | "Order not found" (heading) | 404 `order_not_found` |
-| Staff app opened by a customer or driver | "You do not have access to this page." (authentication design X4) | 403 `forbidden` |
+| Status multi-select | A row of 11 toggle buttons (`aria-pressed`, tick when selected) | **Gap:** not the design system's "Status" multi-select panel |
+| Status labels (Request received, On the way, Delivery failed, Assigned - awaiting driver …) | Quote requested, En route, Failed, Assigned, not accepted … | **Gap:** labels differ from prompt 02 (see Open question 2) |
+| Created-date range, Africa/Lagos dates | "Created from" / "Created to", inclusive Lagos dates | None |
+| Removable filter chips | Selected toggles show a tick; no separate chips | **Gap** |
+| "Clear filters" | Shown when any filter is set | None |
+| "Simulated" tag on every demo order | Tag beside the reference on every row and card | None (design system puts it beside the customer name; minor) |
+| Filter for Simulated orders | Not built | **Gap:** also needs a contract change (no `is_simulated` query parameter) |
+| Title with the total count | "Orders" without a count | **Gap** |
+| 50 per page, "Showing 1-50 of 128", previous/next | 10 per page, "Showing 1–10 of 22", Previous/Next | **Gap:** page size 10 |
+| Columns: Reference, Status, Customer (name + phone confirmation), Quantity, Delivery address, Preferred date, Created, Simulated tag | Order (reference, Simulated tag, created time), Status, Quantity, Contact (`contact_name` + "Verified"/"Unverified"), Delivery address (only from 1280 px), Preferred date | **Gap:** shows the receiver's name, not the customer account name; "Verified" instead of "Phone confirmed"; created time sits under the reference, not in its own column. At 1280 px with the sidebar the table scrolls sideways and "Preferred date" is cut off (01) |
+| Mobile cards with the same information | Cards with reference, receiver, quantity, status, Simulated tag, address, phone state, preferred date | **Gap:** no created date on the card |
+| Error with Retry | Error with "Try again" | Minor wording gap |
+| Newest first | Newest first | None |
+| (Not in prompt) | "Find by reference" search box | Extra; see Open question 3 |
+| (Not in prompt) | "Sample data" banner while mock data is used | Extra; disappears when the real API is connected |
 
-Client copy from the prompt:
+### Detail gaps
 
-| Situation | Text |
-| --- | --- |
-| Directory empty | "No orders yet" |
-| Directory filtered empty | "No orders match these filters" + "Clear filters" |
-| Price card | "No price yet - this is a quote request." |
-| Phone states | "Phone confirmed" / "Phone not confirmed" (list); "Confirmed" / "Not confirmed" (detail) |
-| Later sections | "Coming later" |
-| No preferred date | "No preference" |
-| No connection | "Unable to reach the server. Check your connection and try again." |
-| Driver declined (design ahead) | "Driver declined - assign another driver" |
+| Prompt 02 asks for | Built | Gap |
+| --- | --- | --- |
+| Header: reference, status badge, Simulated tag, created date/time | All of these, plus a copy button and "Updated …" when different | None |
+| Request section: quantity, preferred date or "No preference" | Inside a "Delivery" card: quantity tile and preferred date ("Not given", with "Customer preference, not a booked slot.") | **Gap:** no separate "Request" section; "Not given" instead of "No preference" |
+| Delivery section: receiver's name and phone, address, landmark, instructions | Address, landmark, instructions in "Delivery"; receiver's name and phone appear in the Customer card **only when** they differ from the account | **Gap:** receiver not always shown in Delivery |
+| Customer account: name, phone, confirmation state with explanation | "Customer" card: account name, phone (as `+2348000000001`), badge "Phone verified/unverified", note "The phone must be verified before this order can be confirmed." | **Gap:** wording "verified" instead of "confirmed"; phone not shown as `0800 000 0001` |
+| Price: "No price yet - this is a quote request." | "No price yet. This is a quote request. A price is set once pricing rules are agreed." | Minor wording gap |
+| No status history section | No history, but a "Lifecycle" card showing where the current status sits in the FR-033 progression (no times, no actors) | **Gap:** prompt says no status section in this release (see Open question 4) |
+| "Order not found"; error with Retry | Both; error button says "Try again" | Minor wording gap |
+| Back link that keeps the filters | "Back to orders" restores the directory filters | None |
 
-Copy written by this design (needs approval with it):
+### Honesty and data rules
 
-- Status labels: see [Staff status labels](#staff-status-labels).
-- "Show" options: "All orders", "Real orders only", "Simulated only".
-- Chips: "Active filters:"; chip names use the status label or the formatted
-  date ("From Fri 9 Oct 2026"); screen-reader label "Remove filter: …".
-- "New requests appear here as soon as customers send them." (no orders yet)
-- "Choose a date on or after the From date." (date range error)
-- Failures: "We couldn't load orders"; "We couldn't load this order".
-- A3: "A preference, not a booked delivery window."; "The phone must be
-  confirmed before this order can be confirmed. Staff confirm it by the
-  agreed manual check."; "No order has the reference MO-… Check it and try
-  again."; "None given" for empty optional fields; "Created Wed 14 Oct 2026,
-  10:30 am".
-- A3-b: "Simulated order. This is a demo record for training. No water will
-  be delivered and no money is taken." (from the design system's demo-records
-  banner).
-- Toast after Copy: "Reference copied".
-- Card and field labels: "Request", "Delivery", "Customer account", "Price",
-  "Quantity", "Preferred delivery date", "Receiver", "Receiver's phone",
-  "Address", "Landmark", "Instructions", "Name", "Phone", "Phone
-  confirmation".
-- Screen-reader loading text: "Loading orders", "Loading order".
-
-### Staff status labels
-
-Settles design-system open question 1. Staff see the real status, including
-`assigned` before acceptance, which customers see as "Confirmed" (FR-032).
-Styles and icons reuse the design-system badge set.
-
-| `status` | Staff badge | Style, icon | Customer sees |
-| --- | --- | --- | --- |
-| `quote_requested` | Request received | info, inbox | Request received |
-| `awaiting_confirmation` | Awaiting confirmation | warning, clock | Awaiting confirmation |
-| `confirmed` | Confirmed | brand, check | Confirmed |
-| `assigned` | Assigned, awaiting driver | warning, user | Confirmed |
-| `accepted` | Driver accepted | brand, user-check | Driver assigned |
-| `collected` | Water collected | brand, droplet | Water collected |
-| `en_route` | On the way | info, truck | On the way |
-| `delivered` | Delivered | success, circle-check | Delivered |
-| `cancelled` | Cancelled | off, ban | Cancelled |
-| `failed` | Delivery failed | danger, circle-x | Delivery failed |
-| `disputed` | Disputed | under review (dashed), search | Under review |
+- No prices anywhere; the Price card says there is no price yet (FR-021, FR-022).
+- `assigned` is labelled "Assigned, not accepted", never as accepted (FR-032).
+- Every demo order carries the Simulated tag; mock screens add a sample-data
+  banner (BR-09).
+- No live tracking: "En route" has no map or ETA.
+- Phone state is a badge with icon and words, not colour alone (NFR-021);
+  no "verified by SMS" wording (FR-003).
+- Customer data: the list shows names, address and phone state only; phone
+  numbers appear only on the detail page.
 
 ## Screen-to-endpoint table
 
-Build-now endpoints are in [orders.md](../api/orders.md) and
-[auth.md](../api/auth.md). Design-ahead screens have no endpoint yet.
+All endpoints are in [orders.md](../api/orders.md) and
+[auth.md](../api/auth.md). The order screens currently read a mock source with
+the same shapes (`frontend/src/features/admin-orders/source.ts`).
 
 | Screen | Element / action | Endpoint | Fields used |
 | --- | --- | --- | --- |
-| A1 | Staff name, Sign out; wrong-app and session states | `GET /auth/me`, `POST /auth/logout` | As in the authentication design (S1, X1 to X5); `user.name`, `user.role` |
-| A2 | Order list, count, pagination | `GET /admin/orders?limit=50&offset=N` | Page `items`, `total`, `limit`, `offset`; per item `reference`, `status`, `customer.name`, `customer.phone_verified`, `quantity_litres`, `delivery_address`, `preferred_delivery_date`, `created_at`, `is_simulated` |
-| A2 | Status filter | `GET /admin/orders?status=…` (repeated) | `status` |
-| A2 | Date range | `GET /admin/orders?created_from=…&created_to=…` | `created_from`, `created_to` (Lagos dates, inclusive) |
-| A2 | "Show": real or simulated only | **Needs contract change** (S1-16, #20): proposed query `is_simulated=true|false` on `GET /admin/orders` | `is_simulated` |
-| A2 | Could not load | Any failure of `GET /admin/orders` | Network error, 500 `internal_server_error`, 503 `service_unavailable` |
-| A3 | Order detail | `GET /admin/orders/{reference}` | Every `AdminOrderRead` field: `reference`, `status`, `is_simulated`, `created_at`, `quantity_litres`, `preferred_delivery_date`, `contact_name`, `contact_phone`, `delivery_address`, `landmark`, `delivery_instructions`, `customer.name`, `customer.phone`, `customer.phone_verified` |
-| A3 | Order not found | `GET /admin/orders/{reference}` | 404 `order_not_found` |
-| A4 | Send price | None yet: needs contract change (quotes, SRS §6 `POST /quotes`; staff send) | Proposed: quote lines and total in kobo, water category, `valid_until` |
-| A4 | Confirm order and its disabled reasons | None yet: needs contract change (`POST /admin/orders/{id}/confirm`, SRS §6) | Proposed: confirm action and a list of blocking reasons (phone, source, window) from the server |
-| A4 | Assign driver, eligible drivers | None yet: needs contract change (S1-06 assignment contract; `POST /admin/orders/{id}/assign`) | Proposed: drivers with vehicle, capacity in litres, availability, eligibility reason |
-| A4 | Cancel order | None yet: needs contract change (cancel transition with reason) | Proposed: `reason` |
-| A4 | Driver declined or no response | None yet: needs contract change (assignment status, decline reason, time) | Proposed: assignment `status`, `rejected_at`, reason |
-| A5 | Confirm customer phone | None yet: needs contract change (manual verification record, FR-003) | Proposed: `confirmed_by`, `confirmed_at` (server), `note` |
-| A6 | History | None yet: needs contract change (`order_events`, SRS §5) | Proposed: event type, from/to status, actor kind and name, time, reason |
+| 1, 1A, 2 | Sign in, session check, staff name, sign out | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` | As in the authentication design; `user.name`, `user.role` (`admin`) |
+| 3 | Order list and pagination | `GET /admin/orders` with `limit`, `offset` | Page `items`, `total`, `limit`, `offset` |
+| 3 | Status filter | `GET /admin/orders?status=…` (repeated) | `status` |
+| 3 | Date range | `GET /admin/orders?created_from=…&created_to=…` | `created_from`, `created_to` (inclusive Lagos dates) |
+| 3 | Each row or card | `GET /admin/orders` items | `id`, `reference`, `status`, `is_simulated`, `created_at`, `quantity_litres`, `contact_name`, `customer.phone_verified`, `delivery_address`, `landmark`, `preferred_delivery_date` |
+| 3 | Could not load | Any failure of `GET /admin/orders` | Network error, 500 `internal_server_error`, 503 `service_unavailable` |
+| 3 | Simulated filter (gap) | **Needs contract change:** no `is_simulated` query parameter yet | `is_simulated` |
+| 4 | Order detail | `GET /admin/orders/{reference}` | `reference`, `status`, `is_simulated`, `created_at`, `updated_at`, `quantity_litres`, `preferred_delivery_date`, `contact_name`, `contact_phone`, `delivery_address`, `landmark`, `delivery_instructions`, `customer.name`, `customer.phone`, `customer.phone_verified` |
+| 4 | Order not found | `GET /admin/orders/{reference}` | 404 `order_not_found` |
+| 4 | Could not load | Any other failure | As above |
 
-Every build-now row uses an endpoint and field that exist in the contracts,
-except the "Show" filter, which needs one optional query parameter (additive,
-not breaking). Until it is agreed, the build hides the "Show" filter; the
-Simulated tag on each row still meets BR-09.
+Every built element uses an endpoint and field that exist in the contracts.
+Only the Simulated filter (a gap) would need a change.
 
 ## Decisions
 
-1. **Sign-in and session screens are not redrawn.** The prompt says the
-   approved authentication design is canonical. This slice reuses its staff
-   sign in (S1), checking session (X1), session ended with return to the same
-   page and filters (X2), security check (X3), wrong app (X4) and staff top bar
-   with sign out (X5) unchanged.
-2. **One staff navigation rule** (settles design-system open question 2):
-   sidebar from 1280 px; staff top bar plus a Menu for the navigation from 768
-   to 1279 px; one Menu for navigation and account below 768 px. It keeps the
-   authentication design's Decision 5 (Menu below 768 px). The design system's
-   "moves to the bottom navigation" note does not apply to staff.
-3. **Staff status labels** (settles design-system open question 1), as in the
-   table above. "Assigned, awaiting driver" uses the warning style because the
-   dispatcher may need to chase or reassign. The prompt wrote "Assigned -
-   awaiting driver"; a comma reads better than a spaced hyphen.
-4. **No phone numbers in the list.** The list shows only whether the phone is
-   confirmed; the number is on the detail page, where staff act on it (PRD §4
-   minimum data).
-5. **The reference is the row's link.** Keyboard users tab once per row; a
-   click anywhere on the row also opens the detail.
-6. **Filters apply at once** (no Apply button) and are kept in the page
-   address; removable chips show what is active.
-7. **The top bar does not repeat the logo on desktop**, because the sidebar
-   shows the brand. Mobile and tablet bars show the brand mark until the logo
-   file is exported (authentication design, open question 3).
-8. **Simulated detail banner.** Besides the tag, a simulated order's detail
-   page shows the design system's demo-records warning, so it is never handled
-   as a real delivery.
-9. **Design-ahead "Cancel order" button** is secondary with danger colours on
-   the detail page; the destructive fill is used only for the confirming
-   button in the dialog.
-
-## Notes for S1-09 (build)
-
-The directory built in PR #15 (now on `main`) must change to match:
-
-- Status labels: use the table above ("Request received", "On the way",
-  "Delivery failed", "Assigned, awaiting driver", "Driver accepted").
-- Status filter: the "Status" multi-select panel with a count pill, plus
-  removable chips, instead of toggle buttons.
-- 50 orders per page (now 10); title shows the total.
-- Customer column: account name and "Phone confirmed / Phone not confirmed";
-  "No preference" for an empty preferred date.
-- Detail: four cards (Request, Delivery, Customer account, Price); no
-  lifecycle progress view (history is A6, deferred); "No price yet - this is a
-  quote request."; simulated warning banner.
-- Layout: "Coming later" nav items, staff top bar, Menu below 1280 px.
-- "Find by reference" (built in PR #15) is not in the prompt or this design.
-  Keep it only if the technical lead adds it here at approval.
-- The "Show" filter waits for the contract change.
+1. **The built screens are the design** (technical lead, issue #9 comment,
+   2026-10-15). Prompt 02 items that are not built are listed as gaps above;
+   the technical lead decides at review which must be fixed in S1-09.
+2. **Sign-in and session screens are not redrawn.** They come from the
+   approved authentication design and were built in S1-17 (#29).
+3. **Staff navigation below desktop: a top bar.** Built as a top bar with the
+   brand, an "Orders" link and an account button (name, "Sign out"). It
+   follows prompt 02 and the authentication design (top bar, not bottom
+   navigation). It has no separate menu button because "Orders" is the only
+   section. See Open question 1.
+4. **Status toggles instead of a dropdown.** All 11 statuses are visible at
+   once and each is one tap; the selected ones show a tick.
+5. **Filters live in the page address**, so Back, reload and a shared link
+   keep them, and "Back to orders" returns to the same view.
+6. **The previous page stays visible, dimmed, while the next one loads**, so
+   the table does not jump.
+7. **Extra states not in prompt 02:** the date range check (no request is sent
+   until it is fixed) and "This page has no orders" with "Go to first page".
 
 ## Open questions
 
-1. **Simulated filter contract.** Add `is_simulated` (optional boolean) to
-   `GET /admin/orders` in S1-16 (#20)?
-2. **Design ahead.** The blocking reasons for "Confirm order", driver
-   eligibility reasons and decline reasons need wording from the server
-   contracts; the canvas wording is a proposal. Water category names wait for
-   PRD §13.2.
-3. **Logo files.** As in the authentication design: the logo is not in the
-   repository yet.
+1. **Staff navigation below desktop width.** The design system says bottom
+   navigation; prompt 02 and the authentication design say a top bar with a
+   menu. The build uses a top bar with an inline "Orders" link and an account
+   button, no menu button. Technical lead to decide at review.
+2. **Staff status labels.** Prompt 02 uses the customer wording plus three
+   staff labels ("Assigned - awaiting driver", "Driver accepted", "Disputed").
+   The build uses "Quote requested", "Awaiting confirmation", "Confirmed",
+   "Assigned, not accepted", "Driver accepted", "Water collected", "En route",
+   "Delivered", "Cancelled", "Failed", "Disputed". Which set is approved? This
+   also answers design-system open question 1.
+3. **"Find by reference".** Built but not in prompt 02. Keep it?
+4. **"Lifecycle" card.** Prompt 02 says no status history section in this
+   release. The card shows only where the current status sits, without times
+   or actors. Keep it, or remove it until order history exists?
+5. **Simulated filter.** Needs `is_simulated` on `GET /admin/orders` (S1-16,
+   #20). Add it, or accept the Simulated tag alone for the demo?
+6. **Page size.** Prompt 02 says 50 per page; the build uses 10. Change to
+   50?
 
 ## Changes to the design system
 
-No new tokens. Added, all built from existing tokens and component styles
-(also listed on the canvas):
+No new tokens. The built screens use existing tokens and components (sidebar,
+status badge, Simulated tag, table, list rows, pagination, empty state,
+skeletons, alerts, card). Two patterns are new and would be added to
+[design-system.md](design-system.md) if approved:
 
-- **Staff status labels**: "Assigned, awaiting driver", "Driver accepted",
-  "Disputed" (existing badge styles).
-- **Coming later nav item**: greyed, not a link, small "Coming later" label.
-- **Removable filter chip**: `primary-50` pill with the filter name and an x
-  icon, inside a 48 px tap area.
-- **"Show" filter**: native select with three options.
-- **Phone confirmation line**: icon plus "Phone confirmed" or "Phone not
-  confirmed".
-- Design ahead only: action area with a reason list, driver choice row with a
-  disabled reason, history list.
-
-To be added to [design-system.md](design-system.md) when this design is
-approved.
+- **Status toggle button**: pill button, 48 px tall, icon and label, tick and
+  `primary-50` fill when selected (`aria-pressed`).
+- **Phone state line**: icon plus "Verified" or "Unverified" (wording subject
+  to Open question 2's decision on "confirmed").
