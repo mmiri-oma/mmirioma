@@ -10,7 +10,8 @@ import { AppGate } from './components/AppGate'
 import { AuthBannerView } from './components/AuthBannerView'
 import { SessionSplash, WrongAppScreen } from './components/StatusScreens'
 import { CreateAccountPage } from './pages/CreateAccountPage'
-import { CustomerHome, StaffHome } from './pages/HomePages'
+import { AdminShell } from '../../components/layout/AdminShell'
+import { CustomerHome } from './pages/HomePages'
 import { SignInPage } from './pages/SignInPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { SessionContext } from './sessionContext'
@@ -40,7 +41,14 @@ function render(
     state,
   }: { status: SessionStatus; session?: Session | null; state?: unknown },
 ): string {
-  const value = { status, session, retry: vi.fn(), signedIn: vi.fn(), signedOut: vi.fn() }
+  const value = {
+    status,
+    session,
+    retry: vi.fn(),
+    signedIn: vi.fn(),
+    signedOut: vi.fn(),
+    dismissSignedOutNotice: vi.fn(),
+  }
   return renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter initialEntries={[{ pathname: '/', state }]}>
@@ -50,7 +58,7 @@ function render(
   )
 }
 
-const signedOut: SessionStatus = { kind: 'signed-out', ended: false }
+const signedOut: SessionStatus = { kind: 'signed-out', ended: false, byUser: false }
 
 describe('sign-in screens (C3, S1)', () => {
   it('customer sign-in has contact guidance and a Create account link, no reset flow', () => {
@@ -71,7 +79,7 @@ describe('sign-in screens (C3, S1)', () => {
 
   it('shows "Your session has ended" when the session ended (X2)', () => {
     const html = render(<SignInPage app="staff" />, {
-      status: { kind: 'signed-out', ended: true },
+      status: { kind: 'signed-out', ended: true, byUser: false },
     })
     expect(html).toContain('Your session has ended. Please sign in again.')
     expect(html).toContain('role="status"')
@@ -95,8 +103,7 @@ describe('sign-in screens (C3, S1)', () => {
 
   it('shows the signed-out toast after signing out (X5)', () => {
     const html = render(<SignInPage app="staff" />, {
-      status: signedOut,
-      state: { signedOut: true },
+      status: { kind: 'signed-out', ended: false, byUser: true },
     })
     expect(html).toContain('You&#x27;ve signed out.')
   })
@@ -246,17 +253,16 @@ describe('signed-in homes', () => {
     expect(html).not.toContain('confirm your phone number')
   })
 
-  it('staff home: name and Sign out in the top bar, with the Staff label', () => {
+  it('admin shell: staff name and Sign out (X5)', () => {
     const staff = {
       ...SESSION,
       user: { ...SESSION.user, name: 'Sample Dispatcher', role: 'admin' as const },
     }
-    const html = render(<StaffHome session={staff} />, {
+    const html = render(<AdminShell user={staff.user} />, {
       status: { kind: 'signed-in', role: 'admin' },
       session: staff,
     })
     expect(html).toContain('Sample Dispatcher')
-    expect(html).toContain('>Staff</span>')
     expect(html).toContain('Sign out')
   })
 })

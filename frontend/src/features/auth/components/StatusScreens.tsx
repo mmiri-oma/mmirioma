@@ -16,7 +16,10 @@ export function SessionSplash() {
       className="flex min-h-svh flex-col items-center justify-center gap-5 bg-surface p-8 text-center"
     >
       <Logo className="w-60 max-w-[80%]" />
-      <LoaderCircle aria-hidden="true" className="size-7 animate-spin text-primary" />
+      <LoaderCircle
+        aria-hidden="true"
+        className="size-7 text-primary motion-safe:animate-spin"
+      />
       <span className="sr-only">Checking your session</span>
     </main>
   )
@@ -66,12 +69,8 @@ export function WrongAppScreen({ app, onSignOut, signingOut }: WrongAppScreenPro
         <p role="alert" className="text-h2 font-bold">
           {WRONG_APP_MESSAGE[app]}
         </p>
-        <Button
-          block
-          loading={signingOut}
-          onClick={onSignOut}
-          icon={<LogOut aria-hidden="true" className="size-5" />}
-        >
+        <Button className="w-full" loading={signingOut} onClick={onSignOut}>
+          {signingOut ? null : <LogOut aria-hidden="true" className="size-5" />}
           {signingOut ? 'Signing out' : 'Sign out'}
         </Button>
       </div>

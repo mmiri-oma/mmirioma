@@ -20,7 +20,7 @@ everywhere at once (FR-002). Login and registration are rate limited
 (NFR-002).
 
 The frontend (S1-17) implements the approved sign-in, account and session
-screens for the **customer app** (`/`) and the **staff app** (`/staff`) of
+screens for the **customer app** (`/`) and the **staff app** (`/admin`) of
 the single React app. The driver app's screens follow with S1-15.
 
 ## 2. Feature workflow
@@ -58,7 +58,11 @@ AppGate(app): decideAccess(status, app)
   allowed -> page | wrong-app -> X4 | sign-in -> Navigate(sign-in, {from})
 Any other request with 401 not_authenticated -> re-check the session (lib/queryClient.ts)
 Sign in / create account -> store session in the query cache -> app home (or `from`)
-Sign out -> POST /auth/logout -> clear session -> welcome or staff sign-in + toast
+Sign out -> POST /auth/logout -> clear session (marked "by user")
+  -> AppGate: customer welcome / staff sign-in, each with the toast
+Redirects after sign-in, account creation and sign-out are rendered from the
+session state (<Navigate>), never navigate() calls: React Router runs
+navigations as transitions, which would lose to the guards' own redirects.
 ```
 
 ## 3. Important files
@@ -78,13 +82,14 @@ Sign out -> POST /auth/logout -> clear session -> welcome or staff sign-in + toa
 | `backend/alembic/versions/20261014_0002_add_users_and_user_sessions.py` | Migration `0002` |
 | `frontend/src/lib/api/client.ts` | `setCsrfToken`, sends `X-CSRF-Token` on non-GET requests |
 | `frontend/src/lib/api/auth.ts` | Typed `register`, `login`, `getMe`, `logout` |
-| `frontend/src/main.tsx`, `frontend/src/App.tsx` | Providers and routes (`/`, `/sign-in`, `/create-account`, `/staff`, `/staff/sign-in`) |
+| `frontend/src/main.tsx`, `frontend/src/App.tsx` | Providers and routes (`/`, `/sign-in`, `/create-account`, `/admin/sign-in`, `/admin/*` behind the staff guard) |
 | `frontend/src/lib/queryClient.ts` | TanStack Query client; re-checks the session after any 401 |
 | `frontend/src/features/auth/SessionProvider.tsx`, `sessionContext.ts`, `sessionQuery.ts` | Session query, status (checking, unavailable, signed out/ended, signed in) |
 | `frontend/src/features/auth/access.ts` | `decideAccess` route-guard decision, app roles and paths, X4 messages |
 | `frontend/src/features/auth/components/AppGate.tsx` | Route guard component |
 | `frontend/src/features/auth/pages/` | C1 welcome, C2 create account, C3/S1 sign in, customer and staff homes |
-| `frontend/src/features/auth/components/` | Auth layout, banners with rate-limit wait, splash, X4 screen, signed-in header and account panel |
+| `frontend/src/features/auth/components/` | Auth layout, banners with rate-limit wait, splash, X4 screen, customer header, account panel and sign-out controls (`AccountControls.tsx`) |
+| `frontend/src/components/layout/AdminShell.tsx` | Admin layout (S1-09); shows the staff name and Sign out (X5) |
 | `frontend/src/features/auth/useSignOut.ts` | Sign-out and its failure states |
 | `frontend/src/features/auth/phone.ts`, `schemas.ts`, `messages.ts`, `waitTime.ts`, `contact.ts` | Phone check and display, form rules, exact texts and error mapping, wait wording, support links |
 | `frontend/src/components/ui/` | Design-system components: `Button`, `Field`/`PasswordField`, `Alert`, `Toast`, `Logo` |
@@ -274,12 +279,21 @@ Frontend (from `frontend/`): `npm test`.
 - `src/features/auth/session.test.ts`: 401 on load means signed out; network
   failure is rethrown; any other 401 re-checks the session, sign-out does not.
 - `src/features/auth/screens.test.tsx`: renders each designed state to static
-  HTML (no DOM library is installed) and checks its content: C1, C2, C3, S1,
-  X1, X2, X4, X6, the one-time notice, the staff top bar, banners and field
+  HTML and checks its content: C1, C2, C3, S1, X1, X2, X4, X6, the one-time
+  notice, the admin shell's name and Sign out, banners and field
   accessibility attributes.
+- `src/features/auth/flows.test.tsx` (jsdom, Testing Library): the real
+  routes, guards and session provider with the auth API mocked. Wrong
+  password (phone kept, password cleared), phone format checked before
+  sending, rate limit (wait text, button off), account creation with the
+  one-time notice, "Sign in instead" carrying the phone, wrong app in each
+  app, session ended while open (X2), no connection on start with Retry,
+  sign-out success, offline failure with Try again, security failure (X3),
+  staff redirect to sign-in and back to the page with its filters, and the
+  staff sign-out landing (regression for the transition race).
 
 Manual check in a browser: run the backend and `npm run dev`, open
-`http://localhost:5173` (customer) and `http://localhost:5173/staff` (staff;
+`http://localhost:5173` (customer) and `http://localhost:5173/admin` (staff;
 create an admin with `python -m app.modules.auth.cli create-user`).
 
 Manual check:
@@ -322,10 +336,9 @@ curl -b /tmp/jar http://localhost:8000/api/v1/auth/me
   `VITE_SUPPORT_WHATSAPP`. Until the real numbers are decided they are unset,
   and the Call/WhatsApp buttons and the "Contact us" link are hidden ("Contact
   us" shows as plain text).
-- **Frontend: no interaction tests.** Screen tests render static HTML only;
-  clicking, typing and timers are not exercised automatically. That needs a
-  DOM test environment (for example jsdom and Testing Library), which is a new
-  dependency awaiting approval.
+- **Frontend: the rate-limit countdown re-enabling the button** is not
+  exercised by a test (it needs fake timers across a 15-minute wait); the
+  wording and the disabled state are.
 - **Frontend: Noto Sans is not loaded yet.** The font stack falls back to the
   phone's system font until the self-hosted subset is added.
 - **Frontend: driver app screens** (D1 and the driver variants of X1-X5) come

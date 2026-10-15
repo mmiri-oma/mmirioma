@@ -16,6 +16,8 @@ export interface SessionContextValue {
    * reported as "Your session has ended".
    */
   signedOut: () => void
+  /** The "You've signed out." toast was shown; stop reporting `byUser`. */
+  dismissSignedOutNotice: () => void
 }
 
 export const SessionContext = createContext<SessionContextValue | null>(null)

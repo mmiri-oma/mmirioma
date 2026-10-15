@@ -17,19 +17,25 @@ export const APP_ROLE: Record<AppArea, UserRole> = {
 }
 
 /** Home of each app, where a signed-in person lands. */
-export const APP_HOME: Record<AppArea, string> = { customer: '/', staff: '/staff' }
+export const APP_HOME: Record<AppArea, string> = { customer: '/', staff: '/admin' }
 
 /** Sign-in screen of each app. */
 export const SIGN_IN_PATH: Record<AppArea, string> = {
   customer: '/sign-in',
-  staff: '/staff/sign-in',
+  staff: '/admin/sign-in',
 }
 
 /** What the session query currently knows. */
 export type SessionStatus =
   | { kind: 'checking' }
   | { kind: 'unavailable' }
-  | { kind: 'signed-out'; ended: boolean }
+  | {
+      kind: 'signed-out'
+      /** The session ended while the app was open (X2). */
+      ended: boolean
+      /** The person just chose to sign out (X5 toast). */
+      byUser: boolean
+    }
   | { kind: 'signed-in'; role: UserRole }
 
 /**
@@ -37,14 +43,15 @@ export type SessionStatus =
  * - `checking`: splash (X1) while `GET /auth/me` runs; never the sign-in form.
  * - `unavailable`: the server could not be reached, so it is unknown.
  * - `sign-in`: send to the app's sign-in screen, with the X2 banner if the
- *   session ended while the app was open.
+ *   session ended while the app was open, or to the signed-out landing with
+ *   the X5 toast if the person just signed out.
  * - `wrong-app`: signed in with a role this app does not serve (X4).
  * - `allowed`: render the page.
  */
 export type AccessDecision =
   | { kind: 'checking' }
   | { kind: 'unavailable' }
-  | { kind: 'sign-in'; sessionEnded: boolean }
+  | { kind: 'sign-in'; sessionEnded: boolean; signedOutByUser: boolean }
   | { kind: 'wrong-app' }
   | { kind: 'allowed' }
 
@@ -62,7 +69,11 @@ export function decideAccess(status: SessionStatus, app: AppArea): AccessDecisio
     case 'unavailable':
       return { kind: 'unavailable' }
     case 'signed-out':
-      return { kind: 'sign-in', sessionEnded: status.ended }
+      return {
+        kind: 'sign-in',
+        sessionEnded: status.ended,
+        signedOutByUser: status.byUser,
+      }
     case 'signed-in':
       return status.role === APP_ROLE[app] ? { kind: 'allowed' } : { kind: 'wrong-app' }
   }

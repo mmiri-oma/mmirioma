@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Alert } from '../../../components/ui/Alert'
 import { Button } from '../../../components/ui/Button'
 import type { Session } from '../../../lib/api/auth'
-import { SignedInHeader } from '../components/SignedInHeader'
+import { CustomerHeader } from '../components/CustomerHeader'
 import { AUTH_TEXT } from '../messages'
 import type { NewAccountState } from './CreateAccountPage'
 
@@ -22,7 +22,7 @@ export function CustomerHome({ session }: { session: Session }) {
 
   return (
     <div className="min-h-svh bg-surface">
-      <SignedInHeader app="customer" user={session.user} />
+      <CustomerHeader user={session.user} />
       <main className="flex flex-col gap-4 px-4 pt-5 pb-6 tablet:mx-auto tablet:max-w-[720px]">
         {justRegistered ? (
           <Alert
@@ -46,18 +46,6 @@ export function CustomerHome({ session }: { session: Session }) {
           </Alert>
         )}
       </main>
-    </div>
-  )
-}
-
-/**
- * Signed-in staff home. In this release it holds only the staff top bar; the
- * order directory arrives with S1-09.
- */
-export function StaffHome({ session }: { session: Session }) {
-  return (
-    <div className="min-h-svh bg-background">
-      <SignedInHeader app="staff" user={session.user} />
     </div>
   )
 }

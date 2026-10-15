@@ -1,22 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { logout } from '../../lib/api/auth'
 import { ApiError } from '../../lib/api/client'
-import type { AppArea } from './access'
 import { isSessionLost, LOGOUT_MUTATION_KEY } from './sessionQuery'
 import { useSession } from './sessionContext'
-
-/** Where each app goes after signing out (X5): welcome, or staff sign-in. */
-export const SIGNED_OUT_PATH: Record<AppArea, string> = {
-  customer: '/',
-  staff: '/staff/sign-in',
-}
-
-/** Router state that makes the landing screen show "You've signed out." */
-export interface SignedOutState {
-  signedOut: true
-}
 
 /**
  * Why sign-out failed, if it did:
@@ -28,24 +15,22 @@ export interface SignedOutState {
 export type SignOutProblem = 'security' | 'network' | null
 
 /**
- * Sign out of `app` (`POST /auth/logout`).
+ * Sign out (`POST /auth/logout`).
  *
  * A 401 means the session was already gone, which is the outcome the person
- * wanted, so it is treated as success.
+ * wanted, so it is treated as success. On success the session is cleared and
+ * the route guard shows the signed-out landing (customer welcome or staff
+ * sign-in) with the toast. It does not navigate itself: React Router runs
+ * navigations as transitions, so a `navigate()` here would lose a race with
+ * the guard's own redirect.
  *
- * @param app - The app the person is in; decides where they land.
  * @returns `signOut()`, whether it is running, and the last problem.
  */
-export function useSignOut(app: AppArea) {
+export function useSignOut() {
   const { signedOut } = useSession()
-  const navigate = useNavigate()
   const [problem, setProblem] = useState<SignOutProblem>(null)
 
-  const finish = () => {
-    signedOut()
-    const state: SignedOutState = { signedOut: true }
-    navigate(SIGNED_OUT_PATH[app], { replace: true, state })
-  }
+  const finish = () => signedOut()
 
   const mutation = useMutation({
     mutationKey: LOGOUT_MUTATION_KEY,
@@ -67,3 +52,6 @@ export function useSignOut(app: AppArea) {
     clearProblem: () => setProblem(null),
   }
 }
+
+/** What {@link useSignOut} returns; passed to the sign-out controls. */
+export type SignOutState = ReturnType<typeof useSignOut>

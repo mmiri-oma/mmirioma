@@ -1,9 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { Phone } from 'lucide-react'
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
 import { Field, PasswordField } from '../../../components/ui/Field'
 import { Toast } from '../../../components/ui/Toast'
@@ -23,13 +22,11 @@ import { useAuthFormBanner } from '../useAuthFormBanner'
  * Router state a sign-in screen understands:
  * - `from`: page to return to after signing in (staff keep their page and
  *   filters after "session ended", X2);
- * - `phone`: number to prefill ("Sign in instead" from C2);
- * - `signedOut`: show the "You've signed out." toast (X5).
+ * - `phone`: number to prefill ("Sign in instead" from C2).
  */
 export interface SignInLocationState {
   from?: string
   phone?: string
-  signedOut?: boolean
 }
 
 const TITLES: Record<AppArea, string> = { customer: 'Sign in', staff: 'MmiriOma staff' }
@@ -40,18 +37,40 @@ const TITLES: Record<AppArea, string> = { customer: 'Sign in', staff: 'MmiriOma 
  */
 export function SignInPage({ app }: { app: AppArea }) {
   const { status, retry } = useSession()
-  if (status.kind === 'checking') return <SessionSplash />
-  if (status.kind === 'unavailable') return <SessionUnavailable onRetry={retry} />
-  if (status.kind === 'signed-in') return <Navigate to={APP_HOME[app]} replace />
-  return <SignInForm app={app} sessionEnded={status.ended} />
-}
-
-function SignInForm({ app, sessionEnded }: { app: AppArea; sessionEnded: boolean }) {
-  const { signedIn } = useSession()
-  const navigate = useNavigate()
   const location = useLocation()
   const state = (location.state ?? {}) as SignInLocationState
-  const [showSignedOut, setShowSignedOut] = useState(state.signedOut === true)
+  if (status.kind === 'checking') return <SessionSplash />
+  if (status.kind === 'unavailable') return <SessionUnavailable onRetry={retry} />
+  // Signed in (including just now): go to the page the person came from, or
+  // the app's home. Done here, not with navigate() after sign-in, because
+  // React Router navigations are transitions and would lose that race.
+  if (status.kind === 'signed-in') {
+    return <Navigate to={state.from ?? APP_HOME[app]} replace />
+  }
+  return (
+    <SignInForm
+      app={app}
+      initialPhone={state.phone ?? ''}
+      sessionEnded={status.ended}
+      signedOutByUser={status.byUser}
+    />
+  )
+}
+
+interface SignInFormProps {
+  app: AppArea
+  initialPhone: string
+  sessionEnded: boolean
+  signedOutByUser: boolean
+}
+
+function SignInForm({
+  app,
+  initialPhone,
+  sessionEnded,
+  signedOutByUser,
+}: SignInFormProps) {
+  const { signedIn, dismissSignedOutNotice } = useSession()
   const { banner, bannerKey, waiting, showError, clear, onWaitOver } = useAuthFormBanner()
 
   const {
@@ -63,16 +82,13 @@ function SignInForm({ app, sessionEnded }: { app: AppArea; sessionEnded: boolean
     formState: { errors },
   } = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
-    defaultValues: { phone: state.phone ?? '', password: '' },
+    defaultValues: { phone: initialPhone, password: '' },
   })
 
   const mutation = useMutation({
     mutationFn: (values: SignInValues) => login(values),
     onMutate: clear,
-    onSuccess: (session) => {
-      signedIn(session)
-      navigate(state.from ?? APP_HOME[app], { replace: true })
-    },
+    onSuccess: signedIn,
     onError: (error) => {
       showError(error)
       // Keep the phone number; always clear the password after a failure.
@@ -124,7 +140,7 @@ function SignInForm({ app, sessionEnded }: { app: AppArea; sessionEnded: boolean
           locked={locked}
           {...register('password')}
         />
-        <Button type="submit" block loading={locked} disabled={waiting}>
+        <Button type="submit" className="w-full" loading={locked} disabled={waiting}>
           {locked ? 'Signing in' : 'Sign in'}
         </Button>
       </form>
@@ -139,11 +155,11 @@ function SignInForm({ app, sessionEnded }: { app: AppArea; sessionEnded: boolean
         ) : null}
       </div>
 
-      {showSignedOut ? (
+      {signedOutByUser ? (
         <Toast
           tone="success"
           text={AUTH_TEXT.signedOut}
-          onDismiss={() => setShowSignedOut(false)}
+          onDismiss={dismissSignedOutNotice}
         />
       ) : null}
     </AuthLayout>

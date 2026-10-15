@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { Phone } from 'lucide-react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/Button'
@@ -29,13 +30,20 @@ export interface NewAccountState {
  */
 export function CreateAccountPage() {
   const { status, retry } = useSession()
+  // Set when this form created the account, so home shows the one-time
+  // notice. The redirect happens here, not with navigate() after success,
+  // because React Router navigations are transitions and would lose the race.
+  const [created, setCreated] = useState(false)
   if (status.kind === 'checking') return <SessionSplash />
   if (status.kind === 'unavailable') return <SessionUnavailable onRetry={retry} />
-  if (status.kind === 'signed-in') return <Navigate to="/" replace />
-  return <CreateAccountForm />
+  if (status.kind === 'signed-in') {
+    const state: NewAccountState | null = created ? { justRegistered: true } : null
+    return <Navigate to="/" replace state={state} />
+  }
+  return <CreateAccountForm onCreated={() => setCreated(true)} />
 }
 
-function CreateAccountForm() {
+function CreateAccountForm({ onCreated }: { onCreated: () => void }) {
   const { signedIn } = useSession()
   const navigate = useNavigate()
   const { banner, bannerKey, waiting, showError, clear, onWaitOver } = useAuthFormBanner()
@@ -56,9 +64,8 @@ function CreateAccountForm() {
     mutationFn: (values: CreateAccountValues) => registerAccount(values),
     onMutate: clear,
     onSuccess: (session) => {
+      onCreated()
       signedIn(session)
-      const state: NewAccountState = { justRegistered: true }
-      navigate('/', { replace: true, state })
     },
     onError: (error) => {
       showError(error)
@@ -123,7 +130,7 @@ function CreateAccountForm() {
           locked={locked}
           {...register('password')}
         />
-        <Button type="submit" block loading={locked} disabled={waiting}>
+        <Button type="submit" className="w-full" loading={locked} disabled={waiting}>
           {locked ? 'Creating account' : 'Create account'}
         </Button>
       </form>

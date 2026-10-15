@@ -24,7 +24,8 @@ export interface AppGateProps {
  *
  * Checking → splash (X1). No connection → retry. Signed out → sign-in (with
  * "Your session has ended" if it ended while open, X2, and the page to
- * return to). Wrong role → X4. Otherwise the page.
+ * return to), or the signed-out landing after choosing to sign out (X5).
+ * Wrong role → X4. Otherwise the page.
  */
 export function AppGate({ app, children, signedOut }: AppGateProps) {
   const { status, session, retry } = useSession()
@@ -37,6 +38,11 @@ export function AppGate({ app, children, signedOut }: AppGateProps) {
     case 'unavailable':
       return <SessionUnavailable onRetry={retry} />
     case 'sign-in': {
+      // Signed out by choice: the customer welcome, or the staff sign-in
+      // screen without a page to return to. Either shows the X5 toast.
+      if (decision.signedOutByUser) {
+        return signedOut ?? <Navigate to={SIGN_IN_PATH[app]} replace />
+      }
       if (!decision.sessionEnded && signedOut !== undefined) return <>{signedOut}</>
       const state: SignInLocationState = {
         from: `${location.pathname}${location.search}`,
@@ -51,6 +57,6 @@ export function AppGate({ app, children, signedOut }: AppGateProps) {
 }
 
 function WrongAppGate({ app }: { app: AppArea }) {
-  const { signOut, signingOut } = useSignOut(app)
+  const { signOut, signingOut } = useSignOut()
   return <WrongAppScreen app={app} onSignOut={signOut} signingOut={signingOut} />
 }

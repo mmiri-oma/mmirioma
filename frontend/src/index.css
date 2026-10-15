@@ -1,9 +1,12 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /*
- * MmiriOma design tokens, copied from the approved design system
- * (docs/design/design-system.md, "Tailwind CSS v4 theme"). Change them there
- * first, then here. Light theme only: no dark theme was designed.
+ * Shared MmiriOma design tokens, copied from the approved design system
+ * (S1-13): docs/design/design-system.md "Tailwind CSS v4 theme". Change the
+ * canvas and that document first, then this block, in one reviewed PR.
+ *
+ * Noto Sans is not self-hosted yet (design-system.md Decision 3), so the
+ * stack falls back to the phone's system font until the subset is added.
  */
 @theme {
   /* Color: brand primary */
@@ -135,30 +138,17 @@
 
 @layer base {
   html {
-    font-family: var(--font-sans);
-    font-size: 100%;
-    line-height: 1.5;
-    color: var(--color-text-primary);
-    background-color: var(--color-background);
     -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
-    margin: 0;
-    min-height: 100svh;
+    @apply bg-background font-sans text-body text-text-primary;
   }
 
-  /* 3 px focus ring on every keyboard-focused control (design system,
-     "Accessibility requirements"). */
-  :where(a, button, input, select, textarea, summary):focus-visible {
-    outline: 3px solid var(--color-focus-ring);
-    outline-offset: 2px;
-  }
-}
-
-/* Spinner and toast motion stop when the phone asks for reduced motion. */
-@media (prefers-reduced-motion: reduce) {
-  .animate-spin {
-    animation: none;
+  /* 3 px focus ring, 2 px offset, on every control reached by keyboard (NFR-021). */
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-focus-ring;
   }
 }

@@ -20,7 +20,7 @@ frontend/src/
 - Handle `ApiError` by `code`; show `message` to the user; ignore `AbortError`.
 - Response types are not validated at runtime: use Zod for data that drives money, permissions, or state.
 - `VITE_*` variables are public. Never put secrets there.
-- Data fetching: TanStack Query once its provider is configured (not yet; `ApiStatus` uses `useEffect` as the interim pattern). Forms: React Hook Form + Zod.
+- Data fetching: TanStack Query (provider in `main.tsx`); pass the query `signal` to the API call. Forms: React Hook Form + Zod.
 
 ## Product requirements that affect UI (PRD §9, SRS §7.3)
 

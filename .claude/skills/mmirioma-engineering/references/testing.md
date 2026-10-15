@@ -18,7 +18,7 @@ duplicate checkout, and payment reconciliation before any demo deployment.
 ## Frontend (Vitest)
 
 - Test endpoint functions with `createApiClient({ baseUrl, fetch: mockFetch })`: success, envelope errors, network errors, aborts.
-- Component tests need a DOM environment and Testing Library, which are **not installed**. Propose adding them before writing component tests.
+- Component tests: add `// @vitest-environment jsdom` at the top of the file and use Testing Library (`@testing-library/react`, `user-event`). Query by role and label; inject data through props or context, never real servers.
 
 ## Migrations
 

@@ -1,11 +1,10 @@
 import { MessageCircle, Phone } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Logo } from '../../../components/ui/Logo'
 import { Toast } from '../../../components/ui/Toast'
 import { supportContact } from '../contact'
 import { AUTH_TEXT } from '../messages'
-import type { SignedOutState } from '../useSignOut'
+import { useSession } from '../sessionContext'
 
 const BUTTON_BASE =
   'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border-2 px-5 font-semibold'
@@ -18,9 +17,8 @@ const SECONDARY = `${BUTTON_BASE} border-primary bg-surface text-primary-700 hov
  * customers land after signing out (X5), with the "You've signed out." toast.
  */
 export function WelcomePage() {
-  const location = useLocation()
-  const state = (location.state ?? {}) as Partial<SignedOutState>
-  const [showSignedOut, setShowSignedOut] = useState(state.signedOut === true)
+  const { status, dismissSignedOutNotice } = useSession()
+  const showSignedOut = status.kind === 'signed-out' && status.byUser
   const { callHref, whatsAppHref } = supportContact
 
   return (
@@ -62,7 +60,7 @@ export function WelcomePage() {
         <Toast
           tone="success"
           text={AUTH_TEXT.signedOut}
-          onDismiss={() => setShowSignedOut(false)}
+          onDismiss={dismissSignedOutNotice}
         />
       ) : null}
     </main>

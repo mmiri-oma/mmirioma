@@ -9,6 +9,7 @@ import {
   SESSION_QUERY_KEY,
   isSessionLost,
 } from '../features/auth/sessionQuery'
+import { ApiError } from './api/client'
 
 function sameKey(key: QueryKey | undefined, expected: readonly string[]): boolean {
   return (
@@ -21,13 +22,14 @@ function sameKey(key: QueryKey | undefined, expected: readonly string[]): boolea
 /**
  * Create the app's TanStack Query client.
  *
- * Any request that fails with 401 `not_authenticated` (outside the session
- * query itself and sign-out, which handle it directly) re-checks the session.
- * The re-check returns `null`, and the session provider then shows "Your
- * session has ended" (X2) on the app's sign-in screen.
- *
- * Queries are not retried automatically: on slow networks the screens show
- * the error with a Retry button instead of waiting silently.
+ * - Queries retry once for network and 5xx failures, which are often
+ *   transient on mobile connections, but never for 4xx: a 404
+ *   `order_not_found` will not fix itself and should show immediately.
+ *   Mutations are never retried, so nothing is sent twice.
+ * - Any request that fails with 401 `not_authenticated` (outside the session
+ *   query itself and sign-out, which handle it directly) re-checks the
+ *   session. The re-check returns `null`, and the session provider then shows
+ *   "Your session has ended" (X2) on the app's sign-in screen.
  */
 export function createQueryClient(): QueryClient {
   const recheckSession = () =>
@@ -52,7 +54,14 @@ export function createQueryClient(): QueryClient {
       },
     }),
     defaultOptions: {
-      queries: { retry: false },
+      queries: {
+        retry: (failureCount, error) => {
+          const clientError =
+            error instanceof ApiError && error.status !== null && error.status < 500
+          return !clientError && failureCount < 1
+        },
+        refetchOnWindowFocus: false,
+      },
       mutations: { retry: false },
     },
   })

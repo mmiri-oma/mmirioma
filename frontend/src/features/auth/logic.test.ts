@@ -143,15 +143,16 @@ describe('decideAccess (route guards)', () => {
     })
   })
 
-  it('sends signed-out visitors to sign in, flagging an ended session', () => {
-    expect(decideAccess({ kind: 'signed-out', ended: false }, 'staff')).toEqual({
-      kind: 'sign-in',
-      sessionEnded: false,
-    })
-    expect(decideAccess({ kind: 'signed-out', ended: true }, 'customer')).toEqual({
-      kind: 'sign-in',
-      sessionEnded: true,
-    })
+  it('sends signed-out visitors to sign in, flagging how the session ended', () => {
+    expect(
+      decideAccess({ kind: 'signed-out', ended: false, byUser: false }, 'staff'),
+    ).toEqual({ kind: 'sign-in', sessionEnded: false, signedOutByUser: false })
+    expect(
+      decideAccess({ kind: 'signed-out', ended: true, byUser: false }, 'customer'),
+    ).toEqual({ kind: 'sign-in', sessionEnded: true, signedOutByUser: false })
+    expect(
+      decideAccess({ kind: 'signed-out', ended: false, byUser: true }, 'staff'),
+    ).toEqual({ kind: 'sign-in', sessionEnded: false, signedOutByUser: true })
   })
 
   it.each([

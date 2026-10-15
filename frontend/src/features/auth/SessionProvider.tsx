@@ -32,30 +32,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const userId = cachedSession?.user.id ?? null
 
   // A session set by sign-in or sign-out, used until the query cache catches
-  // up. The cache notifies subscribers a moment after `setQueryData`, but the
-  // navigation that follows sign-in or sign-out happens at once; without this
-  // the next screen would see the old session (for example, the staff
-  // sign-in screen would bounce a person who just signed out back to /staff).
-  // `undefined` means no override.
+  // up: the cache notifies subscribers a moment after `setQueryData`, and
+  // screens must react to the change in the same render (for example, the
+  // sign-in screen redirecting once signed in). `undefined` means no override.
   const [override, setOverride] = useState<Session | null | undefined>(undefined)
 
-  // Track the cache across renders to spot a session ending, and drop the
+  // Track the cache across renders to tell how a session ended, and drop the
   // override once the cache has the new value. Adjusting state during render
   // (not in an effect) follows React's "storing information from previous
   // renders" pattern.
+  //  - `ended`: there was a user, now there is none, and the person did not
+  //    choose it (X2 "Your session has ended").
+  //  - `byUser`: the person chose to sign out (X5 "You've signed out." toast);
+  //    kept until the toast is dismissed or someone signs in.
   const [tracked, setTracked] = useState({
     userId: null as string | null,
     updatedAt: 0,
     ended: false,
+    byUser: false,
   })
   if (query.data !== undefined && query.dataUpdatedAt !== tracked.updatedAt) {
-    // Ended: there was a user, now there is none, and the person did not
-    // choose to sign out (that sets an override of null first).
-    const ended = tracked.userId !== null && userId === null && override === undefined
+    const choseSignOut = override === null
+    const lostSession = tracked.userId !== null && userId === null && !choseSignOut
     setTracked({
       userId,
       updatedAt: query.dataUpdatedAt,
-      ended: userId === null && (ended || tracked.ended),
+      ended: userId === null && (lostSession || (tracked.ended && !choseSignOut)),
+      byUser: userId === null && (choseSignOut || tracked.byUser),
     })
     if (override !== undefined) setOverride(undefined)
   }
@@ -74,23 +77,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     apiClient.setCsrfToken(null)
     queryClient.setQueryData(SESSION_QUERY_KEY, null)
   }, [queryClient])
+  const dismissSignedOutNotice = useCallback(
+    () => setTracked((previous) => ({ ...previous, byUser: false })),
+    [],
+  )
   const { refetch } = query
   const retry = useCallback(() => void refetch(), [refetch])
 
   const loaded = query.data !== undefined
   const unavailable = !loaded && query.isError && !query.isFetching
   const role = session?.user.role ?? null
-  const chosen = override === null
+  const byUser = override === null || (override === undefined && tracked.byUser)
+  const ended = override === undefined && tracked.ended
   const status = useMemo<SessionStatus>(() => {
     // While a retry after "unavailable" runs, the splash shows again.
     if (!loaded) return unavailable ? { kind: 'unavailable' } : { kind: 'checking' }
-    if (role === null) return { kind: 'signed-out', ended: tracked.ended && !chosen }
+    if (role === null) return { kind: 'signed-out', ended, byUser }
     return { kind: 'signed-in', role }
-  }, [loaded, unavailable, role, tracked.ended, chosen])
+  }, [loaded, unavailable, role, ended, byUser])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ status, session, retry, signedIn, signedOut }),
-    [status, session, retry, signedIn, signedOut],
+    () => ({ status, session, retry, signedIn, signedOut, dismissSignedOutNotice }),
+    [status, session, retry, signedIn, signedOut, dismissSignedOutNotice],
   )
   return <SessionContext value={value}>{children}</SessionContext>
 }
