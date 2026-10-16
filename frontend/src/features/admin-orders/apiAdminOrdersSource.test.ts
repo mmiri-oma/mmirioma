@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { adminOrderListQuery, type AdminOrderListParams } from '../../lib/api/adminOrders'
 import { ApiError, createApiClient } from '../../lib/api/client'
-import {
-  createApiAdminOrdersSource,
-  resolveAdminOrdersSourceSetting,
-} from './apiAdminOrdersSource'
+import { createApiAdminOrdersSource } from './apiAdminOrdersSource'
 import { MOCK_ADMIN_ORDERS } from './mockAdminOrders'
 
 const BASE_URL = 'http://api.test'
@@ -99,22 +96,5 @@ describe('API admin orders source', () => {
       .catch((caught: unknown) => caught)
     expect(error).toBeInstanceOf(ApiError)
     expect((error as ApiError).code).toBe('order_not_found')
-  })
-})
-
-describe('resolveAdminOrdersSourceSetting', () => {
-  it('honours an explicit setting', () => {
-    expect(resolveAdminOrdersSourceSetting('api', false)).toBe('api')
-    expect(resolveAdminOrdersSourceSetting('mock', true)).toBe('mock')
-  })
-
-  it('defaults to the real API in production, so mock data never ships by accident', () => {
-    expect(resolveAdminOrdersSourceSetting(undefined, true)).toBe('api')
-    expect(resolveAdminOrdersSourceSetting('', true)).toBe('api')
-    expect(resolveAdminOrdersSourceSetting('something', true)).toBe('api')
-  })
-
-  it('defaults to mock data in development until the endpoints exist', () => {
-    expect(resolveAdminOrdersSourceSetting(undefined, false)).toBe('mock')
   })
 })

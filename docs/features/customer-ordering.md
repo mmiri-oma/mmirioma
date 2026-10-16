@@ -21,9 +21,11 @@ orders:
 - **O4 Order detail** (`/orders/:reference`): every field, the status in the
   customer's words, and contact guidance instead of cancel or edit.
 
-The orders endpoints are built in S1-03 part 2, so the screens currently run
-on **mock data**, with a "Sample data" notice on every screen. The S1-10
-integration switches the data source to the real API. Sign-in and session
+The screens read the **real API** (`POST /orders`, `GET /orders`,
+`GET /orders/{reference}`, built in S1-03 part 2) by default. With
+`VITE_ORDERS_SOURCE=mock` they read simulated orders instead, with a
+"Sample data" notice on every screen (BR-09). `main.tsx` provides the chosen
+source through `CustomerOrdersSourceContext` (S1-10). Sign-in and session
 screens come from the [authentication feature](authentication.md).
 
 ## 2. Feature workflow
@@ -55,7 +57,8 @@ My orders), because the form's history entry is replaced.
 | File | Responsibility |
 | --- | --- |
 | `frontend/src/lib/api/orders.ts` | `OrderRead`, `OrderCreate`, `createOrder`, `listOrders`, `getOrder` mirroring `docs/api/orders.md` |
-| `frontend/src/features/customer-orders/source.ts` | `CustomerOrdersSource` interface and context (the integration seam); `apiCustomerOrdersSource` for S1-10 |
+| `frontend/src/features/customer-orders/source.ts` | `CustomerOrdersSource` interface and context, `apiCustomerOrdersSource`, and the app's chosen `customerOrdersSource` |
+| `frontend/src/lib/ordersData.ts` | `VITE_ORDERS_SOURCE` resolution (`api` by default, `mock` in tests) |
 | `frontend/src/features/customer-orders/mockCustomerOrders.ts` | In-memory mock source: paging, 404, idempotent create, `?mock=` review scenarios |
 | `frontend/src/features/customer-orders/useCustomerOrders.ts` | TanStack Query hooks: infinite list (20 per page) and detail; keys include the account id |
 | `frontend/src/features/customer-orders/requestForm.ts` | Form values, Zod checks with the approved messages, preset quantities, `toOrderCreate`, 422 `loc` mapping, idempotency key |
@@ -186,11 +189,25 @@ add `?mock=empty`, `?mock=error`, `?mock=slow` or `?mock=offline` to the URL
 for the empty list, a list that cannot load, slow responses, or a request that
 cannot be sent.
 
+### Choosing the data
+
+| `VITE_ORDERS_SOURCE` | Data |
+| --- | --- |
+| `api` | The real backend |
+| `mock` | Simulated orders (sample-data notice shown), for design review without a backend |
+| unset | `api` (in the test suite: `mock`, so tests never call a server) |
+
+The setting is resolved once in `frontend/src/lib/ordersData.ts` and applies to
+both the customer and the staff order screens.
+
+Checked end to end against the real endpoints in S1-10 (#11): a customer signs
+in, sends a request, sees Request received and the new order at the top of My
+orders on its first render; staff then see it in the directory and detail.
+
 ## 10. Known limitations
 
-- **Mock data only.** Requests made here are kept in memory and vanish on
-  reload. S1-10 switches `CustomerOrdersSourceContext` to
-  `apiCustomerOrdersSource` once S1-03 part 2 provides the endpoints.
+- **Mock mode** (`VITE_ORDERS_SOURCE=mock`) keeps requests in memory; they
+  vanish on reload. The default reads the real API.
 - **The draft is lost on page reload**, including "Reload" after a security
   check failure (accepted in Decision 10).
 - **The draft outlives leaving the form.** It is cleared only when the request

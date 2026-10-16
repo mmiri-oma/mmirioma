@@ -158,7 +158,10 @@ function RequestForm({ draft }: { draft: RequestDraft }) {
         // An earlier send from this form was stored: the request exists.
         // Never send it again with a new key (Decision 9).
         store.clear()
-        void queryClient.invalidateQueries({ queryKey: customerOrdersKey(draft.ownerId) })
+        void queryClient.invalidateQueries({
+          queryKey: customerOrdersKey(draft.ownerId),
+          refetchType: 'all',
+        })
         const state: MyOrdersLocationState = { alreadyReceived: true }
         navigate('/', { state })
         return
@@ -204,7 +207,14 @@ function RequestForm({ draft }: { draft: RequestDraft }) {
     try {
       const order = await mutation.mutateAsync(toOrderCreate(values, draft.idempotencyKey))
       store.clear()
-      void queryClient.invalidateQueries({ queryKey: customerOrdersKey(draft.ownerId) })
+      // Refetch My orders now, while the customer reads Request received, so
+      // the list already includes this request when they open it. Plain
+      // invalidation only refetches on the next visit, which first shows the
+      // old list (found in the S1-10 end-to-end check).
+      void queryClient.invalidateQueries({
+        queryKey: customerOrdersKey(draft.ownerId),
+        refetchType: 'all',
+      })
       // Replace the form in history, so Back returns to My orders and never
       // to a filled form that could be sent again (O3 note 4).
       const state: RequestReceivedLocationState = { order }
