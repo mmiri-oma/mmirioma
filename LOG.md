@@ -42,6 +42,24 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 - **Status:** workaround
 - **Refs:** S1-11 (#12), `backend/tests/test_demo_seed_integration.py`
 
+### 2026-10-16: Orders created by demo accounts are not marked Simulated
+
+- **Area:** backend (demo data)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** In the S1-11 demo rehearsal, the request sent through the app
+  by Demo Customer One appeared in the staff list without the Simulated tag;
+  the four seeded orders had it.
+- **Cause:** `is_simulated` is set only by the seed command
+  (`create_order(..., is_simulated=True)`); `POST /orders` always creates a
+  real order, whoever the customer is. A demo order would count in real
+  figures (BR-09).
+- **Fix / workaround:** `POST /orders` now stores an order as simulated when a
+  demo account (reserved phone block and "Demo" name,
+  `app/shared/demo_accounts.py`) places it. Checked in the rehearsal: the live
+  order shows the Simulated tag.
+- **Status:** resolved (PR #43)
+- **Refs:** S1-11 (#12), S1-18 (#22), `backend/app/modules/demo/seed.py`
+
 ### 2026-10-15: ruff S608 flagged SQL built with an f-string in a test
 
 - **Area:** backend (tests)

@@ -277,7 +277,8 @@ S1-12 pilot planning: independent, runs all sprint
 - **Dependencies:** S1-10.
 - **Acceptance criteria:** all checks pass in CI; demo script succeeds;
   simulated data labelled; known gaps listed.
-- **Deliverables:** demo script, known-gaps list.
+- **Deliverables:** demo script, known-gaps list:
+  [sprint-1-demo.md](sprint-1-demo.md) (rehearsed 2026-10-16).
 
 ### S1-12 Plan live water delivery pilot dependencies (#13)
 
