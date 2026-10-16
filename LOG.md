@@ -37,6 +37,22 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
   with `%(name)s` parameters. Do not silence S608 with `noqa`.
 - **Status:** resolved
 - **Refs:** `backend/tests/test_demo_seed_integration.py`
+### 2026-10-16: My orders briefly showed the old list after sending a request
+
+- **Area:** frontend
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** In the S1-10 end-to-end run, "View my orders" right after
+  sending a request first rendered the cached list without the new order,
+  then refetched. On slow mobile data the customer would see their list
+  without the request they had just sent.
+- **Cause:** `invalidateQueries` only marks inactive queries stale; they
+  refetch when next mounted, and the stale data shows first.
+- **Fix / workaround:** After a create (and after a 409 "already received"),
+  invalidate with `refetchType: 'all'` so the list refetches immediately,
+  while the customer is on Request received. Use this for any cache the next
+  screen shows right after a mutation.
+- **Status:** resolved
+- **Refs:** S1-10 (#11), `RequestWaterPage.tsx`
 
 ### 2026-10-15: Main JS chunk passed Vite's 500 kB warning with the customer screens
 

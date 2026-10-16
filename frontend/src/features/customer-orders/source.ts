@@ -8,6 +8,7 @@ import {
   type OrderRead,
   type Page,
 } from '../../lib/api/orders'
+import { ORDERS_DATA } from '../../lib/ordersData'
 import { mockCustomerOrdersSource } from './mockCustomerOrders'
 
 /**
@@ -39,7 +40,7 @@ export interface CustomerOrdersSource {
   getOrder(reference: string, signal?: AbortSignal): Promise<OrderRead>
 }
 
-/** Source calling the real API through `apiClient`. Used from S1-10. */
+/** Source calling the real API through `apiClient`. */
 export const apiCustomerOrdersSource: CustomerOrdersSource = {
   isMock: false,
   createOrder: (input) => createOrder(input),
@@ -48,9 +49,18 @@ export const apiCustomerOrdersSource: CustomerOrdersSource = {
 }
 
 /**
- * Provide a different source with `<CustomerOrdersSourceContext value={...}>`
- * (tests, or the real API). The default is the mock until the orders
- * endpoints exist (S1-03 part 2).
+ * The customer order source the app uses, chosen once at start-up from
+ * `VITE_ORDERS_SOURCE` (see `lib/ordersData.ts`): the real API unless mock
+ * data is asked for, or in tests. `App.tsx` provides it to the customer
+ * routes (S1-10).
+ */
+export const customerOrdersSource: CustomerOrdersSource =
+  ORDERS_DATA === 'api' ? apiCustomerOrdersSource : mockCustomerOrdersSource
+
+/**
+ * Provide a source with `<CustomerOrdersSourceContext value={...}>` (the app
+ * passes {@link customerOrdersSource}; tests pass their own). Without a
+ * provider, the mock is used.
  */
 export const CustomerOrdersSourceContext =
   createContext<CustomerOrdersSource>(mockCustomerOrdersSource)
