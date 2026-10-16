@@ -139,7 +139,11 @@ def _replay(existing: Order, request: NewOrder) -> tuple[Order, bool]:
 
 
 async def create_order(
-    session: AsyncSession, *, customer_id: uuid.UUID, request: NewOrder
+    session: AsyncSession,
+    *,
+    customer_id: uuid.UUID,
+    request: NewOrder,
+    is_simulated: bool = False,
 ) -> tuple[Order, bool]:
     """Create a customer's order request, or return the one already created.
 
@@ -156,6 +160,9 @@ async def create_order(
         session: Database session; committed or rolled back here.
         customer_id: The signed-in customer placing the order.
         request: Validated order details.
+        is_simulated: Flag the order as demo data (BR-09). Only server-side
+            tools (the demo seed) pass True; the API never does, so a customer
+            always creates a real order.
 
     Returns:
         ``(order, created)``: ``created`` is False when an earlier submission
@@ -185,6 +192,7 @@ async def create_order(
             landmark=request.landmark,
             delivery_instructions=request.delivery_instructions,
             preferred_delivery_date=request.preferred_delivery_date,
+            is_simulated=is_simulated,
         )
         event = OrderEvent(
             order_id=order.id,
