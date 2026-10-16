@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminShell } from './components/layout/AdminShell'
 import { AdminOrderDetailPage } from './features/admin-orders/AdminOrderDetailPage'
+import { adminOrdersSource } from './features/admin-orders/apiAdminOrdersSource'
+import { AdminOrdersSourceContext } from './features/admin-orders/source'
 import { AdminOrdersPage } from './features/admin-orders/AdminOrdersPage'
 import { AppGate } from './features/auth/components/AppGate'
 import { CreateAccountPage } from './features/auth/pages/CreateAccountPage'
@@ -63,7 +65,13 @@ export function AppRoutes() {
         <Route
           path="/admin"
           element={
-            <AppGate app="staff">{(session) => <AdminShell user={session.user} />}</AppGate>
+            <AppGate app="staff">
+              {(session) => (
+                <AdminOrdersSourceContext value={adminOrdersSource}>
+                  <AdminShell user={session.user} />
+                </AdminOrdersSourceContext>
+              )}
+            </AppGate>
           }
         >
           <Route index element={<Navigate to="orders" replace />} />

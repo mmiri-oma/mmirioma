@@ -1,7 +1,8 @@
-"""Order persistence against a real, migrated database (FR-001, FR-026, FR-027).
+"""Orders against a real, migrated database (FR-001, FR-026, FR-027, FR-030).
 
 Covers acceptance tests T-06 (duplicate checkout) and T-07 (cross-customer
-access) at the service level; the HTTP endpoints come with S1-03 part 2.
+access) at the service level and through the HTTP endpoints, plus the admin
+filters (Lagos date bounds, ``is_simulated``).
 
 Runs only when TEST_DATABASE_URL is set (``alembic upgrade head`` first).
 Every user and order is created here and deleted afterwards.
@@ -16,16 +17,20 @@ from http import HTTPStatus
 
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.main import create_app
+from app.modules.auth import service as auth_service
+from app.modules.auth.dependencies import CSRF_HEADER_NAME
 from app.modules.auth.models import User, UserRole
 from app.modules.orders import service
 from app.modules.orders.models import Order, OrderEvent, OrderStatus
-from app.modules.orders.service import NewOrder
+from app.modules.orders.service import IDEMPOTENCY_KEY_REUSED_MESSAGE, NewOrder
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
@@ -319,3 +324,155 @@ def test_list_returns_only_own_orders_newest_first(
         assert [order.reference for order in page + rest] == references[::-1]
 
     run(scenario)
+
+
+# --- HTTP endpoints ---------------------------------------------------------------
+
+PASSWORD = "correct horse battery"
+
+
+@pytest.fixture
+def http(created_user_ids: list[uuid.UUID]) -> Iterator[TestClient]:
+    # created_user_ids points the settings at TEST_DATABASE_URL first.
+    with TestClient(create_app()) as test_client:
+        yield test_client
+
+
+def add_account(user_ids: list[uuid.UUID], role: UserRole) -> str:
+    """Create an account with a real password hash; return its phone."""
+    phone = "+234809" + "".join(secrets.choice("0123456789") for _ in range(7))
+
+    async def scenario(sessions: async_sessionmaker[AsyncSession]) -> None:
+        async with sessions() as session:
+            user = await auth_service.create_user(
+                session, name=f"Sample {role.value}", phone=phone, password=PASSWORD, role=role
+            )
+        user_ids.append(user.id)
+
+    run(scenario)
+    return phone
+
+
+def sign_in(client: TestClient, phone: str) -> dict[str, str]:
+    """Sign in as ``phone`` (replacing any session); return the CSRF header."""
+    client.cookies.clear()
+    response = client.post("/api/v1/auth/login", json={"phone": phone, "password": PASSWORD})
+    assert response.status_code == 200, response.text
+    return {CSRF_HEADER_NAME: response.json()["csrf_token"]}
+
+
+def order_body(**changes: object) -> dict[str, object]:
+    body: dict[str, object] = {
+        "idempotency_key": str(uuid.uuid4()),
+        "quantity_litres": 200,
+        "contact_name": "Sample Customer",
+        "contact_phone": "08000000001",
+        "delivery_address": "12 Sample Close, Independence Layout, Enugu",
+    }
+    body.update(changes)
+    return body
+
+
+def set_created_at(reference: str, created_at: str, *, is_simulated: bool = False) -> None:
+    """Back-date an order (and optionally flag it simulated) directly in the database."""
+    url = get_settings().sync_database_url.set(drivername="postgresql")
+    with psycopg.connect(url.render_as_string(hide_password=False)) as connection:
+        connection.execute(
+            "UPDATE orders SET created_at = %s, is_simulated = %s WHERE reference = %s",
+            (created_at, is_simulated, reference),
+        )
+
+
+def test_t06_http_duplicate_checkout_creates_one_order(
+    http: TestClient, created_user_ids: list[uuid.UUID]
+) -> None:
+    headers = sign_in(http, add_account(created_user_ids, UserRole.CUSTOMER))
+    body = order_body()
+
+    first = http.post("/api/v1/orders", json=body, headers=headers)
+    retry = http.post("/api/v1/orders", json=body, headers=headers)
+    changed = http.post("/api/v1/orders", json={**body, "quantity_litres": 500}, headers=headers)
+
+    assert first.status_code == 201, first.text
+    assert first.json()["status"] == "quote_requested"
+    assert first.json()["contact_phone"] == "+2348000000001"
+    assert retry.status_code == 200
+    assert retry.json() == first.json()
+    assert changed.status_code == 409
+    assert changed.json()["error"]["code"] == "idempotency_key_reused"
+    assert changed.json()["error"]["message"] == IDEMPOTENCY_KEY_REUSED_MESSAGE
+    page = http.get("/api/v1/orders").json()
+    assert page["total"] == 1
+    assert page["items"] == [first.json()]
+
+
+def test_t07_http_customer_cannot_read_another_customers_order(
+    http: TestClient, created_user_ids: list[uuid.UUID]
+) -> None:
+    owner_headers = sign_in(http, add_account(created_user_ids, UserRole.CUSTOMER))
+    created = http.post("/api/v1/orders", json=order_body(), headers=owner_headers)
+    reference = created.json()["reference"]
+    assert http.get(f"/api/v1/orders/{reference}").status_code == 200
+
+    sign_in(http, add_account(created_user_ids, UserRole.CUSTOMER))
+    others = http.get(f"/api/v1/orders/{reference}")
+    missing = http.get("/api/v1/orders/MO-0000000000")
+
+    assert others.status_code == missing.status_code == 404
+    assert others.json() == missing.json()
+    assert others.json()["error"]["code"] == "order_not_found"
+    assert http.get("/api/v1/orders").json()["total"] == 0
+
+    sign_in(http, add_account(created_user_ids, UserRole.DRIVER))
+    driver = http.get(f"/api/v1/admin/orders/{reference}")
+    assert driver.status_code == 403
+    assert driver.json()["error"]["code"] == "forbidden"
+
+
+def test_admin_sees_any_order_with_its_customer(
+    http: TestClient, created_user_ids: list[uuid.UUID]
+) -> None:
+    customer_phone = add_account(created_user_ids, UserRole.CUSTOMER)
+    headers = sign_in(http, customer_phone)
+    order = http.post("/api/v1/orders", json=order_body(), headers=headers).json()
+
+    sign_in(http, add_account(created_user_ids, UserRole.ADMIN))
+    response = http.get(f"/api/v1/admin/orders/{order['reference']}")
+
+    assert response.status_code == 200
+    detail = response.json()
+    assert {key: detail[key] for key in order} == order
+    assert detail["is_simulated"] is False
+    assert detail["customer"]["phone"] == customer_phone
+    assert detail["customer"]["phone_verified"] is False
+
+
+def test_admin_filters_by_status_lagos_dates_and_simulated_flag(
+    http: TestClient, created_user_ids: list[uuid.UUID]
+) -> None:
+    headers = sign_in(http, add_account(created_user_ids, UserRole.CUSTOMER))
+    refs = [
+        http.post("/api/v1/orders", json=order_body(), headers=headers).json()["reference"]
+        for _ in range(3)
+    ]
+    # Dates no other data uses. Lagos is UTC+1, so 23:00 UTC on 1 January is
+    # already 2 January in Lagos.
+    set_created_at(refs[0], "2001-01-01T22:59:59+00:00")  # Lagos 1 Jan 23:59:59
+    set_created_at(refs[1], "2001-01-01T23:00:00+00:00")  # Lagos 2 Jan 00:00
+    set_created_at(refs[2], "2001-01-02T22:59:59+00:00", is_simulated=True)  # 2 Jan 23:59:59
+
+    sign_in(http, add_account(created_user_ids, UserRole.ADMIN))
+
+    def found(query: str) -> list[str]:
+        response = http.get(f"/api/v1/admin/orders?{query}")
+        assert response.status_code == 200, response.text
+        return [item["reference"] for item in response.json()["items"]]
+
+    jan_2 = "created_from=2001-01-02&created_to=2001-01-02"
+    assert found(jan_2) == [refs[2], refs[1]]
+    assert found(f"{jan_2}&is_simulated=true") == [refs[2]]
+    assert found(f"{jan_2}&is_simulated=false") == [refs[1]]
+    assert found("created_from=2001-01-01&created_to=2001-01-01") == [refs[0]]
+    assert found(f"{jan_2}&status=quote_requested&status=confirmed") == [refs[2], refs[1]]
+    assert found(f"{jan_2}&status=confirmed") == []
+    assert found(f"{jan_2}&limit=1&offset=1") == [refs[1]]

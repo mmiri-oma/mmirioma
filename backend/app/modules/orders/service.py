@@ -12,7 +12,8 @@ Rules implemented here (docs/api/orders.md):
   ``(customer_id, idempotency_key)`` makes this hold under concurrent retries.
 - **Ownership (FR-001, T-07):** customers read only their own orders. Another
   customer's reference raises the same 404 ``order_not_found`` as a reference
-  that does not exist, so references cannot be probed.
+  that does not exist, so references cannot be probed. Staff (admins) read
+  every order, with the ordering customer's account.
 
 Callers pass already validated and normalized values (trimmed strings, E.164
 phone). Validation belongs to the request schemas.
@@ -20,16 +21,20 @@ phone). Validation belongs to the request schemas.
 
 import secrets
 import uuid
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from http import HTTPStatus
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import APIError
+from app.modules.auth import service as auth_service
+from app.modules.auth.models import User
 from app.modules.orders.models import Order, OrderEvent, OrderStatus
+from app.shared.lagos_time import lagos_day_start_utc
 
 # Crockford base32: digits and upper-case letters without I, L, O and U, so a
 # reference read aloud or copied by hand is hard to get wrong.
@@ -110,6 +115,14 @@ async def _find_by_idempotency_key(
     )
 
 
+# Shown when an earlier send from the same request form was stored
+# (docs/design/customer-ordering.md, Decision 9): the client keeps one key per
+# form, so a 409 means the request already exists, not that it failed.
+IDEMPOTENCY_KEY_REUSED_MESSAGE = (
+    "This request was already received. Check your orders before sending it again."
+)
+
+
 def _replay(existing: Order, request: NewOrder) -> tuple[Order, bool]:
     """Resolve a repeated idempotency key (FR-026).
 
@@ -120,8 +133,7 @@ def _replay(existing: Order, request: NewOrder) -> tuple[Order, bool]:
         raise APIError(
             HTTPStatus.CONFLICT,
             "idempotency_key_reused",
-            "This checkout was already submitted with different details. "
-            "Start a new order instead.",
+            IDEMPOTENCY_KEY_REUSED_MESSAGE,
         )
     return existing, False
 
@@ -251,3 +263,98 @@ async def list_customer_orders(
         .offset(offset)
     )
     return list(orders), total or 0
+
+
+@dataclass(frozen=True)
+class StaffOrder:
+    """An order together with the account that placed it, for staff views.
+
+    Attributes:
+        order: The order.
+        customer: The ordering customer's account.
+    """
+
+    order: Order
+    customer: User
+
+
+async def _with_customers(session: AsyncSession, orders: Sequence[Order]) -> list[StaffOrder]:
+    # Accounts come from the auth module's service rather than a join on its
+    # table, keeping modules independent (CLAUDE.md, "Architecture").
+    customers = await auth_service.get_users_by_ids(
+        session, {order.customer_id for order in orders}
+    )
+    # customer_id is a RESTRICT foreign key, so every customer exists.
+    return [StaffOrder(order=order, customer=customers[order.customer_id]) for order in orders]
+
+
+async def get_order_for_staff(session: AsyncSession, *, reference: str) -> StaffOrder:
+    """Return any order by reference, with its customer (admin view).
+
+    Staff may read every order; the caller enforces the admin role (FR-001).
+
+    Args:
+        session: Database session.
+        reference: Public order reference.
+
+    Returns:
+        The order and its customer.
+
+    Raises:
+        APIError: 404 ``order_not_found`` if no order has this reference.
+    """
+    order = await session.scalar(select(Order).where(Order.reference == reference))
+    if order is None:
+        raise _order_not_found()
+    return (await _with_customers(session, [order]))[0]
+
+
+async def list_orders_for_staff(
+    session: AsyncSession,
+    *,
+    statuses: Collection[OrderStatus],
+    created_from: date | None,
+    created_to: date | None,
+    is_simulated: bool | None,
+    limit: int,
+    offset: int,
+) -> tuple[list[StaffOrder], int]:
+    """Return a filtered page of all orders, newest first (dispatcher queue, FR-030).
+
+    Date filters are inclusive calendar dates in Africa/Lagos (docs/api/README.md):
+    ``created_to`` includes the whole of that Lagos day, so the upper bound is
+    the start of the next Lagos day, exclusive.
+
+    Args:
+        session: Database session.
+        statuses: Statuses to include; empty for all.
+        created_from: First Lagos creation date to include, or None.
+        created_to: Last Lagos creation date to include, or None.
+        is_simulated: True for demo records only, False for real orders only,
+            None for both (BR-09).
+        limit: Page size (the caller enforces 1-100).
+        offset: Number of orders to skip.
+
+    Returns:
+        ``(orders, total)``: the page with customers, and the count of all
+        orders matching the filters.
+    """
+    conditions: list[ColumnElement[bool]] = []
+    if statuses:
+        conditions.append(Order.status.in_(set(statuses)))
+    if created_from is not None:
+        conditions.append(Order.created_at >= lagos_day_start_utc(created_from))
+    if created_to is not None:
+        conditions.append(Order.created_at < lagos_day_start_utc(created_to + timedelta(days=1)))
+    if is_simulated is not None:
+        conditions.append(Order.is_simulated.is_(is_simulated))
+
+    total = await session.scalar(select(func.count()).select_from(Order).where(*conditions))
+    orders = await session.scalars(
+        select(Order)
+        .where(*conditions)
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return await _with_customers(session, list(orders)), total or 0
