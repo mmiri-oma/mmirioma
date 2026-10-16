@@ -132,9 +132,6 @@ npm test
 
 ## 10. Known limitations
 
-- Not yet run against the real endpoints: they arrive with S1-03 part 2 (#4).
-  The API source is tested with mocked responses; the end-to-end check is
-  S1-10.
 - The status filter is a row of toggles, not the design system's multi-select
   panel with chips (admin design fix 6, optional for Sprint 1).
 - At the narrowest tablet widths (about 768-850 px) the table is tight:
