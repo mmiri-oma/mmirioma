@@ -82,12 +82,12 @@ navigations as transitions, which would lose to the guards' own redirects.
 | `backend/alembic/versions/20261014_0002_add_users_and_user_sessions.py` | Migration `0002` |
 | `frontend/src/lib/api/client.ts` | `setCsrfToken`, sends `X-CSRF-Token` on non-GET requests |
 | `frontend/src/lib/api/auth.ts` | Typed `register`, `login`, `getMe`, `logout` |
-| `frontend/src/main.tsx`, `frontend/src/App.tsx` | Providers and routes (`/`, `/sign-in`, `/create-account`, `/admin/sign-in`, `/admin/*` behind the staff guard) |
+| `frontend/src/main.tsx`, `frontend/src/App.tsx` | Providers and routes (`/sign-in`, `/create-account`, `/admin/sign-in`, the customer ordering routes behind the customer guard, `/admin/*` behind the staff guard) |
 | `frontend/src/lib/queryClient.ts` | TanStack Query client; re-checks the session after any 401 |
 | `frontend/src/features/auth/SessionProvider.tsx`, `sessionContext.ts`, `sessionQuery.ts` | Session query, status (checking, unavailable, signed out/ended, signed in) |
 | `frontend/src/features/auth/access.ts` | `decideAccess` route-guard decision, app roles and paths, X4 messages |
 | `frontend/src/features/auth/components/AppGate.tsx` | Route guard component |
-| `frontend/src/features/auth/pages/` | C1 welcome, C2 create account, C3/S1 sign in, customer and staff homes |
+| `frontend/src/features/auth/pages/` | C1 welcome, C2 create account, C3/S1 sign in, and the customer account notices (C2 one-time notice, X6) shown on My orders. The customer home itself is My orders ([customer-ordering.md](customer-ordering.md)) |
 | `frontend/src/features/auth/components/` | Auth layout, banners with rate-limit wait, splash, X4 screen, customer header, account panel and sign-out controls (`AccountControls.tsx`) |
 | `frontend/src/components/layout/AdminShell.tsx` | Admin layout (S1-09); shows the staff name and Sign out (X5) |
 | `frontend/src/features/auth/useSignOut.ts` | Sign-out and its failure states |
@@ -236,7 +236,7 @@ Frontend (exact texts in [the design](../design/authentication.md)):
 | Any failed attempt | The phone number (and name) are kept, the password is cleared (NFR-012) |
 | Submitting | Fields read-only, button spinner, extra taps ignored (NFR-022) |
 | Session check cannot reach the server | Splash with the no-connection alert and Retry; the app does not claim the person is signed out |
-| Session ends while the app is open (expiry, deactivation, any 401) | The app's sign-in screen with "Your session has ended. Please sign in again." Staff return to the page they were on, with its query string |
+| Session ends while the app is open (expiry, deactivation, any 401) | The app's sign-in screen with "Your session has ended. Please sign in again." After signing in, people return to the page they were on, with its query string. If a customer had an unsent water request, the banner adds "Your request has not been sent. What you typed is kept." and the form reopens filled in |
 | Sign-out: 403 `csrf_failed` | X3 banner with "Reload" in the account panel or staff top bar (Decision 7) |
 | Sign-out: 401 | Treated as signed out (the session was already gone) |
 | Sign-out: no connection | Error toast "Couldn't sign out…" with "Try again"; the person stays signed in |
@@ -329,9 +329,10 @@ curl -b /tmp/jar http://localhost:8000/api/v1/auth/me
 - **Frontend: "session ended" is only detected while the app is open.** A
   person who reopens the app after the session expired sees the normal
   sign-in screen: nothing is kept in storage that could tell the cases apart.
-- **Frontend: the X2 customer line "Your request has not been sent. What you
-  typed is kept."** is not shown yet: there is no request form until S1-05,
-  and where to keep a draft is an open question.
+- **Frontend: the typed water request is kept in memory only** (customer
+  design Decision 10). The X2 line "Your request has not been sent. What you
+  typed is kept." holds while the app stays open; a page reload (including
+  "Reload" on the X3 banner) loses the draft.
 - **Frontend: support contacts** come from `VITE_SUPPORT_PHONE` and
   `VITE_SUPPORT_WHATSAPP`. Until the real numbers are decided they are unset,
   and the Call/WhatsApp buttons and the "Contact us" link are hidden ("Contact

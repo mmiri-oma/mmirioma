@@ -37,6 +37,112 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
   with `%(name)s` parameters. Do not silence S608 with `noqa`.
 - **Status:** resolved
 - **Refs:** `backend/tests/test_demo_seed_integration.py`
+
+### 2026-10-15: Main JS chunk passed Vite's 500 kB warning with the customer screens
+
+- **Area:** frontend
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** `npm run build` succeeds but warns "(!) Some chunks are larger
+  than 500 kB after minification". `dist/assets/index-*.js` is 522 kB (161 kB
+  gzipped); it was 486 kB before S1-05.
+- **Cause:** The whole app (customer, staff, auth) is one bundle; the
+  customer ordering screens added about 36 kB.
+- **Fix / workaround:** None yet. Route-level code splitting (`React.lazy`
+  per app area) would fix it, but it is an architectural change outside
+  S1-05; propose it separately.
+- **Status:** open
+- **Refs:** S1-05, `frontend/src/App.tsx`
+
+### 2026-10-15: Cancelling a radio click did not keep the old choice (React + jsdom)
+
+- **Area:** frontend
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** The "locks the form while sending" test failed (`expected
+  false to be true`): clicking another quantity tile while the request was
+  sending changed the choice, although the tile's `onClick` called
+  `preventDefault()`.
+- **Cause:** React detects a radio change during the click event, before the
+  cancelled click restores the old selection; in jsdom the old radio stayed
+  unchecked. Ignoring `onChange` as well did not help.
+- **Fix / workaround:** Use native `disabled` on the radios while sending.
+  React Hook Form keeps the value of a field disabled through the DOM (only
+  its own `disabled` register option drops it); the retry tests confirm the
+  values are still sent.
+- **Status:** resolved
+- **Refs:** S1-05, `frontend/src/features/customer-orders/components/QuantityTiles.tsx`
+
+### 2026-10-15: ESLint `react-hooks/refs` rejected `handleSubmit(fn)` in render
+
+- **Area:** frontend
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** `Error: Cannot access refs during render … Passing a ref to a
+  function may read its value during render  react-hooks/refs` on
+  `const send = handleSubmit(async (values) => { if (sendingRef.current) … })`.
+- **Cause:** `handleSubmit(...)` runs during render, and the rule cannot tell
+  that the callback only reads the ref later, on submit.
+- **Fix / workaround:** Build the handler at submit time:
+  `const send = (event?: FormEvent) => handleSubmit(sendValues, showInvalid)(event)`.
+- **Status:** resolved
+- **Refs:** S1-05, `frontend/src/features/customer-orders/pages/RequestWaterPage.tsx`
+
+### 2026-10-15: `tsc` rejected a `Uint8Array` parameter for `crypto.getRandomValues`
+
+- **Area:** frontend (tests)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** `error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is
+  not assignable to parameter of type 'ArrayBufferView<ArrayBuffer>'` in a
+  test stub of `crypto`. Vitest still passed; only `npm run typecheck` failed.
+- **Cause:** TypeScript 6 makes typed arrays generic over their buffer; a bare
+  `Uint8Array` annotation may be backed by a `SharedArrayBuffer`, which
+  `getRandomValues` does not accept.
+- **Fix / workaround:** Annotate as `Uint8Array<ArrayBuffer>`.
+- **Status:** resolved
+- **Refs:** S1-05, `frontend/src/features/customer-orders/requestForm.test.ts`
+
+### 2026-10-15: `npm ci` failed with EPERM while the dev server was running
+
+- **Area:** tooling (frontend)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** `npm run typecheck` reported `Cannot find module
+  '@testing-library/react'` (packages in the lockfile but missing from
+  `node_modules`). `npm ci` then failed: `EPERM: operation not permitted,
+  unlink '…\node_modules\@rolldown\binding-win32-x64-msvc\rolldown-binding.win32-x64-msvc.node'`,
+  leaving `node_modules` half deleted.
+- **Cause:** On Windows a running `npm run dev` (Vite) keeps the rolldown
+  native binary open, so npm cannot delete it.
+- **Fix / workaround:** Stop the dev server (and any other Vite/Vitest
+  process) before `npm ci` or `npm install`, then run it again.
+- **Status:** resolved
+- **Refs:** S1-05
+
+### 2026-10-15: `python` is not available in Git Bash on this Windows machine
+
+- **Area:** tooling
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** A script run with `python - <<'EOF'` failed: `bash: python:
+  command not found`.
+- **Cause:** Python is not on the Git Bash `PATH` here (the backend
+  virtualenv was not active).
+- **Fix / workaround:** Edit files with the editor tools or `sed`, or
+  activate `backend/.venv` first when Python is really needed.
+- **Status:** workaround
+- **Refs:** S1-05
+
+### 2026-10-15: `gh` not signed in, so the issue could not be read from GitHub
+
+- **Area:** tooling (GitHub)
+- **Author:** Cloudcrackamara + Claude Code
+- **Symptom:** `gh issue view 6` failed: "To get started with GitHub CLI,
+  please run:  gh auth login". The new `gh` install was also not yet on
+  `PATH` in the open terminal.
+- **Cause:** GitHub CLI was installed in the same session and never
+  authenticated; `PATH` changes apply only to new terminals.
+- **Fix / workaround:** Run `gh auth login` once, and open a new terminal.
+  The issue scope was taken from `docs/process/sprint-1-plan.md` (S1-05) in
+  the meantime.
+- **Status:** workaround
+- **Refs:** issue #6
+
 ### 2026-10-15: `git switch main` failed on a stale local `main`
 
 - **Area:** tooling (git)
