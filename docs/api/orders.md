@@ -192,8 +192,9 @@ It has no price, status, customer or simulated fields. The server sets them.
 - **Reference (FR-027):** `MO-` followed by 10 random characters from Crockford
   base32 (about 50 bits). Not derived from the ID or creation time.
 - **Simulated records (BR-09):** `is_simulated` appears only in admin
-  responses. Customers never see it; a customer who places an order always
-  gets a real one (the flag is set only by seed scripts).
+  responses; customers never see it. The server sets it, never the client:
+  the demo seed's orders are simulated, and so is any order placed through
+  `POST /orders` by a demo account (reserved phone block `+23480000900NN` **and** a name starting with "Demo ", `app/shared/demo_accounts.py`). Every other customer's order is real.
 
 Examples: [examples/order.json](examples/order.json),
 [examples/order-create-request.json](examples/order-create-request.json),

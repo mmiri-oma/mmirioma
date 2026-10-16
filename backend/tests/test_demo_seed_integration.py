@@ -20,11 +20,11 @@ from app.modules.auth import service as auth_service
 from app.modules.auth.models import User, UserRole
 from app.modules.demo.seed import (
     DEMO_ACCOUNTS,
-    DEMO_PHONE_PREFIX,
     DemoSeedError,
     seed_demo_data,
 )
 from app.modules.orders.models import Order, OrderStatus
+from app.shared.demo_accounts import DEMO_PHONE_PREFIX
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 

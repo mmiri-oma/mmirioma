@@ -12,9 +12,9 @@ from app.modules.demo.seed import (
     DEMO_ACCOUNTS,
     DemoSeedError,
     is_demo_account,
-    is_demo_phone,
     seed_demo_data,
 )
+from app.shared.demo_accounts import is_demo_phone
 from app.shared.lagos_time import lagos_today
 from app.shared.phone import normalize_nigerian_phone
 
