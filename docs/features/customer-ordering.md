@@ -219,8 +219,9 @@ orders on its first render; staff then see it in the directory and detail.
   question (auth open question 1).
 - **Design-ahead screens** (Q1 price quote, Q2 delivery window, Q3 progress
   timeline) are not built; they need contract work first.
-- **Not checked in a real browser.** The screens were verified with jsdom
-  tests only; a visual pass at 360, 768 and 1280 px is still needed.
+- **Browser checks so far:** the full flow ran in headless Chromium at
+  1280 px against the real API (S1-10, #11). A visual pass at 360 and 768 px
+  is still needed.
 - **Bundle size.** The production build's main chunk is now about 522 kB
   (160 kB gzipped), over Vite's 500 kB warning. Route-level code splitting is
   a separate change (see `LOG.md`).
