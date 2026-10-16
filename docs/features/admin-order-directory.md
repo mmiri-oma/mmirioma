@@ -8,10 +8,8 @@ Contract: [orders.md](../api/orders.md) (agreed) · Acceptance tests: none autom
 
 The dispatcher's order queue. Staff see every order newest first, filter by
 status and creation date, open an order by its reference, and read its details.
-It is read-only. It reads either **mock data** or the **real API**, chosen by
-`VITE_ADMIN_ORDERS_SOURCE` (see section 5): development uses mock data until
-the S1-03 part 2 endpoints exist; production builds always default to the
-API. It sits behind
+It is read-only. It reads the **real API** by default, or **mock data** when
+`VITE_ORDERS_SOURCE=mock` (see section 5). It sits behind
 the staff route guard (`AppGate app="staff"`, see
 [authentication.md](authentication.md)).
 
@@ -36,7 +34,8 @@ the staff route guard (`AppGate app="staff"`, see
 | --- | --- |
 | `frontend/src/lib/api/adminOrders.ts` | Types mirroring `docs/api/orders.md` (`AdminOrderRead`, `Page`, list params), `listAdminOrders`, `getAdminOrder` and the list query builder |
 | `frontend/src/features/admin-orders/source.ts` | `AdminOrdersSource` interface and React context (the integration seam) |
-| `frontend/src/features/admin-orders/apiAdminOrdersSource.ts` | Source backed by the real API; `VITE_ADMIN_ORDERS_SOURCE` resolution; the app's chosen source |
+| `frontend/src/features/admin-orders/apiAdminOrdersSource.ts` | Source backed by the real API and the app's chosen admin source |
+| `frontend/src/lib/ordersData.ts` | `VITE_ORDERS_SOURCE` resolution, shared with the customer screens |
 | `frontend/src/features/admin-orders/mockAdminOrders.ts` | Simulated fixtures and the mock source that filters and pages like the API |
 | `frontend/src/features/admin-orders/useOrderFilters.ts` | URL-backed filter state and date-range validation |
 | `frontend/src/features/admin-orders/useAdminOrders.ts` | TanStack Query hooks for the list and detail |
@@ -71,15 +70,18 @@ applies its defaults. The reference is URL-encoded in the detail path.
 
 **Choosing the data** (`frontend/.env.local`):
 
-| `VITE_ADMIN_ORDERS_SOURCE` | Data |
+| `VITE_ORDERS_SOURCE` | Data |
 | --- | --- |
 | `api` | The real backend |
-| `mock` | Simulated orders (sample-data notice shown) |
-| unset | `api` in a production build, `mock` in development |
+| `mock` | Simulated orders (sample-data notice shown), for design review without a backend |
+| unset | `api` (in the test suite: `mock`, so tests never call a server) |
+
+The setting is resolved once in `frontend/src/lib/ordersData.ts` and applies to
+both the customer and the staff order screens.
 
 `App.tsx` provides the chosen source to the admin routes through
-`<AdminOrdersSourceContext>`. Once S1-03 part 2 is merged, set `api` locally
-(S1-10); the screens need no changes.
+`<AdminOrdersSourceContext>`. Checked end to end against the real endpoints in
+S1-10 (#11).
 
 ## 6. Business rules
 

@@ -4,6 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AppRoutes } from './App'
 import { SessionProvider } from './features/auth/SessionProvider'
+import {
+  CustomerOrdersSourceContext,
+  customerOrdersSource,
+} from './features/customer-orders/source'
 import './index.css'
 import { createQueryClient } from './lib/queryClient'
 
@@ -16,7 +20,11 @@ createRoot(root).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <SessionProvider>
-          <AppRoutes />
+          {/* Customer order screens read the source chosen by VITE_ORDERS_SOURCE
+              (lib/ordersData.ts); tests provide their own. */}
+          <CustomerOrdersSourceContext value={customerOrdersSource}>
+            <AppRoutes />
+          </CustomerOrdersSourceContext>
         </SessionProvider>
       </BrowserRouter>
     </QueryClientProvider>
