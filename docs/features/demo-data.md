@@ -31,8 +31,10 @@ python -m app.modules.demo.seed
 
 | File | Responsibility |
 | --- | --- |
-| `backend/app/modules/demo/seed.py` | Dataset, `is_demo_phone`, `is_demo_account`, `seed_demo_data`, command |
-| `backend/app/modules/orders/service.py` | `create_order(..., is_simulated=False)`; only the seed passes True |
+| `backend/app/shared/demo_accounts.py` | The demo-account rule: `DEMO_PHONE_PREFIX`, `DEMO_NAME_PREFIX`, `is_demo_phone`, `is_demo_identity` (shared by the seed and orders) |
+| `backend/app/modules/demo/seed.py` | Dataset, `is_demo_account`, `seed_demo_data`, command |
+| `backend/app/modules/orders/service.py` | `create_order(..., is_simulated=False)`; the seed passes True |
+| `backend/app/modules/orders/router.py` | `POST /orders` passes `is_simulated=True` when the customer is a demo account |
 | `backend/app/modules/auth/service.py` | `get_user_by_phone` (used to detect existing or conflicting accounts) |
 | `backend/tests/test_demo_seed.py` | Dataset and safety rules (no database) |
 | `backend/tests/test_demo_seed_integration.py` | Seeding, re-running and conflicts against a real database |
@@ -65,12 +67,16 @@ None. The data is visible through the existing endpoints: staff see
 `is_simulated: true` and can filter on it (`GET /admin/orders?is_simulated=true`);
 customers never see the flag (docs/api/orders.md), so demo text is labelled.
 
+Orders a demo account sends through the app during a demo (`POST /orders`) are
+also stored as simulated, so a live demo never adds "real" orders.
+
 ## 6. Important business rules
 
-- **Never mistaken for real data (BR-09, NFR-031):** orders are flagged; the
-  flag cannot be set through the API. Accounts need both markers: a real person
-  who registers a reserved number does not become "demo" because their name
-  fails the check.
+- **Never mistaken for real data (BR-09, NFR-031):** seeded orders are
+  flagged, and so are orders a demo account places through the app; clients
+  can never set the flag. Accounts need both markers: a real person who
+  registers a reserved number does not become "demo" because their name fails
+  the check, so their orders stay real.
 - **No invented business state:** all demo orders are `quote_requested` with no
   price, because no later transitions or prices exist yet. Seeding other
   statuses would fake an order history.

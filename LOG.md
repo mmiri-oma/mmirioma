@@ -23,6 +23,25 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
 
 ---
 
+### 2026-10-16: Running the full test suite against the dev database deleted the demo accounts
+
+- **Area:** backend (tests)
+- **Author:** nnamdi-security + Claude Code
+- **Symptom:** After `pytest` with `TEST_DATABASE_URL` set to the local
+  development database (the `DATABASE_URL` in `.env`), the seeded demo
+  accounts no longer existed and demo sign-in returned 401
+  `invalid_credentials`.
+- **Cause:** `tests/test_demo_seed_integration.py` deletes every account in the
+  reserved demo phone block (and its orders) before and after its tests, as
+  its header warns. Pointing `TEST_DATABASE_URL` at the dev database wipes the
+  demo data.
+- **Fix / workaround:** Re-ran `python -m app.modules.demo.seed`. Use a
+  separate test database for `TEST_DATABASE_URL` (another database name on
+  the same server), or re-seed after running the integration tests. Re-seed
+  before a demo rehearsal.
+- **Status:** workaround
+- **Refs:** S1-11 (#12), `backend/tests/test_demo_seed_integration.py`
+
 ### 2026-10-16: Orders created by demo accounts are not marked Simulated
 
 - **Area:** backend (demo data)
@@ -34,11 +53,11 @@ Newest entries first. Never put secrets, credentials, tokens or personal data
   (`create_order(..., is_simulated=True)`); `POST /orders` always creates a
   real order, whoever the customer is. A demo order would count in real
   figures (BR-09).
-- **Fix / workaround:** Proposed: the server marks an order simulated when a
-  demo account (reserved phone block and "Demo" name, the seed's rule) creates
-  it. Until decided, announce it during the demo and delete those orders
-  afterwards. Listed in `docs/process/sprint-1-demo.md`.
-- **Status:** open
+- **Fix / workaround:** `POST /orders` now stores an order as simulated when a
+  demo account (reserved phone block and "Demo" name,
+  `app/shared/demo_accounts.py`) places it. Checked in the rehearsal: the live
+  order shows the Simulated tag.
+- **Status:** resolved (PR #43)
 - **Refs:** S1-11 (#12), S1-18 (#22), `backend/app/modules/demo/seed.py`
 
 ### 2026-10-15: ruff S608 flagged SQL built with an f-string in a test

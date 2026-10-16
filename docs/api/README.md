@@ -83,5 +83,6 @@ return:
 ### Simulated data
 
 Demo and test records are flagged `is_simulated: true` and excluded from real
-metrics (BR-09, NFR-031). The flag is set by the server (seed scripts), never by
-customer input, and only appears in staff responses.
+metrics (BR-09, NFR-031). The flag is set by the server (seed scripts, and
+orders placed by demo accounts), never by customer input, and only appears in
+staff responses.

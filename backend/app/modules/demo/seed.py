@@ -50,12 +50,8 @@ from app.modules.auth.models import User, UserRole
 from app.modules.auth.schemas import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH
 from app.modules.orders import service as orders_service
 from app.modules.orders.schemas import OrderCreate
+from app.shared.demo_accounts import is_demo_identity
 from app.shared.lagos_time import lagos_today
-
-# Every phone in the reserved block starts with this prefix and ends with two
-# more digits (+23480000900NN).
-DEMO_PHONE_PREFIX = "+23480000900"
-DEMO_NAME_PREFIX = "Demo "
 
 
 class DemoSeedError(Exception):
@@ -144,12 +140,6 @@ DEMO_ACCOUNTS: tuple[DemoAccount, ...] = (
 )
 
 
-def is_demo_phone(phone: str) -> bool:
-    """Whether a normalized phone is in the reserved demo block."""
-    suffix = phone.removeprefix(DEMO_PHONE_PREFIX)
-    return suffix != phone and len(suffix) == 2 and suffix.isdigit()
-
-
 def is_demo_account(user: User) -> bool:
     """Whether an account is demo data: reserved phone **and** "Demo" name.
 
@@ -162,7 +152,7 @@ def is_demo_account(user: User) -> bool:
     Returns:
         True for demo accounts.
     """
-    return is_demo_phone(user.phone) and user.name.startswith(DEMO_NAME_PREFIX)
+    return is_demo_identity(name=user.name, phone=user.phone)
 
 
 @dataclass

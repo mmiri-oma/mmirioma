@@ -18,6 +18,10 @@ python -m app.modules.demo.seed      # prompts once for the demo password
 uvicorn app.main:app --port 8000
 ```
 
+Run the seed **after** any integration tests: with `TEST_DATABASE_URL`
+pointing at this database, `test_demo_seed_integration.py` deletes the demo
+accounts (see `LOG.md`).
+
 In a second terminal:
 
 ```bash
@@ -57,7 +61,7 @@ staff, so the two sessions do not sign each other out.
 | 5 | Customer | View my orders | The new request is at the top |
 | 6 | Customer | (Optional) Press Send twice quickly on a new request | Only one order is created: the idempotency key (FR-026, T-06) |
 | 7 | Staff | In the private window, open `http://localhost:5173/admin/orders` | Redirects to staff sign-in. Sign in with 0800 009 0001; it returns to the order list |
-| 8 | Staff | Look at the list | The customer's new request is the top row. The seeded orders carry the **Simulated** tag (BR-09). Status "Request received", customer, "Phone not confirmed", Lagos times |
+| 8 | Staff | Look at the list | The customer's new request is the top row. It and the seeded orders carry the **Simulated** tag, because they come from demo accounts (BR-09). Status "Request received", customer, "Phone not confirmed", Lagos times |
 | 9 | Staff | Filter: Status, then Records "Simulated only" | Filters live in the address; Back keeps them |
 | 10 | Staff | Open the new order | Request, Delivery (receiver) and Customer account shown separately; "No price yet - this is a quote request." |
 | 11 | Customer | Try opening the staff app (`/admin/orders`) | "You do not have access to this page." The server refuses too (403, FR-001) |
@@ -69,18 +73,12 @@ of these exist, and the honesty rules forbid suggesting them.
 
 ## 3. Known gaps
 
-### Decide before the demo
+### Resolved before the demo
 
-1. **Orders created live by a demo customer are not marked Simulated.** In the
-   rehearsal, the request sent by Demo Customer One (step 4) appeared without
-   the Simulated tag, while the seeded orders had it. The server sets
-   `is_simulated` only from the seed command, so a demo account's new order
-   counts as real (BR-09).
-   - *Proposed fix (small, backend):* when a demo account (reserved phone
-     block and "Demo" name, the rule already used by the seed) creates an
-     order, the server marks it simulated.
-   - *Or, for this demo only:* say it out loud, and delete those orders
-     afterwards.
+- **Orders created live by a demo customer were not marked Simulated.** Found
+  in the rehearsal and fixed in #43: an order placed by a demo account
+  (reserved phone block and "Demo" name) is now stored as simulated, so a
+  live demo never adds real orders (BR-09). Rechecked in the browser.
 
 ### Not built yet, by plan
 

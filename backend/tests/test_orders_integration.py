@@ -338,14 +338,24 @@ def http(created_user_ids: list[uuid.UUID]) -> Iterator[TestClient]:
         yield test_client
 
 
-def add_account(user_ids: list[uuid.UUID], role: UserRole) -> str:
+def add_account(
+    user_ids: list[uuid.UUID],
+    role: UserRole,
+    *,
+    name: str | None = None,
+    phone: str | None = None,
+) -> str:
     """Create an account with a real password hash; return its phone."""
-    phone = "+234809" + "".join(secrets.choice("0123456789") for _ in range(7))
+    phone = phone or "+234809" + "".join(secrets.choice("0123456789") for _ in range(7))
 
     async def scenario(sessions: async_sessionmaker[AsyncSession]) -> None:
         async with sessions() as session:
             user = await auth_service.create_user(
-                session, name=f"Sample {role.value}", phone=phone, password=PASSWORD, role=role
+                session,
+                name=name or f"Sample {role.value}",
+                phone=phone,
+                password=PASSWORD,
+                role=role,
             )
         user_ids.append(user.id)
 
@@ -476,3 +486,30 @@ def test_admin_filters_by_status_lagos_dates_and_simulated_flag(
     assert found(f"{jan_2}&status=quote_requested&status=confirmed") == [refs[2], refs[1]]
     assert found(f"{jan_2}&status=confirmed") == []
     assert found(f"{jan_2}&limit=1&offset=1") == [refs[1]]
+
+
+def test_orders_placed_by_demo_accounts_are_simulated(
+    http: TestClient, created_user_ids: list[uuid.UUID]
+) -> None:
+    # BR-09: demo activity (the demo seed's accounts) never counts as real.
+    # +2348000090098 is in the reserved block but not used by the seed.
+    demo = add_account(
+        created_user_ids,
+        UserRole.CUSTOMER,
+        name="Demo Integration Customer",
+        phone="+2348000090098",
+    )
+    real = add_account(created_user_ids, UserRole.CUSTOMER)
+    admin = add_account(created_user_ids, UserRole.ADMIN)
+
+    demo_order = http.post("/api/v1/orders", json=order_body(), headers=sign_in(http, demo))
+    real_order = http.post("/api/v1/orders", json=order_body(), headers=sign_in(http, real))
+    assert demo_order.status_code == 201, demo_order.text
+    assert real_order.status_code == 201, real_order.text
+    assert "is_simulated" not in demo_order.json()  # never shown to customers
+
+    sign_in(http, admin)
+    demo_detail = http.get(f"/api/v1/admin/orders/{demo_order.json()['reference']}").json()
+    real_detail = http.get(f"/api/v1/admin/orders/{real_order.json()['reference']}").json()
+    assert demo_detail["is_simulated"] is True
+    assert real_detail["is_simulated"] is False

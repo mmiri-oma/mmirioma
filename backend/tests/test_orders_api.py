@@ -226,6 +226,34 @@ def test_create_returns_201_and_normalizes_input(api: TestClient, fake_orders: F
         delivery_instructions="Tank is behind the house",
         preferred_delivery_date=lagos_time.lagos_today(),
     )
+    # A normal customer's order is real (BR-09).
+    assert kwargs["is_simulated"] is False
+
+
+@pytest.mark.parametrize(
+    ("name", "phone", "simulated"),
+    [
+        ("Demo Customer One", "+2348000090011", True),
+        ("Demo Customer One", "+2348000000011", False),  # not a reserved number
+        ("Real Person", "+2348000090011", False),  # reserved number, real name
+    ],
+)
+def test_orders_from_demo_accounts_are_simulated(
+    api: TestClient,
+    fake_orders: FakeOrders,
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    phone: str,
+    simulated: bool,
+) -> None:
+    customer = USERS[UserRole.CUSTOMER]
+    monkeypatch.setattr(customer, "name", name)
+    monkeypatch.setattr(customer, "phone", phone)
+
+    response = api.post("/api/v1/orders", json=VALID_BODY, headers=sign_in(api, UserRole.CUSTOMER))
+
+    assert response.status_code == 201
+    assert fake_orders.calls[0][1]["is_simulated"] is simulated
 
 
 def test_t06_idempotent_retry_returns_200(api: TestClient, fake_orders: FakeOrders) -> None:

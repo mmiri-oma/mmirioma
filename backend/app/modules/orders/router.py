@@ -24,6 +24,7 @@ from app.modules.orders.schemas import (
     OrderRead,
     PageParams,
 )
+from app.shared.demo_accounts import is_demo_identity
 
 router = APIRouter(tags=["orders"])
 
@@ -54,12 +55,18 @@ async def create_order(
     Returns 201 for a new order and 200 when a retry with the same
     idempotency key and details returns the existing order (FR-026, T-06).
 
+    An order placed by a demo account (``app.shared.demo_accounts``) is
+    stored as simulated, so demo activity never counts as real (BR-09).
+
     Raises:
         APIError: 409 ``idempotency_key_reused`` if the key was used with
             different details.
     """
     order, created = await service.create_order(
-        db, customer_id=customer.id, request=body.to_new_order()
+        db,
+        customer_id=customer.id,
+        request=body.to_new_order(),
+        is_simulated=is_demo_identity(name=customer.name, phone=customer.phone),
     )
     if not created:
         response.status_code = HTTPStatus.OK
