@@ -31,11 +31,21 @@ export interface SignInLocationState {
 
 const TITLES: Record<AppArea, string> = { customer: 'Sign in', staff: 'MmiriOma staff' }
 
+export interface SignInPageProps {
+  app: AppArea
+  /**
+   * Second line of the X2 "Your session has ended" banner, e.g. the customer
+   * line "Your request has not been sent. What you typed is kept." when a
+   * request form was open.
+   */
+  sessionEndedDetail?: string
+}
+
 /**
  * C3 customer sign in and S1 staff sign in (docs/design/authentication.md).
  * While the session is being checked it shows the splash, never the form.
  */
-export function SignInPage({ app }: { app: AppArea }) {
+export function SignInPage({ app, sessionEndedDetail }: SignInPageProps) {
   const { status, retry } = useSession()
   const location = useLocation()
   const state = (location.state ?? {}) as SignInLocationState
@@ -52,6 +62,7 @@ export function SignInPage({ app }: { app: AppArea }) {
       app={app}
       initialPhone={state.phone ?? ''}
       sessionEnded={status.ended}
+      sessionEndedDetail={sessionEndedDetail}
       signedOutByUser={status.byUser}
     />
   )
@@ -61,6 +72,7 @@ interface SignInFormProps {
   app: AppArea
   initialPhone: string
   sessionEnded: boolean
+  sessionEndedDetail?: string
   signedOutByUser: boolean
 }
 
@@ -68,6 +80,7 @@ function SignInForm({
   app,
   initialPhone,
   sessionEnded,
+  sessionEndedDetail,
   signedOutByUser,
 }: SignInFormProps) {
   const { signedIn, dismissSignedOutNotice } = useSession()
@@ -118,7 +131,10 @@ function SignInForm({
           onWaitOver={onWaitOver}
         />
       ) : sessionEnded ? (
-        <AuthBannerView banner={{ tone: 'info', title: AUTH_TEXT.sessionEnded }} />
+        <AuthBannerView
+          banner={{ tone: 'info', title: AUTH_TEXT.sessionEnded }}
+          detail={sessionEndedDetail}
+        />
       ) : null}
 
       <form noValidate onSubmit={submit} className="flex flex-col gap-5">

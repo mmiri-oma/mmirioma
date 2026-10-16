@@ -9,7 +9,7 @@ One React app serves every area (CLAUDE.md, "Architecture"):
 
 | Path | Area | Guard |
 | --- | --- | --- |
-| `/`, `/sign-in`, `/create-account` | Customer app | `AppGate app="customer"` (role `customer`) |
+| `/` (My orders, or the welcome screen when signed out), `/request`, `/request/received`, `/orders/:reference`; `/sign-in`, `/create-account` unguarded | Customer app | `AppGate app="customer"` (role `customer`) |
 | `/admin/sign-in`, `/admin/orders`, `/admin/orders/:reference` | Staff (dispatcher) app, in `AdminShell` | `AppGate app="staff"` (role `admin`) |
 
 The driver app joins with S1-15. `src/main.tsx` mounts, outermost first:
@@ -38,6 +38,7 @@ Vite 8.3, Vitest 5.0.
 | `src/lib/api/client.ts`           | `createApiClient`, the shared `apiClient`, `ApiError`  |
 | `src/lib/api/health.ts`           | Typed `getHealth()` for `GET /api/v1/health`           |
 | `src/lib/api/auth.ts`             | `register`, `login`, `getMe`, `logout`; stores the CSRF token |
+| `src/lib/api/orders.ts`           | Customer `createOrder`, `listOrders`, `getOrder` and their types ([customer-ordering.md](../features/customer-ordering.md)) |
 | `src/components/ApiStatus.tsx`    | Shows API reachability (in the admin sidebar)          |
 | `src/main.tsx`, `src/App.tsx`     | Providers (TanStack Query, router, session) and the route table |
 | `src/lib/queryClient.ts`          | Query client defaults (retry policy) and the global 401 handling |
