@@ -11,8 +11,11 @@ Requirements: NFR-004 · Contract:
 `target_label`), [#294](https://github.com/mmiri-oma/mmirioma/issues/294) (the
 Riders reason box)
 Designer: @Bonvee120 + Claude Code · Reviewed by: @nnamdi-security
-(decision comment on #293), 2026-10-31 · Status: draft; G2 is given on #293 for
-the reason and the five cash wordings, the rest is marked "to confirm" below
+(technical lead), 2026-10-31 · Status: approved (G2)
+
+**Approved (G2)** by @nnamdi-security (technical lead) on 2026-10-31, in two
+decision comments on #293: the reason, the five cash wordings and the interim
+record line first, then the hint, the record names and the 6-character id.
 
 The audit log on the Settings page (`/admin/settings`) lists who did what and
 when. A click-through on the real backend found three gaps (#293): the Reason
@@ -31,7 +34,7 @@ be made from this record if the reviewer asks.
 | Screen | States designed | Build now / design ahead |
 | --- | --- | --- |
 | Settings, Audit log table | **A. A driver decision with a reason:** "Suspended a driver", and under "Reason" the staff's words, for example "Papers expired". **B. A driver decision with no reason** (an approval can have none): "None". **C. Every other row:** "None", as today (no other action stores a reason). **D. A cash action:** the five wordings below instead of the code. **E. The record:** a second, smaller line under the action: the kind of record in words and a short id, "Driver · 4f3a2c". **F. A kind or code with no words:** shown as the code itself, as an unknown action is today. **G. Loading, empty and error:** unchanged | Build now |
-| Riders panel, reason box (the same decision, #293) | A short hint under the box, which shows for a suspension and a reactivation (an approval has no reason box): "Do not include customer details." | Build now (to confirm, see below) |
+| Riders panel, reason box (the same decision, #293) | A short hint under the box, which shows for a suspension and a reactivation (an approval has no reason box): "Do not include customer details." | Build now |
 | Phone (360 px) | The same table with no column added; the second line stays under the action | Build now |
 
 ## Screen-to-endpoint table
@@ -54,9 +57,9 @@ corrected in the same change (decision 1).
 | `cash_received` | Received cash | G2 approved, same |
 | `cash_reconciled` | Reconciled cash | G2 approved, same |
 | `cash_corrected` | Corrected a cash amount | G2 approved, same |
-| Hint under the reason box | Do not include customer details. | His words on #293; **to confirm** that this is the final wording |
-| Kinds of record | Driver, Order, Service area, Price list, Cash collection, Cash handover, Water source, Support request, Customer address, Account, Deletion request, Retention review | He named "Driver", "Order" and "Service area"; the other nine follow the same style and are **to confirm** |
-| Short id | The first 6 characters of the record's id | He asked for "a short id" and did not say how long: 6 is the author's choice, **to confirm** |
+| Hint under the reason box | Do not include customer details. | Confirmed, @nnamdi-security, 2026-10-31 (#293) |
+| Kinds of record | Driver, Order, Service area, Price list, Cash collection, Cash handover, Water source, Support request, Customer address, Account, Deletion request, Retention review | Confirmed as listed, @nnamdi-security, 2026-10-31 (#293) |
+| Short id | The first 6 characters of the record's id | Confirmed, @nnamdi-security, 2026-10-31 (#293) |
 
 `cash_remittance_recorded` ("Recorded a cash handover") stays: the backend still
 writes it (`payments/service.py`).
@@ -81,14 +84,13 @@ writes it (`payments/service.py`).
 
 ## Open questions
 
-None for the design. The "to confirm" rows above are the author's proposals.
+None.
 
 ## Known limitations
 
 - **Anonymizing a driver leaves the reason readable.** The privacy tool keeps
   audit rows (`privacy/service.py`), so a suspension reason stays on screen after
-  the driver is anonymized. Blanking it is a backend change, tracked apart from
-  #293.
+  the driver is anonymized. Blanking it is a backend change, tracked in #298.
 - **A short id does not say who.** Two rows about the same driver share an id,
   but a dispatcher still has to open the driver to see the name, until #296.
 

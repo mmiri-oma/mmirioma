@@ -14,9 +14,8 @@
 export const AUDIT_REASON_ACTIONS: ReadonlySet<string> = new Set(['driver_approved', 'driver_suspended', 'driver_activated', 'driver_deactivated'])
 
 /**
- * What a record kind (`target_type`) is called on a row. "Driver", "Order" and
- * "Service area" are the technical lead's words (#293); the rest follow the same
- * style and await his confirmation. A kind not listed shows as the code itself.
+ * What a record kind (`target_type`) is called on a row. Confirmed by the technical
+ * lead on #293 (2026-10-31). A kind not listed shows as the code itself.
  */
 export const AUDIT_TARGET_WORDS: Readonly<Record<string, string>> = {
   driver: 'Driver',
@@ -33,10 +32,10 @@ export const AUDIT_TARGET_WORDS: Readonly<Record<string, string>> = {
   retention_review: 'Retention review',
 }
 
-/** How many characters of a record's id a row shows, until the backend sends a label (#296). The length awaits confirmation. */
+/** How many characters of a record's id a row shows, until the backend sends a label (#296). Confirmed on #293. */
 export const SHORT_ID_LENGTH = 6
 
-/** The hint under the Riders reason box: the reason is stored in the audit log, which is read by staff only. Awaits confirmation. */
+/** The hint under the Riders reason box: the reason is stored in the audit log, which is read by staff only. Confirmed on #293. */
 export const REASON_HINT = 'Do not include customer details.'
 
 /**
