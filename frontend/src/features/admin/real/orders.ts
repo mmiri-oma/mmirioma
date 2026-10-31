@@ -27,6 +27,7 @@ import { listAdminOrders, type AdminOrderRead, type AdminOrderStatus as BackendS
 import type { OrderList } from '../../../mocks/adminMock'
 import { choiceFromRead } from '../../customer/real/order'
 import { confirmationLine } from '../confirm/logic'
+import { withContactAttempts } from '../timeline'
 
 const STATUS_BY_BACKEND: Record<BackendStatus, AdminOrderStatus> = {
   // Not confirmed yet, so no rider can be assigned (admin-confirm-order.md, decision 3).
@@ -324,8 +325,11 @@ function progressLine(event: AdminOrderEvent): string | null {
  * first (the history comes newest first). An assignment event's note is its
  * detail; a confirmation, hold or ending line carries its own (who, concern,
  * reason, note, ...).
+ *
+ * @param contactAttempts - The order's attempt times from the detail (#280); each
+ *   becomes a "Contact attempt N" line at its time (`withContactAttempts`).
  */
-export function timelineFromHistory(createdAt: string, history: AdminOrderEvent[]): TimelineEntry[] {
+export function timelineFromHistory(createdAt: string, history: AdminOrderEvent[], contactAttempts: readonly string[] = []): TimelineEntry[] {
   const lines = [...history].reverse().flatMap((event): TimelineEntry[] => {
     const confirmation = confirmationLine(event)
     if (confirmation) return [{ label: confirmation.label, at: event.created_at, detail: confirmation.detail }]
@@ -338,7 +342,7 @@ export function timelineFromHistory(createdAt: string, history: AdminOrderEvent[
     const label = assignmentLine(event)
     return label ? [{ label, at: event.created_at, ...(event.note ? { detail: event.note } : {}) }] : []
   })
-  return [{ label: 'Order placed', at: createdAt }, ...lines]
+  return withContactAttempts([{ label: 'Order placed', at: createdAt }, ...lines], contactAttempts)
 }
 
 /**
@@ -357,5 +361,6 @@ export async function getOrder(reference: string, client: ApiClient = apiClient)
     getOrderHistory(reference, undefined, client).catch(() => null),
   ])
   const order = adminOrderFromRead(detail)
-  return history ? { ...order, timeline: timelineFromHistory(detail.created_at, history) } : order
+  // The attempts join the timeline only with the history: without it the timeline stays at "Order placed" (design decision 4).
+  return history ? { ...order, timeline: timelineFromHistory(detail.created_at, history, detail.contact_attempts.map((a) => a.attempted_at)) } : order
 }

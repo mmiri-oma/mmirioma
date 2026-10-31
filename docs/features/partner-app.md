@@ -293,7 +293,8 @@ they order (the customer mock); the partner app gets it only after unloading.
   location with "I have arrived", so the arrival and each attempt are times the
   driver reports by tapping, and a driver could tap "I have arrived" early to
   start the 10-minute clock. The server enforces the full wait from that time
-  and the two attempts, and the dispatcher sees the times in the hold evidence.
+  and the two attempts, and the dispatcher sees the times as "Contact attempt N"
+  lines in the order panel's timeline (#280), and in a proof review's evidence.
 - **"The dispatcher will contact you."** on the failed screen promises staff
   action, so the pilot needs a dispatcher to follow up a failed delivery.
 - **No paused-job banner.** The job carries no hold in the app's types, so a

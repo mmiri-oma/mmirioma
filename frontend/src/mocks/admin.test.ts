@@ -451,3 +451,48 @@ describe('hold review (#166)', () => {
     })
   })
 })
+
+describe('contact attempts on a mock order\'s timeline (#280)', () => {
+  const minute = 60_000
+
+  /** Make the first job one that failed, ending a day after its last step; returns its reference and timeline so far. */
+  async function failedJob() {
+    const reference = read().jobs[0].reference
+    await mutate((s) => {
+      const job = s.jobs.find((j) => j.reference === reference)!
+      job.stage = 'failed'
+      job.contact_attempts = []
+      job.ended = { kind: 'failed', reason_code: 'customer_unreachable', note: null, by: 'Chinedu', at: new Date(Date.now() + 24 * 60 * minute).toISOString() }
+    })
+    return { reference, base: (await getAdminOrder(reference)).timeline }
+  }
+
+  /** Record attempts one and two minutes after the last step before the failure. */
+  async function recordAttempts(reference: string, base: { at: string }[], count: number) {
+    const lastStep = Date.parse(base[base.length - 2].at)
+    await mutate((s) => {
+      s.jobs.find((j) => j.reference === reference)!.contact_attempts = Array.from({ length: count }, (_, i) => new Date(lastStep + (i + 1) * minute).toISOString())
+    })
+  }
+
+  it('shows the attempts the partner recorded, after the job\'s steps and before Delivery failed', async () => {
+    const { reference, base } = await failedJob()
+    expect(base.at(-1)?.label).toBe('Delivery failed')
+    await recordAttempts(reference, base, 2)
+    const labels = (await getAdminOrder(reference)).timeline.map((t) => t.label)
+    expect(labels).toEqual([...base.slice(0, -1).map((t) => t.label), 'Contact attempt 1', 'Contact attempt 2', 'Delivery failed'])
+  })
+
+  it('shows none for a job with no attempt', async () => {
+    const { base } = await failedJob()
+    expect(base.some((t) => t.label.startsWith('Contact attempt'))).toBe(false)
+  })
+
+  it('does not change the stored timeline, so reading twice shows each attempt once', async () => {
+    const { reference, base } = await failedJob()
+    await recordAttempts(reference, base, 1)
+    const attempts = async () => (await getAdminOrder(reference)).timeline.filter((t) => t.label.startsWith('Contact attempt'))
+    expect(await attempts()).toHaveLength(1)
+    expect(await attempts()).toHaveLength(1)
+  })
+})

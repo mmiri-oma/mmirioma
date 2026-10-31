@@ -3,7 +3,7 @@ import detailSample from '../../../../../docs/api/examples/admin-order-detail.js
 import historySample from '../../../../../docs/api/examples/admin-order-history.json'
 import pageSample from '../../../../../docs/api/examples/admin-orders-page.json'
 import { ApiError, createApiClient } from '../../../lib/api/client'
-import type { AdminOrderDetail, AdminOrderEvent } from '../../../lib/api/adminDispatch'
+import { parseDetail, type AdminOrderDetail, type AdminOrderEvent } from '../../../lib/api/adminDispatch'
 import type { AdminOrderRead, Page } from '../../../lib/api/adminOrders'
 import { adminOrderFromRead, adminStatusFromBackend, getOrder, listOrders, timelineFromHistory } from './orders'
 
@@ -363,5 +363,45 @@ describe('getOrder (real)', () => {
   it('passes 404 order_not_found through', async () => {
     const { client } = clientByUrl(() => ({ body: NOT_FOUND, status: 404 }))
     await expect(getOrder('MO-0000000000', client)).rejects.toMatchObject({ status: 404, code: 'order_not_found' } satisfies Partial<ApiError>)
+  })
+})
+
+describe('contact attempts on the timeline (#280)', () => {
+  // The detail example as a failed delivery with two attempts, as admin-order-detail-failed.json (#289) shows it.
+  const FAILED = { ...DETAIL, status: 'failed', contact_attempts: [{ attempted_at: '2026-10-20T09:44:00Z' }, { attempted_at: '2026-10-20T09:49:00Z' }] } as AdminOrderDetail
+  const driver = { id: 'd1', role: 'driver' as const, name: 'Sample Driver One' }
+  const step = (to: string, at: string) =>
+    ({ id: to, kind: 'status_change', from_status: null, to_status: to, actor: driver, reason_code: to === 'failed' ? 'customer_unreachable' : null, note: null, created_at: at, assignment: null, hold: null, confirmation: null, cash: null }) as AdminOrderEvent
+  // Newest first, as the server sends them. The example's attempts are at 09:44 and 09:49.
+  const history = { items: [step('failed', '2026-10-20T09:56:00Z'), step('arrived', '2026-10-20T09:42:00Z')] }
+
+  it('shows each attempt between Arrived and Delivery failed, from the detail', async () => {
+    const { client } = clientByUrl((url) => ({ body: url.includes('/history') ? history : FAILED }))
+    const lines = (await getOrder(FAILED.reference, client)).timeline
+    expect(lines.map((t) => t.label)).toEqual(['Order placed', 'Arrived', 'Contact attempt 1', 'Contact attempt 2', 'Delivery failed'])
+    expect(lines.filter((t) => t.label.startsWith('Contact')).map((t) => t.at)).toEqual(['2026-10-20T09:44:00Z', '2026-10-20T09:49:00Z'])
+  })
+
+  it('shows the timeline at "Order placed" only, with no attempts, when the history cannot be read', async () => {
+    const { client } = clientByUrl((url) => (url.includes('/history') ? { body: FORBIDDEN, status: 500 } : { body: FAILED }))
+    const lines = (await getOrder(FAILED.reference, client)).timeline
+    expect(lines.map((t) => t.label)).toEqual(['Order placed'])
+  })
+
+  it('leaves an order with no attempt as it was', async () => {
+    const { client } = clientByUrl((url) => ({ body: url.includes('/history') ? historySample : DETAIL }))
+    const lines = (await getOrder(DETAIL.reference, client)).timeline
+    expect(lines.some((t) => t.label.startsWith('Contact attempt'))).toBe(false)
+  })
+
+  it('reads a server that does not send the field yet as no attempts', () => {
+    const older: Record<string, unknown> = { ...FAILED }
+    delete older.contact_attempts
+    expect(parseDetail(older).contact_attempts).toEqual([])
+    expect(parseDetail(FAILED).contact_attempts).toHaveLength(2)
+  })
+
+  it('refuses an attempt that is not a time string', () => {
+    expect(() => parseDetail({ ...FAILED, contact_attempts: [{ attempted_at: 5 }] })).toThrow()
   })
 })

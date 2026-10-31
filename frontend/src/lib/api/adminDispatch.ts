@@ -104,14 +104,24 @@ export const adminAssignmentSchema = z.object({
 export type AdminAssignment = z.infer<typeof adminAssignmentSchema>
 
 /**
+ * One attempt to reach the customer after arrival (FR-038): the server's time,
+ * UTC. Times only; the contract sends no name, number or note
+ * (deliveries.md, "Amendment (#280)").
+ */
+export const contactAttemptSchema = z.object({ attempted_at: z.string() })
+export type ContactAttempt = z.infer<typeof contactAttemptSchema>
+
+/**
  * `AdminOrderDetail`: the order plus its **most recent** assignment, live or
  * ended, or `null` if it was never offered, the confirmation fields
  * (category, source, window, price snapshot, SMS outcome; `null` until
- * confirmed) and `payment` (`null` until confirmed). `hold` is in
+ * confirmed), `payment` (`null` until confirmed) and `contact_attempts`
+ * (every attempt on the order, oldest first, empty if none). `hold` is in
  * `AdminOrderRead`.
  */
 export type AdminOrderDetail = AdminOrderRead & { assignment: AdminAssignment | null } & OrderConfirmation & {
   payment: OrderPayment | null
+  contact_attempts: ContactAttempt[]
 }
 
 /** `DispatchDriver`: one driver and their eligibility for this order. */
@@ -253,7 +263,9 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
 /**
  * Check the dispatch, hold and confirmation parts of an order detail. A
  * missing `assignment` reads as "never offered", a missing `hold` as no hold
- * and a missing confirmation field as `null` (an older server).
+ * and a missing confirmation field as `null` (an older server). A missing
+ * `contact_attempts` reads as none, so a server that does not send it yet
+ * (#280) leaves the timeline as it was.
  */
 export function parseDetail(value: unknown): AdminOrderDetail {
   const order = value as AdminOrderRead & { assignment?: unknown; hold?: unknown }
@@ -261,7 +273,8 @@ export function parseDetail(value: unknown): AdminOrderDetail {
   const hold = parse(orderHoldSchema.nullable(), order.hold ?? null)
   const confirmation = parse(orderConfirmationSchema, value)
   const payment = parse(orderPaymentSchema.nullable(), (value as { payment?: unknown }).payment ?? null)
-  return { ...order, assignment, hold, ...confirmation, payment }
+  const contact_attempts = parse(z.array(contactAttemptSchema), (value as { contact_attempts?: unknown }).contact_attempts ?? [])
+  return { ...order, assignment, hold, ...confirmation, payment, contact_attempts }
 }
 
 /**

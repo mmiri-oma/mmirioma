@@ -51,6 +51,7 @@ import { choiceLitres, describeChoice } from '../domain/orders'
 import type { WithdrawRequest } from '../lib/api/adminDispatch'
 import type { AdminTransitionRequest, CancelReason, CancellationOutcome, HoldDecisionRequest, HoldReview, ProofOverrideRequest } from '../lib/api/adminHolds'
 import type { PartnerNotification } from '../domain/partner'
+import { withContactAttempts } from '../features/admin/timeline'
 import { tankCapacityError } from '../domain/tankCapacity'
 import { formatNaira } from '../lib/format/money'
 import { normalizeNigerianPhone } from '../lib/format/phone'
@@ -187,12 +188,13 @@ function orderRow(s: MockState, reference: string): MockAdminOrder | null {
     const q = quoteFor(choice, ANY_PLACE, currentPrices(s))
     return q.status === 'quote_available' ? q.total_minor_units : null
   })()
-  const timeline = o?.timeline ?? [
+  // A copy: the lines pushed below belong to this read, not to the stored order (each read added them again).
+  const timeline = [...(o?.timeline ?? [
     { label: 'Order placed', at: job!.created_at },
     ...(job!.accepted_at ? [{ label: 'Rider accepted', at: job!.accepted_at }] : []),
     ...(job!.collected_at ? [{ label: 'Water collected', at: job!.collected_at }] : []),
     ...(job!.delivered_at && job!.stage === 'delivered' ? [{ label: 'Delivered, code verified', at: job!.delivered_at }] : []),
-  ]
+  ])]
   const held = job?.hold ?? null
   // The history's "Hold opened" line (admin-hold-review.md, H): who, the concern in words, the driver's note.
   // It stays after the hold is decided, then the decision follows, as in the real history.
@@ -232,7 +234,8 @@ function orderRow(s: MockState, reference: string): MockAdminOrder | null {
     partner: partnerSummary(s, job?.partner_id ?? null),
     assigned_by: job?.assigned_by ?? null,
     station_name: job?.station.name ?? o?.station_name ?? '',
-    timeline,
+    // The attempts the partner recorded (docs/design/admin-order-contact-attempts.md, #280); a new list, so the stored timeline is not changed.
+    timeline: withContactAttempts(timeline, job?.contact_attempts ?? []),
     instructions: o?.instructions ?? job?.instructions ?? null,
     tank_note: job?.tank_note ?? null,
   }
