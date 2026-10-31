@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetMockDb } from '../mocks/db'
-import { getPartnerProfile, partnerSignup } from '../mocks/partnerMock'
+import { getPartnerProfile, listSignupAreas, partnerSignup } from '../mocks/partnerMock'
 import { MAX_TANKER_GALLONS, MIN_TANKER_GALLONS, parseGallons, tankCapacityError } from './tankCapacity'
 
 beforeEach(() => resetMockDb())
@@ -33,16 +33,17 @@ describe('tankCapacityError', () => {
 })
 
 describe('tanker sign-up (mock)', () => {
-  const base = { name: 'Ngozi Eze', password: 'long-enough', vehicle_type: 'tanker' as const, plate: 'ENU 900 XA', service_area: 'GRA' }
+  const base = { name: 'Ngozi Eze', password: 'long-enough', vehicle_type: 'tanker' as const, plate: 'ENU 900 XA' }
+  const withArea = async () => ({ ...base, service_zone_id: (await listSignupAreas())[0].id })
 
   it('saves the typed capacity', async () => {
-    await partnerSignup({ ...base, phone: '0809 000 0201', tank_gallons: 4000 })
+    await partnerSignup({ ...(await withArea()), phone: '0809 000 0201', tank_gallons: 4000 })
     const p = await getPartnerProfile()
     expect(p.vehicle.tank_gallons).toBe(4000)
     expect(p.vehicle.description).toBe('4,000 gal (16,000 L) tank')
   })
 
   it('rejects a capacity below the smallest order', async () => {
-    await expect(partnerSignup({ ...base, phone: '0809 000 0202', tank_gallons: 300 })).rejects.toMatchObject({ status: 422, code: 'validation_error' })
+    await expect(partnerSignup({ ...(await withArea()), phone: '0809 000 0202', tank_gallons: 300 })).rejects.toMatchObject({ status: 422, code: 'validation_error' })
   })
 })

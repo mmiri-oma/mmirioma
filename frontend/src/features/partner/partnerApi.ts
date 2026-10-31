@@ -17,6 +17,7 @@ import type {
   PartnerNotificationList,
   PartnerProfile,
   PartnerSignupInput,
+  SignupArea,
 } from '../../domain/partner'
 import type { Session } from '../../lib/api/auth'
 import { USE_MOCKS } from '../../lib/api/mode'
@@ -38,6 +39,7 @@ export const updatePartnerProfile = (u: { preferences?: Partial<PartnerProfile['
 export const setOnline = (online: boolean): Promise<PartnerProfile> => (USE_MOCKS ? mock.setOnline(online) : real.setOnline(online))
 export const uploadDocument = (id: string, fileName: string): Promise<PartnerProfile> =>
   USE_MOCKS ? mock.uploadDocument(id, fileName) : notConnected('Document upload')
+export const listSignupAreas = (): Promise<SignupArea[]> => (USE_MOCKS ? mock.listSignupAreas() : real.listSignupAreas())
 export const partnerSignup = (i: PartnerSignupInput): Promise<Session> => (USE_MOCKS ? mock.partnerSignup(i) : real.partnerSignup(i))
 
 export const listAvailableJobs = (): Promise<PartnerJob[]> => (USE_MOCKS ? mock.listAvailableJobs() : realJobs.listAvailableJobs())

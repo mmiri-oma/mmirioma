@@ -1,16 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useId, type Ref, type SelectHTMLAttributes } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { ChevronDownIcon } from '../../../components/icons/icons'
 import { Illustration } from '../../../components/brand/Illustration'
 import { BackLink, MobileShell, ScrollArea, TopBar } from '../../../components/layout/MobileShell'
-import { LoadingScreen } from '../../../components/layout/StateScreens'
+import { ErrorBlock, LoadingScreen } from '../../../components/layout/StateScreens'
 import { Button } from '../../../components/ui/Button'
 import { OptionTile } from '../../../components/ui/Choice'
 import { ScreenHeading } from '../../../components/ui/Content'
-import { TextField } from '../../../components/ui/Field'
+import { INPUT, TextField } from '../../../components/ui/Field'
 import { Notice } from '../../../components/ui/Notice'
+import type { SignupArea } from '../../../domain/partner'
 import { parseGallons, tankCapacityError } from '../../../domain/tankCapacity'
 import { ApiError } from '../../../lib/api/client'
 import { errorMessage } from '../../../lib/api/errorMessage'
@@ -18,7 +21,9 @@ import { applyServerFieldErrors, newPasswordField, phoneField } from '../../../l
 import { HOME_PATH } from '../../auth/authPaths'
 import { SESSION_KEY, useLogout, useSession } from '../../auth/useSession'
 import { formatPhone } from '../../../lib/format/phone'
-import { partnerSignup } from '../partnerApi'
+import { cx } from '../../../lib/cx'
+import { useSupportContact } from '../../marketing/queries'
+import { listSignupAreas, partnerSignup } from '../partnerApi'
 
 const schema = z
   .object({
@@ -29,7 +34,8 @@ const schema = z
     plate: z.string().trim().min(4, 'Enter the plate number, e.g. ENU 482 KK.').max(20, 'Use 20 characters or fewer.'),
     /** Typed capacity in gallons, tankers only; stored as litres × 4 by the server (FR-013, FR-021). */
     tank_gallons: z.string(),
-    service_area: z.string().trim().min(2, 'Enter the area you work in, e.g. GRA.').max(60, 'Use 60 characters or fewer.'),
+    /** ID of an active service zone picked from the list (`GET /service-zones`); the server checks it again. */
+    service_zone_id: z.string().min(1, 'Choose the area you work in.'),
   })
   .superRefine((v, ctx) => {
     if (v.vehicle_type !== 'tanker') return
@@ -45,7 +51,7 @@ const SERVER_FIELDS = {
   password: 'password',
   plate: 'plate',
   tank_gallons: 'tank_gallons',
-  service_area: 'service_area',
+  service_zone_id: 'service_zone_id',
 } as const satisfies Record<string, keyof Values>
 
 /**
@@ -122,9 +128,12 @@ export function PartnerSignup() {
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { vehicle_type: 'keke', tank_gallons: '' },
+    defaultValues: { vehicle_type: 'keke', tank_gallons: '', service_zone_id: '' },
   })
   const vehicle = useWatch({ control, name: 'vehicle_type' })
+  const areas = useQuery({ queryKey: ['partner', 'signup-areas'], queryFn: listSignupAreas, staleTime: 60_000 })
+  const support = useSupportContact()
+  const noAreas = areas.isSuccess && areas.data.length === 0
 
   const onSubmit = handleSubmit((v) =>
     signup.mutate(
@@ -195,10 +204,26 @@ export function PartnerSignup() {
             error={errors.phone?.message}
             {...register('phone')}
           />
-          <div className="rise-4 grid grid-cols-2 gap-2.5">
-            <TextField label="Plate number" placeholder={vehicle === 'keke' ? 'ENU 482 KK' : 'ENU 115 XA'} error={errors.plate?.message} {...register('plate')} />
-            <TextField label="Area you work in" placeholder="e.g. GRA" error={errors.service_area?.message} {...register('service_area')} />
-          </div>
+          <TextField className="rise-4" label="Plate number" placeholder={vehicle === 'keke' ? 'ENU 482 KK' : 'ENU 115 XA'} error={errors.plate?.message} {...register('plate')} />
+          {noAreas ? (
+            <Notice tone="error" className="rise-4">
+              Driver sign-up is not open right now because no delivery areas are set up yet. Please try again later, or contact MmiriOma support on{' '}
+              <a href={`tel:${support.phone}`} className="font-bold">
+                {formatPhone(support.phone)}
+              </a>
+              .
+            </Notice>
+          ) : (
+            <AreaSelect
+              className="rise-4"
+              areas={areas.data}
+              loading={areas.isPending}
+              error={areas.isError ? areas.error : null}
+              onRetry={() => void areas.refetch()}
+              fieldError={errors.service_zone_id?.message}
+              {...register('service_zone_id')}
+            />
+          )}
           <TextField
             className="rise-4"
             label="Password"
@@ -208,7 +233,7 @@ export function PartnerSignup() {
             error={errors.password?.message}
             {...register('password')}
           />
-          <Button type="submit" className="rise-5" loading={signup.isPending}>
+          <Button type="submit" className="rise-5" loading={signup.isPending} disabled={!areas.isSuccess || noAreas}>
             Create account
           </Button>
         </form>
@@ -220,5 +245,62 @@ export function PartnerSignup() {
         </p>
       </ScrollArea>
     </MobileShell>
+  )
+}
+
+interface AreaSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className'> {
+  className?: string
+  /** Active service areas, by name; undefined until loaded. */
+  areas: SignupArea[] | undefined
+  loading: boolean
+  /** The load failure, shown with a retry button in place of the select. */
+  error: unknown
+  onRetry: () => void
+  /** Validation message from the form or the server. */
+  fieldError?: string
+}
+
+/**
+ * "Area you work in": a native select of the active service areas, so phones
+ * show their own picker. Loading and load-failure states replace the select
+ * (the submit button stays disabled); the chosen option's value is the
+ * zone's ID, never typed text.
+ */
+function AreaSelect({ className, areas, loading, error, onRetry, fieldError, ref, ...select }: AreaSelectProps & { ref?: Ref<HTMLSelectElement> }) {
+  const id = useId()
+  return (
+    <div className={className}>
+      <label htmlFor={id} className="mb-1.5 block text-label font-bold">
+        Area you work in
+      </label>
+      {error ? (
+        <ErrorBlock error={error} onRetry={onRetry} />
+      ) : (
+        <div className="relative">
+          <select
+            ref={ref}
+            id={id}
+            disabled={loading}
+            aria-invalid={fieldError ? true : undefined}
+            aria-describedby={fieldError ? `${id}-error` : undefined}
+            className={cx(INPUT, 'appearance-none pr-10 font-semibold', fieldError && 'border-[#DC2626] bg-[#FEF2F2]')}
+            {...select}
+          >
+            <option value="">{loading ? 'Loading areas…' : 'Choose your area'}</option>
+            {areas?.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDownIcon size={18} strokeWidth={2.2} color="#56677D" roundJoin={false} className="pointer-events-none absolute top-[15px] right-3.5" />
+        </div>
+      )}
+      {fieldError && (
+        <p id={`${id}-error`} role="alert" className="mt-1.5 mb-0 text-caption font-bold text-red">
+          {fieldError}
+        </p>
+      )}
+    </div>
   )
 }

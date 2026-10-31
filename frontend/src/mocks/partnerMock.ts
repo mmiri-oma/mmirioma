@@ -20,6 +20,7 @@ import type {
   PartnerNotification,
   PartnerProfile,
   PartnerSignupInput,
+  SignupArea,
 } from '../domain/partner'
 import type { IssueType } from '../domain/admin'
 import { ISSUE_LABEL } from '../domain/partner'
@@ -141,11 +142,23 @@ export async function uploadDocument(documentId: string, fileName: string): Prom
   return getPartnerProfile()
 }
 
+/** The areas a new partner can choose at sign-up: the enabled service areas, by name (as `GET /service-zones`). */
+export async function listSignupAreas(): Promise<SignupArea[]> {
+  await delay(null)
+  return read()
+    .admin.areas.filter((a) => a.enabled)
+    .map((a) => ({ id: a.id, name: a.name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
 /**
  * A new partner's record, waiting for approval. Used by self sign-up and by
  * admin's "Add rider".
  */
-export function newPartnerData(s: MockState, input: Pick<PartnerSignupInput, 'vehicle_type' | 'plate' | 'tank_gallons' | 'service_area'>): PartnerData {
+export function newPartnerData(
+  s: MockState,
+  input: Pick<PartnerSignupInput, 'vehicle_type' | 'plate' | 'tank_gallons'> & { service_area: string },
+): PartnerData {
   return {
     fleet_code: nextFleetCode(s, input.vehicle_type),
     rating: null,
@@ -197,13 +210,15 @@ export async function partnerSignup(input: PartnerSignupInput): Promise<Session>
     const msg = tankCapacityError(input.tank_gallons)
     if (msg) details.push({ loc: ['body', 'tank_gallons'], msg, type: 'value_error' })
   }
+  const area = read().admin.areas.find((a) => a.id === input.service_zone_id && a.enabled)
+  if (!area) details.push({ loc: ['body', 'service_zone_id'], msg: 'Choose an active service zone', type: 'value_error' })
   if (details.length) throw mockError(422, 'validation_error', 'Request validation failed', details)
   if (read().users.some((u) => u.phone === phone)) throw mockError(409, 'phone_already_registered', 'This phone number already has an account')
   const user = mutate((s) => {
     const id = newId('user')
     const created = { id, name: input.name.trim(), phone: phone!, role: 'driver' as const, phone_verified: false, password: input.password }
     s.users.push(created)
-    s.partners[id] = newPartnerData(s, input)
+    s.partners[id] = newPartnerData(s, { ...input, service_area: area!.name })
     addActivity(s, 'admin', `${created.name} signed up as a ${input.vehicle_type === 'keke' ? 'Keke rider' : 'tanker driver'}`)
     addAdminNotification(s, 'New partner waiting for approval', `${created.name} (${input.vehicle_type === 'keke' ? 'Keke' : 'Tanker'}, ${input.plate.trim().toUpperCase()})`, '/admin/riders')
     startSession(s, id)
