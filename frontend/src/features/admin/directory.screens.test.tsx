@@ -174,6 +174,25 @@ describe('the Riders screen against the real API (#220, G2 approved by the techn
     expect(screen.queryByText('A reason of at least 5 characters is required')).toBeNull()
   }, SLOW)
 
+  it('tells the dispatcher not to put customer details in the reason, for a suspension and a reactivation (#293)', async () => {
+    renderAt(`/admin/riders?id=${APPROVED_TANKER.id}`)
+    await screen.findByLabelText(/Reason to suspend/, {}, { timeout: WAIT })
+    expect(screen.getByText('Do not include customer details.')).toBeInTheDocument()
+  }, SLOW)
+
+  it('shows the same hint under the reactivation reason (#293)', async () => {
+    renderAt('/admin/riders?id=d-suspended')
+    await screen.findByLabelText(/Reason to reactivate/, {}, { timeout: WAIT })
+    expect(screen.getByText('Do not include customer details.')).toBeInTheDocument()
+  }, SLOW)
+
+  it('shows no hint on an approval, which has no reason box (#293)', async () => {
+    renderAt(`/admin/riders?id=${PENDING_KEKE.id}`)
+    expect(await screen.findByRole('button', { name: 'Approve rider' }, { timeout: WAIT })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Reason to/)).toBeNull()
+    expect(screen.queryByText('Do not include customer details.')).toBeNull()
+  }, SLOW)
+
   it('does not ask for a reason to reactivate: it is optional (#294)', async () => {
     const user = userEvent.setup()
     renderAt('/admin/riders?id=d-suspended')

@@ -566,7 +566,7 @@ also a G2 request on #219).
 | `resolution` | `AdminIssue.resolution` | `reason` = `note`, `by` = `resolved_by.name`, `at` = `resolved_at`. There is no `action` and no `points` in the backend: `action` is absent and the screen shows the note only |
 | `GET /admin/support-requests/{reference}` `contacts` | `getIssuePeople(id)` | `id` is the `reference`. `role`: `customer` "Customer"; `driver` "Driver" (the contract says "Rider" or "Driver" by delivery type, which the contacts do not carry). `phone` as it is |
 | `POST /admin/support-requests/{reference}/resolve` | `resolveIssue` | Body `{ note }` from the screen's note; the screen sends no action or points. 200 returns the resolved request, mapped as above. 409 `support_request_already_resolved` and 422 `validation_error` (note 5 to 500 characters) show through the error text |
-| `GET /admin/audit-logs` (`limit`) | `listAudit(limit)` | `actor` = `actor.name`; `action` = the words below, an unknown code shown as it is; `reason` is `null` (reasons stay on the business record). Newest first, as the server sends |
+| `GET /admin/audit-logs` (`limit`) | `listAudit(limit)` | `actor` = `actor.name`; `action` = the words below, an unknown code shown as it is; `reason` = `details.reason` for the four driver actions (`driver_approved`, `driver_suspended`, `driver_activated`, `driver_deactivated`), `null` for every other row (admin-operations.md, "The reason", #293); `target` = the record kind in words and the first 6 characters of `target_id`, `Driver · 4f3a2c` (table below). Newest first, as the server sends |
 | `GET /admin/notifications` | `listAdminNotifications` | `at` = `created_at`; `title` and `body` as sent; `read` = `read_at !== null`; `link`: a notification with an order `reference` opens `/admin/orders?ref=<reference>`; `partner_pending` opens `/admin/riders`; `support_request` without a reference opens `/admin/support`; any other opens `/admin/notifications` |
 | `POST /admin/notifications/read` | `markAdminNotificationsRead` | No body: every unread message of this admin; 204 |
 
@@ -582,6 +582,11 @@ for the Settings page (the actor and the time are in their own columns):
 | Code | Words |
 | --- | --- |
 | `account_name_corrected` | Corrected an account name |
+| `cash_corrected` | Corrected a cash amount |
+| `cash_handed_over` | Handed over cash |
+| `cash_received` | Received cash |
+| `cash_reconciled` | Reconciled cash |
+| `cash_recorded` | Recorded a cash collection |
 | `cash_remittance_recorded` | Recorded a cash handover |
 | `customer_address_added` | Added a customer address |
 | `customer_anonymized` | Anonymized a customer account |
@@ -603,7 +608,29 @@ for the Settings page (the actor and the time are in their own columns):
 
 Codes built from a status (`deletion_request_<status>`,
 `water_source_<status>`) and any code added later show as the code itself,
-until a row is added here.
+until a row is added here. The five cash codes are G2 approved
+(@nnamdi-security, 2026-10-31, #293).
+
+**Audit log record (#293).** Each row shows what it is about, as the kind of
+record in words and the first 6 characters of `target_id`: "Driver · 4f3a2c".
+It is a stopgap so two rows about different drivers can be told apart; the
+backend's `target_label` (#296) will replace the id with a name or reference.
+A kind with no words shows as the code itself.
+
+| `target_type` | Words |
+| --- | --- |
+| `driver` | Driver |
+| `order` | Order |
+| `service_zone` | Service area |
+| `price_list` | Price list |
+| `cash_collection` | Cash collection |
+| `cash_remittance` | Cash handover |
+| `water_source` | Water source |
+| `support_request` | Support request |
+| `customer_address` | Customer address |
+| `user` | Account |
+| `deletion_request` | Deletion request |
+| `retention_review` | Retention review |
 
 ## Admin customers and drivers
 

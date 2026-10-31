@@ -107,7 +107,16 @@ export function Settings() {
               columns={[
                 { header: 'When', cell: (a) => formatDateTime(a.at) },
                 { header: 'Who', cell: (a) => a.actor },
-                { header: 'What', cell: (a) => <b>{a.action}</b>, className: 'whitespace-normal' },
+                {
+                  header: 'What',
+                  cell: (a) => (
+                    <>
+                      <b>{a.action}</b>
+                      {a.target && <span className="block text-caption text-mute">{a.target}</span>}
+                    </>
+                  ),
+                  className: 'whitespace-normal',
+                },
                 { header: 'Reason', cell: (a) => a.reason ?? <span className="text-mute">None</span>, className: 'whitespace-normal' },
               ]}
             />

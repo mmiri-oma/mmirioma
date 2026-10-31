@@ -22,6 +22,7 @@ import {
   type AuditLogRead,
 } from '../../../lib/api/adminSupport'
 import { apiClient, type ApiClient } from '../../../lib/api/client'
+import { AUDIT_REASON_ACTIONS, auditTarget } from '../auditWording'
 
 /** Most requests the Support page reads: the server's page maximum. */
 const SUPPORT_PAGE_SIZE = 100
@@ -98,6 +99,11 @@ export async function resolveIssue(issueId: string, note: string, client: ApiCli
 /** The audit log's plain words for each action code the backend writes (api-mapping.md). */
 const AUDIT_WORDS: Record<string, string> = {
   account_name_corrected: 'Corrected an account name',
+  cash_corrected: 'Corrected a cash amount',
+  cash_handed_over: 'Handed over cash',
+  cash_received: 'Received cash',
+  cash_reconciled: 'Reconciled cash',
+  cash_recorded: 'Recorded a cash collection',
   cash_remittance_recorded: 'Recorded a cash handover',
   customer_address_added: 'Added a customer address',
   customer_anonymized: 'Anonymized a customer account',
@@ -126,14 +132,25 @@ const AUDIT_WORDS: Record<string, string> = {
   water_source_activated: 'Activated a water source',
 }
 
-/** One audit row. A code with no words shows as the code; there is no reason in the audit log. */
+/**
+ * The staff reason on an audit row (#293): `details.reason` for the four driver decisions, `null` for every other row,
+ * and for a reason that is not text or is only spaces. Other actions keep their notes off the screen (admin-operations.md).
+ */
+function auditReason(read: AuditLogRead): string | null {
+  if (!AUDIT_REASON_ACTIONS.has(read.action)) return null
+  const reason = read.details.reason
+  return typeof reason === 'string' && reason.trim() !== '' ? reason.trim() : null
+}
+
+/** One audit row. A code with no words shows as the code. The record is a kind and a short id until the backend sends a label (#296). */
 export function auditEntryFromRead(read: AuditLogRead): AuditEntry {
   return {
     id: read.id,
     at: read.at,
     actor: read.actor.name,
     action: Object.hasOwn(AUDIT_WORDS, read.action) ? AUDIT_WORDS[read.action] : read.action,
-    reason: null,
+    reason: auditReason(read),
+    target: auditTarget(read.target_type, read.target_id),
   }
 }
 

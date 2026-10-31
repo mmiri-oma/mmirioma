@@ -10,6 +10,14 @@ NFR-004 features (payments, refunds, documents) add their own.
 numbers, addresses, notes or other personal data in it (CLAUDE.md,
 Security): the notes stay on the business record, where access is
 controlled.
+
+One exception (technical lead, #293, 2026-10-31): the staff reason of a
+decision about a driver (``driver_approved``, ``driver_suspended``,
+``driver_activated``, ``driver_deactivated``) is stored in ``metadata`` under
+``reason``, because for those actions the audit row is the only place the
+reason is kept. Such a reason is a staff note and must not contain customer
+data; the audit endpoint is admin-only. Add no other reason without the same
+decision (docs/api/admin-operations.md, ``GET /admin/audit-logs``).
 """
 
 import uuid
@@ -34,7 +42,8 @@ class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         target_type: The kind of record acted on, e.g. ``order``.
         target_id: Its id.
         details: Small JSON metadata (column ``metadata``); ids and kinds
-            only, never personal data.
+            only, never personal data. The one exception is ``reason`` on the
+            four driver decisions named above.
     """
 
     __tablename__ = "audit_logs"

@@ -158,13 +158,43 @@ describe('the Support screen against the real API (#219, G2 approved by the tech
 })
 
 describe('the audit log and notifications against the real API (#219)', () => {
-  it('shows the audit log on Settings in plain words, with no reason, and no "not connected" message', async () => {
+  it('shows the audit log on Settings in plain words, with the record under each action, and no "not connected" message', async () => {
     renderAt('/admin/settings')
     expect((await screen.findAllByText('Resolved a support request', {}, { timeout: WAIT })).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Approved alternative proof').length).toBeGreaterThan(0)
     expect(screen.queryByText(/not connected/i)).toBeNull()
     const log = screen.getByRole('table', { name: 'Audit log' })
+    // These two rows carry no reason, so the Reason column reads "None"; each shows what it is about.
     expect(within(log).getAllByText('None').length).toBeGreaterThan(0)
+    expect(within(log).getByText('Support request · 6a8c0e')).toBeInTheDocument()
+    expect(within(log).getByText('Order · 1c7e9a')).toBeInTheDocument()
+  }, SLOW)
+
+  it('shows a driver decision with its reason and the driver, and a cash action in words (#293)', async () => {
+    const actor = { id: 'a1', name: 'Sample Admin', role: 'admin' }
+    serve({
+      'GET /admin/audit-logs': {
+        body: {
+          items: [
+            { id: 'r1', at: '2026-10-31T10:00:00Z', actor, action: 'driver_suspended', target_type: 'driver', target_id: '4f3a2c9e-1111-4222-8333-444455556666', details: { reason: 'Papers expired' } },
+            { id: 'r2', at: '2026-10-31T09:00:00Z', actor, action: 'cash_received', target_type: 'cash_collection', target_id: '3b9f1111-2222-4333-8444-555566667777', details: { order_id: 'x', reason: 'Not for the screen' } },
+          ],
+          total: 2,
+          limit: 50,
+          offset: 0,
+        },
+      },
+    })
+    renderAt('/admin/settings')
+    const log = await screen.findByRole('table', { name: 'Audit log' }, { timeout: WAIT })
+    expect(await within(log).findByText('Suspended a driver', {}, { timeout: WAIT })).toBeInTheDocument()
+    expect(within(log).getByText('Papers expired')).toBeInTheDocument()
+    expect(within(log).getByText('Driver · 4f3a2c')).toBeInTheDocument()
+    expect(within(log).getByText('Received cash')).toBeInTheDocument()
+    expect(within(log).getByText('Cash collection · 3b9f11')).toBeInTheDocument()
+    expect(within(log).queryByText('cash_received')).toBeNull()
+    // A reason on any other action stays off the screen.
+    expect(within(log).queryByText('Not for the screen')).toBeNull()
   }, SLOW)
 
   it('lists the notifications, and marks them all read with an empty body', async () => {

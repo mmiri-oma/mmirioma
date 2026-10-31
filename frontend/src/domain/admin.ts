@@ -476,7 +476,16 @@ export interface AuditEntry {
   actor: string
   /** "Assigned MO-3HT8 to Chinedu Okafor". */
   action: string
+  /**
+   * The staff reason a decision carries, where the backend stores one: today the driver approval, suspension,
+   * activation and deactivation rows (`details.reason`). `null` for every other row.
+   */
   reason: string | null
+  /**
+   * What the row is about, in words and a short id ("Driver · 4f3a2c"; docs/design/admin-audit-log.md), until the
+   * backend sends a label for the record (#296). `null` or absent when the server sends no target.
+   */
+  target?: string | null
 }
 
 export type ActivityKind = 'accepted' | 'new_order' | 'online' | 'delivered' | 'complaint' | 'admin'

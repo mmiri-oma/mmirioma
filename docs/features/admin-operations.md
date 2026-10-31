@@ -73,7 +73,8 @@ saving settings are out of the MVP).
 | `frontend/src/lib/api/adminOperations.ts` | Typed client and Zod checks for `GET /admin/shell`, `/dashboard`, `/live-map`, `/activity` and `/settings` (#217) |
 | `frontend/src/features/admin/real/operations.ts` | Adapters converting them to the admin design types, as docs/architecture/api-mapping.md "Admin operations" says |
 | `frontend/src/lib/api/adminSupport.ts` | Typed client and Zod checks for the support request, audit log and notification endpoints (#219) |
-| `frontend/src/features/admin/real/support.ts` | Adapters: request to issue, the audit action wording, notification links |
+| `frontend/src/features/admin/real/support.ts` | Adapters: request to issue, the audit action wording, the audit reason and record, notification links |
+| `frontend/src/features/admin/auditWording.ts` | The audit log's words that the contract does not fix: the four actions whose reason shows, the names of the kinds of record, the short id's length and the Riders hint (#293) |
 | `frontend/src/features/admin/support.screens.test.tsx` | The Support page, the audit log and the notifications in real-API mode |
 | `frontend/src/features/admin/operations.screens.test.tsx` | The screens in real-API mode, on the contract's example responses |
 | `backend/tests/test_admin_reports_api.py` | Dashboard, reports, live map and activity: roles, query rules, bodies against the examples (no database) |
@@ -236,6 +237,11 @@ in the database does not affect them.
 
 ## 10. Known limitations
 
+- **A driver's reason stays readable after the driver is anonymized.** The
+  privacy tool keeps audit rows, so a suspension reason still shows in the log.
+  Blanking it is a backend change, tracked apart from #293.
+- **A row names its record by a short id, not a name,** until the backend's
+  `target_label` ships (#296).
 - **`assignment_expired` is not created.** Offers never expire in the
   backend (admin dispatch decision 1; nothing sets the `expired` assignment
   status), so the contract's "an offer times out" message has no trigger.
@@ -256,9 +262,17 @@ in the database does not affect them.
   cancelling are done from the order's page and the hold review. A driver in
   the contacts reads "Driver" (the contacts carry no delivery type).
 - **The audit log shows plain words for the codes the backend writes** and
-  any other code as it is; it has no reason column value. Codes built from a
-  status (`deletion_request_<status>`, `water_source_<status>`) show as the
-  code until words are added.
+  any other code as it is. Codes built from a status
+  (`deletion_request_<status>`, `water_source_<status>`) show as the code until
+  words are added. Under each action a smaller line says what it is about, the
+  kind of record in words and the first 6 characters of its id ("Driver ·
+  4f3a2c"), until the backend sends a label (#296). The Reason column shows
+  `details.reason` on the four driver decisions (`driver_approved`,
+  `driver_suspended`, `driver_activated`, `driver_deactivated`) and "None" on
+  every other row, even if a later action stores a note in `details`; the words
+  are in `features/admin/auditWording.ts` (#293, `docs/design/admin-audit-log.md`).
+- **The Riders reason box carries a hint**, "Do not include customer details.":
+  the reason is stored in the audit log, which staff read.
 - **Real-mode screens show only what the backend sends.** The dashboard has
   no "Rider payouts due" or "Payments to verify" cards, and its "Refill
   stations" panel lists the live map's water sources (no count of active
