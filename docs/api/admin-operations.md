@@ -133,6 +133,10 @@ Points the body left open, decided by the technical lead
   `csrf_failed`).
 - Writes record an audit row (NFR-004) with ids and kinds only; never phones,
   addresses or notes in `metadata` (`backend/app/modules/audit/models.py`).
+  One exception, decided on #293: the reason of a staff decision about a driver
+  (`driver_approved`, `driver_suspended`, `driver_activated`,
+  `driver_deactivated`) is stored in `details.reason`, because the audit row is
+  the only place it is kept (see `GET /admin/audit-logs`).
 - Phones and names of customers and drivers go to staff only (NFR-003).
   Reports carry no customer data (FR-053: "minimal customer data").
 - Shared errors (401 `not_authenticated`, 403 `forbidden`, 403
@@ -493,12 +497,27 @@ Newest first.
 | Field | Rule |
 | --- | --- |
 | `action` | The snake_case action code written by the feature (`cash_received`, `proof_override_approved`, `support_request_resolved`, ...). The adapter turns known codes into words; an unknown code shows as it is |
-| `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`) |
+| `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`). The exception is `reason`, on the four driver actions named below |
+| `target_type`, `target_id` | The kind of record and its id. The screen shows the kind in words and a short id until the backend sends a label for the record (`target_label`, #296) |
 
-The design's `reason` column has no value here: reasons and notes stay on
-the business record, not in the audit log, by the audit module's rule. The
-adapter returns `null` and the screen shows "None". Reading the audit log is
-not itself audited.
+**The reason (#293, decided 2026-10-31 by @nnamdi-security).** The design's
+`reason` column shows `details.reason` on the four driver actions
+(`driver_approved`, `driver_suspended`, `driver_activated`,
+`driver_deactivated`) and "None" on every other row. For a driver the audit row
+is the only place the reason is stored (`docs/features/admin-drivers.md`), so
+keeping it off the screen would leave it unreadable. The rules:
+
+- Reasons are allowed in `details` only for staff-entered decisions, today
+  those four actions. They are staff notes and must not contain customer data;
+  the Riders reason box carries a hint to that effect ("Do not include
+  customer details.", added with the screen change for #293).
+- The audit endpoint is admin-only (above), and reading the log is not itself
+  audited.
+- The adapter reads `details.reason` only for those four codes, so a reason
+  added to another action later does not appear until it is added here.
+- Anonymizing a driver keeps the audit rows (`privacy/service.py`), so a
+  reason stays readable afterwards. Blanking it on anonymization is a backend
+  change, tracked apart from #293.
 
 ## Notifications (admin)
 
