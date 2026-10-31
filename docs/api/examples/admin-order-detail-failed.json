@@ -1,0 +1,100 @@
+{
+  "id": "3c1d6f0a-8b2e-4f7a-9c35-1e2d4b6a8f90",
+  "reference": "MO-7KQ2M9XH4T",
+  "status": "failed",
+  "quantity_litres": 2000,
+  "contact_name": "Sample Customer",
+  "contact_phone": "+2348000000001",
+  "delivery_address": "12 Sample Close, Independence Layout, Enugu",
+  "landmark": "Opposite the blue gate",
+  "delivery_instructions": "Tank is behind the house",
+  "preferred_delivery_date": "2026-10-20",
+  "created_at": "2026-10-19T07:40:00Z",
+  "updated_at": "2026-10-20T09:56:00Z",
+  "customer": {
+    "id": "0b8f1c5e-2a7d-4d3e-9a51-6f0c2b7e9d14",
+    "name": "Sample Customer",
+    "phone": "+2348000000001",
+    "phone_verified": true
+  },
+  "is_simulated": true,
+  "hold": null,
+  "water_category": {
+    "id": "3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+    "label": "Potable Water"
+  },
+  "source": {
+    "id": "8e2d4c6b-1a3f-4b5c-9d7e-0f1a2b3c4d5e",
+    "name": "Sample Borehole A",
+    "approximate_location": "Ugwuaji, Enugu",
+    "report_reference": "LR-0001",
+    "reasons": []
+  },
+  "delivery_window": {
+    "start_at": "2026-10-20T09:00:00Z",
+    "end_at": "2026-10-20T11:00:00Z"
+  },
+  "price": {
+    "total_minor_units": 4500000,
+    "currency": "NGN",
+    "manual": true,
+    "water_category_label": "Potable Water",
+    "entered_by": {
+      "id": "4e5f6a7b-8c9d-4e0f-a1b2-c3d4e5f6a7b8",
+      "name": "Sample Dispatcher"
+    },
+    "entered_at": "2026-10-19T08:51:00Z",
+    "customer_agreement": {
+      "method": "phone_call",
+      "agreed_at": "2026-10-19T08:45:00Z"
+    }
+  },
+  "confirmation_sms": {
+    "status": "accepted",
+    "attempted_at": "2026-10-19T08:51:02Z"
+  },
+  "assignment": {
+    "id": "6a0c2f4e-1b3d-4e5f-8a9b-0c1d2e3f4a5b",
+    "status": "completed",
+    "driver": {
+      "id": "7d1f4e8a-b6c9-4a1b-9c3d-4e5f0b8f1c5e",
+      "name": "Sample Driver One"
+    },
+    "vehicle": {
+      "type": "Tanker truck",
+      "safe_payload_litres": 3000
+    },
+    "offered_by": {
+      "id": "4e5f6a7b-8c9d-4e0f-a1b2-c3d4e5f6a7b8",
+      "name": "Sample Dispatcher"
+    },
+    "offered_at": "2026-10-19T09:05:00Z",
+    "responded_at": "2026-10-20T08:20:00Z",
+    "ended_at": "2026-10-20T09:56:00Z",
+    "decline_reason": null,
+    "decline_note": null
+  },
+  "payment": {
+    "method": "pay_on_delivery",
+    "status": "pending_collection",
+    "outstanding_balance_minor_units": 0,
+    "overpaid_minor_units": 0,
+    "cash_collection": null,
+    "remittance_difference": null,
+    "sms_status": null
+  },
+  "contact_attempts": [
+    {
+      "attempted_at": "2026-10-20T09:44:00Z"
+    },
+    {
+      "attempted_at": "2026-10-20T09:49:00Z"
+    }
+  ],
+  "delivery_type": null,
+  "keke": null,
+  "tanker": null,
+  "water_source": null,
+  "service_zone": null,
+  "quote": null
+}

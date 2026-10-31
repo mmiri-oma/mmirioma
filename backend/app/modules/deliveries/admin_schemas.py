@@ -44,6 +44,7 @@ from app.modules.deliveries.models import (
 )
 from app.modules.dispatch.schemas import (
     AdminOrderEvent,
+    ContactAttemptRead,
     EventActor,
     PersonRead,
 )
@@ -232,10 +233,6 @@ class DeliveryCodeStateRead(BaseModel):
     attempts_used: int
     attempts_limit: int
     expired: bool
-
-
-class ContactAttemptRead(BaseModel):
-    attempted_at: datetime
 
 
 class LocationRead(BaseModel):

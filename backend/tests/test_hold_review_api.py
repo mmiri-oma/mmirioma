@@ -128,6 +128,7 @@ def detail(hold: OrderException | None = None) -> holds.OrderDetail:
         ),
         hold=hold,
         confirmation=confirmation_service.EMPTY_VIEW,
+        contact_attempts=(),
     )
 
 

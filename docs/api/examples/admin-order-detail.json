@@ -83,6 +83,7 @@
     "remittance_difference": null,
     "sms_status": null
   },
+  "contact_attempts": [],
   "delivery_type": null,
   "keke": null,
   "tanker": null,

@@ -190,6 +190,8 @@ class OrderDetail:
     dispatch: dispatch_service.DispatchOrder
     hold: OrderException | None
     confirmation: confirmation_service.ConfirmationView
+    #: Times of the order's contact attempts, oldest first (FR-038, #280); empty if none.
+    contact_attempts: tuple[datetime, ...]
     #: The payment card (K6, docs/api/payments.md); None before confirmation.
     payment: payments_service.PaymentView | None = None
     #: The order's zone name and quote summary (order details contract).
@@ -413,6 +415,32 @@ async def list_orders(
     ], total
 
 
+async def contact_attempt_times(session: AsyncSession, order_id: uuid.UUID) -> tuple[datetime, ...]:
+    """Return the times of every contact attempt recorded on an order, oldest first.
+
+    ``AdminOrderDetail.contact_attempts`` (docs/api/deliveries.md, "Amendment
+    (#280)"). An attempt hangs off a delivery attempt (one arrival, one
+    assignment), so this reads across all of the order's arrivals; today an
+    order has one, and a rescheduled order will have more. Times only: the
+    amendment sends no names, numbers or locations.
+
+    Args:
+        session: Database session; the caller enforces the admin role.
+        order_id: The order.
+
+    Returns:
+        The server times of the attempts (UTC), oldest first; empty if no
+        driver has reached the customer.
+    """
+    rows = await session.scalars(
+        select(ContactAttempt.attempted_at)
+        .join(DeliveryAttempt, DeliveryAttempt.id == ContactAttempt.delivery_attempt_id)
+        .where(DeliveryAttempt.order_id == order_id)
+        .order_by(ContactAttempt.attempted_at, ContactAttempt.id)
+    )
+    return tuple(rows)
+
+
 async def get_order_detail(session: AsyncSession, *, reference: str) -> OrderDetail:
     """The admin order detail with its assignment and hold (R0).
 
@@ -426,6 +454,7 @@ async def get_order_detail(session: AsyncSession, *, reference: str) -> OrderDet
         dispatch=dispatch,
         hold=holds.get(order.id),
         confirmation=await confirmation_service.confirmation_view(session, order),
+        contact_attempts=await contact_attempt_times(session, order.id),
         payment=await payments_service.payment_view(session, order),
         lookups=await orders_service.read_lookups(session, [order]),
     )

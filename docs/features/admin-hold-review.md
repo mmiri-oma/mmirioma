@@ -57,7 +57,7 @@ driver app shows the next step the next time it loads.
 | File | Responsibility |
 | --- | --- |
 | `backend/app/modules/deliveries/holds.py` | The service: finding holds, evidence, every decision, withdraw with holds, fail and cancel, cancellation outcome, history with holds. Module docstring holds the rules |
-| `backend/app/modules/deliveries/admin_router.py` | All endpoints above; `CurrentAdmin`; thin handlers. Also serves the admin list, detail, withdraw and history, moved from the orders and dispatch routers |
+| `backend/app/modules/deliveries/admin_router.py` | All endpoints above; `CurrentAdmin`; thin handlers. Also serves the admin list, detail, assign, withdraw and history, moved from the orders and dispatch routers |
 | `backend/app/modules/deliveries/admin_schemas.py` | Request bodies, `HoldReviewRead`, `CancellationOutcomeRead`, the history with holds |
 | `backend/app/modules/deliveries/models.py` | `HoldResolution`, `OverrideStatus`, `CustomerAcknowledgementMethod`; new columns on `OrderException` and `DeliveryProof` |
 | `backend/app/modules/deliveries/service.py` | Alternative proof starts `pending`; approved proof counts as delivered on the driver's job |
@@ -72,7 +72,9 @@ driver app shows the next step the next time it loads.
 dispatch, then deliveries. Holds belong to deliveries, and the list, detail,
 withdraw and history now show or close them, so they are served by the
 deliveries admin router; their services stay where they were (technical
-lead, 2026-10-21). Paths and agreed shapes are unchanged.
+lead, 2026-10-21). `assign` joined them in #280: its response is an
+`AdminOrderDetail`, which carries the order's contact attempts, and deliveries
+owns those (technical lead, 2026-10-30). Paths and agreed shapes are unchanged.
 
 ## 4. Database models and relationships
 

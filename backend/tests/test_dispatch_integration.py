@@ -693,6 +693,7 @@ def test_offer_by_reference_returns_the_current_detail(created: Created) -> None
                 None,
                 OrderConfirmationFields.from_view(offered.staff_order.order, view),
                 OrderPaymentRead.from_view(payment),
+                contact_attempts=await holds.contact_attempt_times(session, order.id),
                 lookups=orders_service.ReadLookups(),  # no zone, no quote
             ).model_dump()
             again, repeated_new = await service.offer_order(

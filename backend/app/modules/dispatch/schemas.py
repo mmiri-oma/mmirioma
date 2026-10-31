@@ -6,7 +6,7 @@ customer's details stay in ``AdminOrderRead`` as before.
 """
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -85,6 +85,16 @@ class PersonRead(BaseModel):
         return cls(id=user.id, name=user.name)
 
 
+class ContactAttemptRead(BaseModel):
+    """One attempt to reach the customer after arrival: the server's time (FR-038).
+
+    The item of ``AdminOrderDetail.contact_attempts`` and of
+    ``HoldReview.proof.contact_attempts``. Times only: no number, location or note.
+    """
+
+    attempted_at: datetime
+
+
 class VehicleRead(BaseModel):
     """A driver's vehicle: type and verified safe payload per trip (FR-013)."""
 
@@ -150,10 +160,14 @@ class AdminOrderDetail(AdminOrderRead, OrderConfirmationFields):
         assignment: Live or ended; null if the order was never offered.
         payment: The payment card (docs/api/payments.md); null before the
             order is confirmed.
+        contact_attempts: Every contact attempt recorded on the order, oldest
+            first; empty when no driver has reached the customer (FR-038,
+            docs/api/deliveries.md, "Amendment (#280)").
     """
 
     assignment: AdminAssignment | None
     payment: OrderPaymentRead | None
+    contact_attempts: list[ContactAttemptRead]
 
     @classmethod
     def from_dispatch(
@@ -163,14 +177,16 @@ class AdminOrderDetail(AdminOrderRead, OrderConfirmationFields):
         confirmation: OrderConfirmationFields,
         payment: OrderPaymentRead | None,
         *,
+        contact_attempts: Sequence[datetime],
         lookups: ReadLookups,
     ) -> AdminOrderDetail:
         """Build the detail from the dispatch view, the open hold, the confirmation and payment.
 
-        ``confirmation`` and ``payment`` are required, not defaulted: the
-        admin client replaces its cached detail with every response, so a
-        response without them would hide the confirmed summary (C2) or the
-        payment card (K6). ``lookups`` covers the order's zone and quote
+        ``confirmation``, ``payment`` and ``contact_attempts`` are required,
+        not defaulted: the admin client replaces its cached detail with every
+        response, so a response without them would hide the confirmed summary
+        (C2), the payment card (K6) or the contact attempts of a failed
+        delivery (#280). ``lookups`` covers the order's zone and quote
         (``orders.service.read_lookups``).
         """
         staff = dispatch.staff_order
@@ -183,6 +199,7 @@ class AdminOrderDetail(AdminOrderRead, OrderConfirmationFields):
             if dispatch.assignment is None
             else AdminAssignment.from_view(dispatch.assignment),
             payment=payment,
+            contact_attempts=[ContactAttemptRead(attempted_at=at) for at in contact_attempts],
         )
 
 

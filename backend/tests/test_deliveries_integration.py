@@ -28,8 +28,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import get_settings
 from app.core.errors import APIError
 from app.modules.auth.models import User, UserRole
-from app.modules.deliveries import codes, service
+from app.modules.deliveries import codes, holds, service
 from app.modules.deliveries.models import (
+    ContactAttempt,
     DeliveryAttempt,
     DeliveryCode,
     ExceptionCategory,
@@ -916,5 +917,71 @@ def test_incident_rules(created: Created) -> None:
                 422,
                 "validation_error",
             )
+
+    run(scenario)
+
+
+async def add_contact_attempts(
+    sessions: Sessions, reference: str, driver: User, times: list[datetime]
+) -> None:
+    """Give a job an arrival and contact attempts at ``times``, inserted in the order given."""
+    async with sessions() as session:
+        order = await session.scalar(select(Order).where(Order.reference == reference))
+        assert order is not None
+        assignment = await session.scalar(select(Assignment).where(Assignment.order_id == order.id))
+        assert assignment is not None
+        arrival = DeliveryAttempt(
+            assignment_id=assignment.id,
+            order_id=order.id,
+            arrived_at=NOW - timedelta(minutes=30),
+            recorded_by=driver.id,
+        )
+        session.add(arrival)
+        await session.flush()
+        for at in times:
+            session.add(
+                ContactAttempt(
+                    delivery_attempt_id=arrival.id, attempted_at=at, recorded_by=driver.id
+                )
+            )
+        await session.commit()
+
+
+def test_the_admin_detail_lists_the_contact_attempts_oldest_first(created: Created) -> None:
+    """#280: a failed delivery's attempts, as times, oldest first; another order's never mix in."""
+
+    async def scenario(sessions: Sessions) -> None:
+        s = await setup(sessions, created)
+        driver = await add_user(sessions, created, UserRole.DRIVER)
+        first = NOW + timedelta(minutes=14)
+        second = NOW + timedelta(minutes=19)
+        failed = await add_job(
+            sessions,
+            s,
+            driver,
+            order_status=OrderStatus.FAILED,
+            assignment_status=AssignmentStatus.COMPLETED,
+        )
+        other = await add_job(
+            sessions,
+            s,
+            driver,
+            order_status=OrderStatus.FAILED,
+            assignment_status=AssignmentStatus.COMPLETED,
+        )
+        unreached = await add_job(sessions, s, driver, order_status=OrderStatus.EN_ROUTE)
+        # Inserted newest first, so the order of the result is the read's, not the insert's.
+        await add_contact_attempts(sessions, failed, driver, [second, first])
+        await add_contact_attempts(sessions, other, driver, [NOW + timedelta(minutes=40)])
+
+        async with sessions() as session:
+            failed_order = await order_for(sessions, failed)
+            unreached_order = await order_for(sessions, unreached)
+            assert await holds.contact_attempt_times(session, failed_order.id) == (first, second)
+            assert await holds.contact_attempt_times(session, unreached_order.id) == ()
+            detail = await holds.get_order_detail(session, reference=failed)
+            assert detail.contact_attempts == (first, second)
+            empty = await holds.get_order_detail(session, reference=unreached)
+            assert empty.contact_attempts == ()
 
     run(scenario)

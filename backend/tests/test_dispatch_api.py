@@ -178,6 +178,7 @@ class FakeDispatch:
         self.error: APIError | None = None
         self.created = True
         self.order = dispatch_order(make_assignment())
+        self.attempts: tuple[datetime, ...] = ()
 
     def _record(self, name: str, kwargs: dict[str, Any]) -> None:
         self.calls.append((name, kwargs))
@@ -205,7 +206,15 @@ class FakeDispatch:
 
     async def withdraw_job(self, _: object, **kwargs: Any) -> holds.OrderDetail:
         self._record("withdraw_job", kwargs)
-        return holds.OrderDetail(dispatch=self.order, hold=None, confirmation=confirmed_view())
+        return holds.OrderDetail(
+            dispatch=self.order,
+            hold=None,
+            confirmation=confirmed_view(),
+            contact_attempts=self.attempts,
+        )
+
+    async def contact_attempt_times(self, _: object, order_id: uuid.UUID) -> tuple[datetime, ...]:
+        return self.attempts
 
     async def current_holds(self, _: object, order_ids: object) -> dict[uuid.UUID, Any]:
         return {}
@@ -267,6 +276,7 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeDispatch:
         monkeypatch.setattr(service, name, getattr(fake, name))
     monkeypatch.setattr(holds, "withdraw_job", fake.withdraw_job)
     monkeypatch.setattr(holds, "current_holds", fake.current_holds)
+    monkeypatch.setattr(holds, "contact_attempt_times", fake.contact_attempt_times)
 
     async def view(*_args: object, **_kwargs: object) -> confirmation_service.ConfirmationView:
         return confirmed_view()
@@ -424,6 +434,60 @@ def test_driver_list_matches_the_contract_example(api: TestClient) -> None:
 
 
 # --- Assign (D1, row 8) ------------------------------------------------------------
+
+
+ATTEMPTS = (datetime(2026, 10, 20, 9, 44, tzinfo=UTC), datetime(2026, 10, 20, 9, 49, tzinfo=UTC))
+
+
+def test_detail_sends_the_contact_attempts_oldest_first(
+    api: TestClient, fake: FakeDispatch
+) -> None:
+    """#280: a failed delivery's attempts reach the dispatcher as times only."""
+    fake.attempts = ATTEMPTS
+    body = api.get(BASE, headers=sign_in(api, UserRole.ADMIN)).json()
+
+    assert body["contact_attempts"] == [
+        {"attempted_at": "2026-10-20T09:44:00Z"},
+        {"attempted_at": "2026-10-20T09:49:00Z"},
+    ]
+
+
+def test_detail_sends_an_empty_list_when_no_attempt_was_recorded(
+    api: TestClient, fake: FakeDispatch
+) -> None:
+    assert api.get(BASE, headers=sign_in(api, UserRole.ADMIN)).json()["contact_attempts"] == []
+
+
+def test_detail_matches_the_failed_order_example(api: TestClient, fake: FakeDispatch) -> None:
+    fake.attempts = ATTEMPTS
+    body = api.get(BASE, headers=sign_in(api, UserRole.ADMIN)).json()
+    example = json.loads((EXAMPLES / "admin-order-detail-failed.json").read_text(encoding="utf-8"))
+
+    assert keys(body) == keys(example) | {"payment": None}
+    assert body["contact_attempts"] == example["contact_attempts"]
+
+
+def test_assign_carries_the_contact_attempts_too(api: TestClient, fake: FakeDispatch) -> None:
+    """The admin client replaces its cached detail with every response (#280)."""
+    fake.attempts = ATTEMPTS
+    response = api.post(
+        f"{BASE}/assign", json={"driver_id": str(DRIVER.id)}, headers=sign_in(api, UserRole.ADMIN)
+    )
+
+    assert response.status_code == 201
+    assert len(response.json()["contact_attempts"]) == 2
+
+
+def test_withdraw_carries_the_contact_attempts_too(api: TestClient, fake: FakeDispatch) -> None:
+    fake.attempts = ATTEMPTS
+    response = api.post(
+        f"{BASE}/withdraw",
+        json={"expected_status": "offered"},
+        headers=sign_in(api, UserRole.ADMIN),
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["contact_attempts"]) == 2
 
 
 def test_assign_returns_201_with_the_order(api: TestClient, fake: FakeDispatch) -> None:

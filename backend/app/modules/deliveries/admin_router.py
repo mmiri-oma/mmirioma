@@ -7,10 +7,11 @@ T-23); ``POST`` also needs the CSRF header, which the auth dependency
 enforces. Handlers only translate between HTTP and
 :mod:`app.modules.deliveries.holds`.
 
-The admin order list, detail, withdraw and history live here, not in the
+The admin order list, detail, assign, withdraw and history live here, not in the
 orders and dispatch routers: each shows or closes the job's hold, which this
 module owns, and deliveries depends on orders and dispatch, not the other
-way round (technical lead, 2026-10-21). Their paths and agreed shapes are
+way round (technical lead, 2026-10-21; assign joined them in #280, when the
+detail began to carry the order's contact attempts). Their paths and agreed shapes are
 unchanged; the list and detail gain ``hold``, and the history adds hold
 entries only with ``include=holds`` (contract decision 8).
 """
@@ -18,7 +19,7 @@ entries only with ``include=holds`` (contract decision 8).
 from http import HTTPStatus
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,11 +46,13 @@ from app.modules.deliveries.admin_schemas import (
     ProofOverrideRequest,
     hold_read,
 )
+from app.modules.dispatch import service as dispatch_service
 from app.modules.dispatch.models import AssignmentStatus
 from app.modules.dispatch.schemas import (
     AdminOrderDetail,
     AdminOrderEvent,
     AdminOrderHistory,
+    AssignRequest,
     WithdrawRequest,
 )
 from app.modules.messaging.sms import SmsProvider, get_sms_provider
@@ -84,6 +87,7 @@ def _detail(detail: holds.OrderDetail) -> AdminOrderDetail:
         hold_read(detail.hold),
         OrderConfirmationFields.from_view(detail.dispatch.staff_order.order, detail.confirmation),
         OrderPaymentRead.from_view(detail.payment),
+        contact_attempts=detail.contact_attempts,
         lookups=detail.lookups,
     )
 
@@ -127,6 +131,47 @@ async def get_order(reference: str, _admin: CurrentAdmin, db: DbSession) -> Admi
         APIError: 404 ``order_not_found``.
     """
     return _detail(await holds.get_order_detail(db, reference=reference))
+
+
+@router.post(
+    "/{reference}/assign",
+    status_code=HTTPStatus.CREATED,
+    responses={
+        **_WRITE_ERRORS,
+        HTTPStatus.OK: {"model": AdminOrderDetail, "description": "Repeated offer"},
+    },
+)
+async def assign(
+    reference: str, body: AssignRequest, admin: CurrentAdmin, db: DbSession, response: Response
+) -> AdminOrderDetail:
+    """Offer a confirmed order to one driver (row 8, FR-032).
+
+    The order becomes ``assigned``; the driver has not accepted. Returns 201,
+    or 200 when the same driver is already offered it. An order being offered
+    is ``confirmed`` and has no open hold (holds close when a job ends), so the
+    detail carries ``hold: null``.
+
+    Raises:
+        APIError: 404 ``order_not_found`` or ``driver_not_found``;
+            409 ``driver_not_eligible`` (``details.reasons``) or
+            ``invalid_order_transition``.
+    """
+    order, created = await dispatch_service.offer_order(
+        db, reference=reference, driver_user_id=body.driver_id, admin=admin
+    )
+    if not created:
+        response.status_code = HTTPStatus.OK
+    staff_order = order.staff_order.order
+    view = await confirmation_service.confirmation_view(db, staff_order)
+    payment = await payments_service.payment_view(db, staff_order)
+    return AdminOrderDetail.from_dispatch(
+        order,
+        None,
+        OrderConfirmationFields.from_view(staff_order, view),
+        OrderPaymentRead.from_view(payment),
+        contact_attempts=await holds.contact_attempt_times(db, staff_order.id),
+        lookups=await orders_service.read_lookups(db, [staff_order]),
+    )
 
 
 @router.post("/{reference}/withdraw", responses=_WRITE_ERRORS)

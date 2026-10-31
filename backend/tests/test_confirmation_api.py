@@ -123,6 +123,7 @@ class Fake:
             ),
             hold=None,
             confirmation=confirmed_view(),
+            contact_attempts=(),
         )
 
     async def confirmation_options(self, _session: object, **kwargs: Any) -> list[CategoryOptions]:
