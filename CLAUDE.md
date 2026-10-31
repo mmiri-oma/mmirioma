@@ -33,14 +33,27 @@ builds the backend piece a screen still needs.
 - **One issue, one branch, one PR.** Every task is an issue in this repo, in
   the `Linking MVP` milestone. Start one with `/work-issue <number>` (agents
   without slash commands: follow `.claude/commands/work-issue.md` for that
-  issue). Branch from an up-to-date `main` as `feat/<issue>-<slug>` (or
-  `fix/`, `chore/`, `docs/`) and put `Closes #<issue>` in the PR.
-- **`main` is protected.** A PR merges only when both CI jobs are green
+  issue). Branch from an up-to-date `development` as `feat/<issue>-<slug>` (or
+  `fix/`, `chore/`, `docs/`), open the PR **against `development`**, and put
+  `Closes #<issue>` in it. Delete the branch, locally and on `origin`, once
+  its PR is merged.
+- **`development` is the integration branch and the default branch.** Every
+  feature, fix, chore and docs branch merges into `development` first, and the
+  work is tested there (the project is deployed on a Hostinger VPS, see
+  [docs/deployment/hostinger.md](docs/deployment/hostinger.md)). Only tested
+  work is promoted from `development` to `main`, by a PR from `development`
+  into `main`. Never open a task branch's PR against `main`, and never commit
+  to `development` or `main` directly. Because `development` is the default
+  branch, `Closes #<issue>` closes the issue when the PR merges into it.
+- **`development` and `main` are both protected, with the same rules.** A PR
+  into either merges only when both CI jobs are green
   (`Backend (lint, migrations, tests)`, `Frontend (lint, typecheck, test,
   build)`) and **one** reviewer has approved it. The reviewers are
   @chidimmamogbo, @nnamdi-security and @Cloudcrackamara (`.github/CODEOWNERS`);
   any one of them suffices, for any part of the repository, and an author
-  never approves their own PR. Run the checks in [Testing](#testing) locally
+  never approves their own PR. Stale approvals are dismissed on a new push,
+  conversations must be resolved, and force pushes and deletions are blocked,
+  for administrators too. Run the checks in [Testing](#testing) locally
   before you push.
 - **Stay in your lane.** Lanes, owners, dependencies and the files each lane
   owns are in [docs/process/linking-plan.md](docs/process/linking-plan.md).
@@ -171,7 +184,8 @@ with the reason.
   (`tests/test_command_models.py` checks it).
 - Migrations must be reversible where reasonably possible, and must not drop or
   rewrite production data without an explicit, reviewed plan.
-- Never edit a migration that has been merged to `main`; add a new one.
+- Never edit a migration that has been merged to `development` or `main`; add
+  a new one.
 - `alembic check` must pass in CI (models and migrations in sync).
 - Spatial data uses PostGIS (SRID 4326 unless the SRS says otherwise).
 
@@ -410,10 +424,14 @@ per entry. `LOG.md` at the repo root is the archive of entries up to
 
 ## Git workflow
 
-- Branch from `main` using `feat/...`, `fix/...`, `chore/...`, `docs/...`.
+- Branch from `development` using `feat/...`, `fix/...`, `chore/...`,
+  `docs/...`. `main` only receives tested work promoted from `development`.
 - Small, focused commits with imperative messages (Conventional Commits style
   preferred, e.g. `feat(orders): add order creation endpoint`).
-- Open pull requests against `main`; CI must pass. PR descriptions state what
-  changed, why, how it was tested, and any migration or config impact.
+- Open pull requests against `development`, not `main`; CI must pass. A PR
+  from `development` into `main` is opened only after the work has been tested
+  on the deployment. PR descriptions state what changed, why, how it was
+  tested, and any migration or config impact.
+- Delete a task branch (local and `origin`) after its PR is merged.
 - **Do not commit, push, merge, rebase, or switch branches without explicit
   permission from the user.**

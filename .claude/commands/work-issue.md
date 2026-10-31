@@ -29,7 +29,7 @@ or the SRS leaves open, and the user has answered those questions.
 
 ## 2. Branch
 
-`git switch main && git pull`, then, with the user's OK,
+`git switch development && git pull`, then, with the user's OK,
 `git switch -c <feat|fix|docs|chore>/$ARGUMENTS-<short-slug>`.
 
 **Done when:** you are on the new branch with a clean tree.
@@ -74,8 +74,9 @@ file in `docs/log/` (template in `docs/log/README.md`).
 ## 5. Open the PR
 
 With the user's OK: commit in Conventional Commits style, push to `origin`,
-and open the PR against `main` using `.github/pull_request_template.md`,
-with `Closes #$ARGUMENTS`. CODEOWNERS requests the reviewers.
+and open the PR against `development` (never `main`) using
+`.github/pull_request_template.md`, with `Closes #$ARGUMENTS`; `development` is
+the default branch, so the keyword closes the issue when the PR merges. CODEOWNERS requests the reviewers.
 Then wait for CI: `gh pr checks <pr> --repo mmiri-oma/mmirioma --watch`.
 
 **Done when:** the PR is open with both CI jobs green. A red job means
