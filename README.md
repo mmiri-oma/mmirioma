@@ -209,7 +209,7 @@ npm run build
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pull requests targeting `main`:
+`.github/workflows/ci.yml` runs on pull requests targeting `main` or `development`:
 
 - **backend**: ruff lint and format check, `alembic upgrade head` and `alembic check`
   against a throwaway PostGIS service, then `pytest` including integration tests.
