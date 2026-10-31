@@ -26,6 +26,7 @@ import { formatPhone } from '../../../lib/format/phone'
 import * as api from '../adminApi'
 import { revealDetail } from '../adminFormat'
 import { AdminFrame, ApprovalChip, OnlineChip, PageHead, SplitLayout } from '../AdminParts'
+import { REASON_HINT } from '../auditWording'
 import { useAdminMutation, useRider, useRiders } from '../queries'
 
 const FILTERS: { value: api.RiderFilter; label: string }[] = [
@@ -172,6 +173,7 @@ function RiderPanel({ id }: { id: string }) {
       {action !== 'approve' && (
         <TextAreaField
           label={`Reason to ${action} (saved in the audit log)`}
+          hint={REASON_HINT}
           rows={2}
           value={reason}
           error={fieldErrors(change.error).reason ?? (reasonMissing ? REASON_REQUIRED : undefined)}
