@@ -458,6 +458,32 @@ They follow "Accepted by <driver>" (assignment events, deliveries.md
 nothing of their own; a failed or cancelled order ends with "Delivery failed"
 or "Cancelled".
 
+#### Contact attempts on the timeline (#280)
+
+Source: `withContactAttempts` in `frontend/src/features/admin/timeline.ts`,
+called by `timelineFromHistory` (design:
+[admin-order-contact-attempts.md](../design/admin-order-contact-attempts.md);
+contract: deliveries.md, "Amendment (#280)").
+
+| API | Timeline |
+| --- | --- |
+| `AdminOrderDetail.contact_attempts[].attempted_at` (UTC, oldest first, `[]` when none) | One line per attempt: "Contact attempt N", at that time. No detail line: the contract sends times only |
+| `contact_attempts` missing from the response (a server older than the field) | No attempt lines. `parseDetail` reads it as `[]` |
+| `StoredJob.contact_attempts` (mock mode: the times the mock partner recorded) | The same lines, built by the same function |
+
+- **Number.** N counts the attempts by time across the whole order, whatever
+  order the server listed them in.
+- **Position.** Each line goes after the last entry that is not later than it,
+  so a status event wins a tie (an attempt cannot precede the arrival it
+  follows). "Order placed" stays first, and the events already in the list are
+  not re-sorted.
+- **Only with the history.** `getOrder` adds the lines when the history loaded.
+  If the history read fails the timeline stays at "Order placed" (see above)
+  and the attempts are left out too: a "Contact attempt 1" with no arrival or
+  ending around it would mislead.
+- **Any order with attempts**, not only a failed one: a job whose driver has
+  arrived shows the attempts recorded so far, on the panel's next read.
+
 ## Price list (admin Pricing)
 
 The Pricing screen (#173, design `docs/design/admin-pricing.md`) works in
