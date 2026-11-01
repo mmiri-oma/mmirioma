@@ -1,11 +1,11 @@
 # Admin water sources contract
 
-**Status: proposed** on 2026-11-01 for #309, by @Bonvee120 (+ Claude Code), from
-the technical lead's decisions on the issue
+**Status: agreed** by @nnamdi-security on 2026-11-01 (G3). Proposed the same day
+for #309 by @Bonvee120 (+ Claude Code), from the technical lead's decisions on the
+issue
 ([comment](https://github.com/mmiri-oma/mmirioma/issues/309#issuecomment-6560696255)).
-It becomes `Status: agreed` when one reviewer who is not the author agrees it
-(CLAUDE.md, "Team workflow"). The backend and the screen are built only after
-that. The sections that carry a decision from the issue say so.
+The backend and the screen are built to this contract. The sections that carry a
+decision from the issue say so.
 
 Requirements: FR-011, FR-012, FR-014, BR-09, BR-10, NFR-004 · Design:
 [admin-water-sources.md](../design/admin-water-sources.md) · Feature document:
@@ -29,7 +29,7 @@ eligibility check works ([deliveries.md](deliveries.md#source-eligibility-shared
 ## Access
 
 All endpoints are admin-only (`CurrentAdmin`). A customer or driver gets 403
-`forbidden`, and no session gets 401 `unauthenticated`. The admin role is the
+`forbidden`, and no session gets 401 `not_authenticated`. The admin role is the
 only one that exists for staff today (decision 5 on the issue). Unsafe methods
 need the CSRF header like every other write.
 
@@ -235,14 +235,17 @@ frontend change that goes with the screen.
 
 ## Open questions
 
-| # | Question | Source |
+All three were decided by the technical lead on 2026-11-01 (G3).
+
+| # | Question | Decision |
 | --- | --- | --- |
-| 1 | Should `approved_until` in the past be refused on activation? The command line accepts it, which creates an activation that is expired at once. This contract proposes refusing it. | FR-012 |
-| 2 | Is an unpaginated list acceptable? A few sources are expected in the pilot. Say if a page limit is wanted now. | README conventions |
-| 3 | Can a revoked activation be moved to suspended? The command line allows it. This contract allows it and writes an audit row. | BR-10 |
+| 1 | Should `approved_until` in the past be refused on activation? | **Yes**, refused with 422 `validation_error` on that field (a date before today in Lagos). Renewing an expired approval needs a new date. The command line keeps accepting a past date (it is the fallback); the screen and the API do not |
+| 2 | Is an unpaginated list acceptable? | **Yes** for the pilot. Add a page limit if the list grows |
+| 3 | Can a revoked activation be moved to suspended? | **Yes**, with an audit row, as the command line allows (BR-10) |
 
 ## Changes
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
 | 2026-11-01 | Proposed (#309), from the technical lead's decisions on the issue | not yet agreed |
+| 2026-11-01 | Agreed, with the three open questions decided; the 401 code is `not_authenticated`, as in the README | @nnamdi-security |

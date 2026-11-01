@@ -6,9 +6,11 @@
 Issue: [#309](https://github.com/mmiri-oma/mmirioma/issues/309) ·
 Requirements: FR-011, FR-012, FR-014, BR-09, BR-10, NFR-004 · Prompt:
 [prompts/19-admin-water-sources.md](prompts/19-admin-water-sources.md) ·
-Contract (proposed, G3 pending): [admin-water-sources.md](../api/admin-water-sources.md)
+Contract (agreed, G3): [admin-water-sources.md](../api/admin-water-sources.md)
 Designer: @Bonvee120 + Claude Code (text design; no visual mockup yet) ·
-Decisions: @nnamdi-security on #309, 2026-11-01 · Status: proposed
+Decisions: @nnamdi-security on #309, 2026-11-01 · Status: approved (G2, the written
+design, @nnamdi-security, 2026-11-01); the visual mockup is still to be attached
+and checked before the screen is built
 
 This is a written design: the layout, every state and the exact wording. The
 visual mockup is made from the prompt in Claude Design and attached before the
@@ -149,6 +151,6 @@ Water."
 
 ## Open questions
 
-None for the design. The contract's open questions (a past `approved_until`, an
-unpaginated list, revoked to suspended) are in
-[admin-water-sources.md](../api/admin-water-sources.md#open-questions).
+None for the design. The contract's three open questions are decided
+([admin-water-sources.md](../api/admin-water-sources.md#open-questions)); the
+form's error "Choose a date from today." follows decision 1 there.
