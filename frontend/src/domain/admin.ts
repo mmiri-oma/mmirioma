@@ -240,7 +240,8 @@ export interface AdminRider {
   approval: ApprovalStatus
   /** Not sent by the backend (partner pay is out of the MVP): absent, and the real-mode screen hides it. */
   today_minor_units?: number
-  trips: number
+  /** Delivered jobs only (#275). `null` when the server does not send the count (an older backend): the screen shows "Not known yet". */
+  trips: number | null
   rating: number | null
   /** Not sent by the backend (partner pay is out of the MVP): absent, and the real-mode screen hides it. */
   payout_due_minor_units?: number

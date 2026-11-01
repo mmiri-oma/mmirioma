@@ -78,6 +78,7 @@ class AdminDriverRead(BaseModel):
     zones: list[ZoneRead]
     live_jobs: int
     completed_jobs: int
+    delivered_jobs: int
     created_at: datetime
 
 

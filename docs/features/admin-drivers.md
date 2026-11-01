@@ -130,7 +130,11 @@ The API tests check each response body equals its example.
 - **Counts.** `available` uses the dashboard's definition (active, approved and
   available) so the header and the dashboard agree. `pending` counts active
   accounts only. `live_jobs` and `completed_jobs` count `offered` or
-  `accepted` and `completed` assignments.
+  `accepted` and `completed` assignments. `delivered_jobs` counts the
+  `completed` assignments whose order is `delivered`: a failed or cancelled
+  job also ends `completed`, so only `delivered_jobs` is the Riders page's
+  "Trips" (#275, `job_counts_by_driver` in `dispatch/service.py`, one join on
+  the order).
 - **Search.** `q` matches a part of the name, the vehicle type (the verified
   description, or the declared kind `keke` or `tanker`, so a pending partner is
   found) and, with 4 or more digits, the phone in `+234…` or `0…` form.

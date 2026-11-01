@@ -308,17 +308,22 @@ class DriverJobCounts:
 
     Attributes:
         live: Assignments in status ``offered`` or ``accepted``.
-        completed: Assignments in status ``completed``.
+        completed: Assignments in status ``completed``. A job also ends
+            ``completed`` when its order fails or is cancelled
+            (deliveries.md, ``job_status``), so this is not a delivery count.
+        delivered: ``completed`` assignments whose order is ``delivered``: the
+            design's "trips" (admin-directory.md, ``delivered_jobs``, #275).
     """
 
     live: int
     completed: int
+    delivered: int
 
 
 async def job_counts_by_driver(
     session: AsyncSession, driver_user_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, DriverJobCounts]:
-    """Count each driver's live and completed assignments.
+    """Count each driver's live, completed and delivered assignments.
 
     Args:
         session: Database session.
@@ -331,12 +336,18 @@ async def job_counts_by_driver(
         return {}
     live = func.count().filter(Assignment.status.in_(LIVE_ASSIGNMENT_STATUSES))
     completed = func.count().filter(Assignment.status == AssignmentStatus.COMPLETED)
+    # A failed or cancelled order also ends its job `completed`; only a
+    # delivered order is a trip (#275).
+    delivered = func.count().filter(
+        Assignment.status == AssignmentStatus.COMPLETED, Order.status == OrderStatus.DELIVERED
+    )
     rows = await session.execute(
-        select(Assignment.driver_user_id, live, completed)
+        select(Assignment.driver_user_id, live, completed, delivered)
+        .join(Order, Order.id == Assignment.order_id)
         .where(Assignment.driver_user_id.in_(set(driver_user_ids)))
         .group_by(Assignment.driver_user_id)
     )
-    return {driver_id: DriverJobCounts(live, done) for driver_id, live, done in rows}
+    return {driver_id: DriverJobCounts(live, done, trips) for driver_id, live, done, trips in rows}
 
 
 async def assign_driver(

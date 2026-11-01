@@ -23,6 +23,7 @@
       ],
       "live_jobs": 1,
       "completed_jobs": 42,
+      "delivered_jobs": 39,
       "created_at": "2026-10-10T08:00:00Z"
     },
     {
@@ -47,6 +48,7 @@
       ],
       "live_jobs": 0,
       "completed_jobs": 0,
+      "delivered_jobs": 0,
       "created_at": "2026-10-25T15:00:00Z"
     }
   ],

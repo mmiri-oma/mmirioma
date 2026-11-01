@@ -120,7 +120,7 @@ describe('riders and drivers', () => {
       code: null,
       approval: 'approved',
       online: true,
-      trips: 42,
+      trips: 39,
       active_orders: 1,
       partner_since: '2026-10-10T08:00:00Z',
       service_areas: ['Independence Layout', 'New Haven'],
@@ -141,6 +141,14 @@ describe('riders and drivers', () => {
   it('keeps a driver with no vehicle type or plate (command-line tool) as no type and an empty plate', () => {
     const rider = riderFromRead({ ...TANKER, vehicle: { ...TANKER.vehicle, delivery_type: null, plate: null, description: null, safe_payload_litres: null, transfer_methods: [] } })
     expect(rider.vehicle).toEqual({ type: null, plate: '', tank_gallons: null })
+  })
+
+  it('counts delivered jobs as trips, never completed jobs: a failed or cancelled job is no trip (#275)', () => {
+    expect(riderFromRead({ ...TANKER, completed_jobs: 1, delivered_jobs: 0 }).trips).toBe(0)
+  })
+
+  it('shows no trip count, not completed_jobs, when an older server sends no delivered_jobs (#275)', () => {
+    expect(riderFromRead({ ...TANKER, delivered_jobs: undefined }).trips).toBeNull()
   })
 
   it('reads an approval status it does not know as waiting for approval, never failing', () => {
