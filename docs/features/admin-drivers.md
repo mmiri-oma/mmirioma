@@ -191,6 +191,10 @@ TEST_DATABASE_URL=postgresql+asyncpg://... .venv/bin/pytest tests/test_admin_dri
   (no source). Approving a partner with no verified vehicle collects it (vehicle,
   safe payload in litres, transfer method) with what the partner declared shown as
   a claim; a suspended partner who already has one is approved with nothing extra.
+  The form's examples follow the declared vehicle type (#294): a Keke sees "e.g.
+  Keke" and "Litres you measured" (no capacity is defined for a Keke, so no
+  number); a tanker, or an unknown type, sees "e.g. Tanker truck" and "e.g. 12000".
+  Wording approved by @nnamdi-security on 2026-11-01 (G2, comment on #294).
   Suspending asks for a reason, and a refused field shows the server's words under
   it. The "Suspended" pill has no count (the server has none). Tests:
   `features/admin/directory.screens.test.tsx`.

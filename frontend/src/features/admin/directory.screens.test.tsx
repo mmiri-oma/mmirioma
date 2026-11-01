@@ -236,6 +236,34 @@ describe('the Riders screen against the real API (#220, G2 approved by the techn
     })
   }, SLOW)
 
+  describe('the vehicle form examples follow the vehicle type (#294)', () => {
+    /** Open the approval form for a pending partner whose declared vehicle type is `type`. */
+    async function openForm(type: 'keke' | 'tanker' | null) {
+      const partner = { ...PENDING_KEKE, id: `d-pending-${type}`, vehicle: { ...PENDING_KEKE.vehicle, delivery_type: type } }
+      routes[`GET /admin/drivers/${partner.id}`] = { body: partner }
+      renderAt(`/admin/riders?id=${partner.id}`)
+      await screen.findByText('Vehicle you checked', {}, { timeout: WAIT })
+    }
+
+    it('shows Keke examples for a Keke, with no capacity number', async () => {
+      await openForm('keke')
+      expect(screen.getByLabelText('Vehicle')).toHaveAttribute('placeholder', 'e.g. Keke')
+      expect(screen.getByLabelText('Safe payload per trip (litres)')).toHaveAttribute('placeholder', 'Litres you measured')
+    }, SLOW)
+
+    it('shows the tanker examples for a tanker', async () => {
+      await openForm('tanker')
+      expect(screen.getByLabelText('Vehicle')).toHaveAttribute('placeholder', 'e.g. Tanker truck')
+      expect(screen.getByLabelText('Safe payload per trip (litres)')).toHaveAttribute('placeholder', 'e.g. 12000')
+    }, SLOW)
+
+    it('keeps the tanker examples when the vehicle type is not known', async () => {
+      await openForm(null)
+      expect(screen.getByLabelText('Vehicle')).toHaveAttribute('placeholder', 'e.g. Tanker truck')
+      expect(screen.getByLabelText('Safe payload per trip (litres)')).toHaveAttribute('placeholder', 'e.g. 12000')
+    }, SLOW)
+  })
+
   it('shows a refused vehicle field under that field (422)', async () => {
     const user = userEvent.setup()
     routes[`POST /admin/drivers/${PENDING_KEKE.id}/approval`] = {
