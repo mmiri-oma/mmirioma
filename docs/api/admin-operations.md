@@ -136,7 +136,9 @@ Points the body left open, decided by the technical lead
   One exception, decided on #293: the reason of a staff decision about a driver
   (`driver_approved`, `driver_suspended`, `driver_activated`,
   `driver_deactivated`) is stored in `details.reason`, because the audit row is
-  the only place it is kept (see `GET /admin/audit-logs`).
+  the only place it is kept (see `GET /admin/audit-logs`). When the driver is
+  anonymized, `reason` is removed and `details.reason_removed: true` is set in
+  its place (#298).
 - Phones and names of customers and drivers go to staff only (NFR-003).
   Reports carry no customer data (FR-053: "minimal customer data").
 - Shared errors (401 `not_authenticated`, 403 `forbidden`, 403
@@ -498,7 +500,7 @@ Newest first.
 | Field | Rule |
 | --- | --- |
 | `action` | The snake_case action code written by the feature (`cash_received`, `proof_override_approved`, `support_request_resolved`, ...). The adapter turns known codes into words; an unknown code shows as it is |
-| `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`). The exception is `reason`, on the four driver actions named below |
+| `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`). The exception is `reason`, on the four driver actions named below, or `reason_removed: true` in its place once the driver is anonymized (#298) |
 | `target_type`, `target_id` | The kind of record and its id. The screen shows the kind in words, then the label below, or the short id when the label is `null` |
 | `target_label` | **Status: agreed** (G3, #296; @nnamdi-security, technical lead, 2026-11-01). `string \| null`, always present. The record's name or reference, looked up when the page is read and **never stored** in `audit_logs`, so anonymizing a record still works. See the table and rules below |
 
@@ -540,9 +542,16 @@ keeping it off the screen would leave it unreadable. The rules:
   audited.
 - The adapter reads `details.reason` only for those four codes, so a reason
   added to another action later does not appear until it is added here.
-- Anonymizing a driver keeps the audit rows (`privacy/service.py`), so a
-  reason stays readable afterwards. Blanking it on anonymization is a backend
-  change, tracked apart from #293.
+- **Anonymizing a driver (#298, decided 2026-10-31 by @nnamdi-security).**
+  The privacy tool keeps the audit rows but, on these four actions where the
+  driver is the target, removes `details.reason` and sets
+  `details.reason_removed: true` (`privacy/service.py`, `audit.service`).
+  A free-text note can name the driver, and a marker lets an auditor tell "a
+  reason was removed" from "none was given". The row, its actor, time and
+  other keys stay. The adapter shows "Removed on anonymization" in the Reason
+  column for a row with `reason_removed: true`, only for the same four codes.
+  The anonymization's own row (`partner_anonymized`) carries `reasons_cleared`,
+  a count.
 
 ## Notifications (admin)
 
@@ -630,7 +639,7 @@ these rows in its own small PR when the link issue starts.
 | `GET /auth/me` + `GET /admin/shell` | `AdminShellData` | `user.name` from `/auth/me`, `user.role` "Admin"; `counts.orders` = `orders_needing_action`; `counts.support` = `support_requests_open`; `unread` = `notifications_unread` |
 | `AdminDashboardRead` | `AdminDashboard` | `orders.awaiting_rider`, `in_progress`, `delivered`, `cancelled` grouped from `by_status` with the admin status table; `failed` and `disputed` follow api-mapping open question 5. `disputes_open` = `support_requests_open`. `riders_online` = `drivers_available`. `stations.open` / `closed` = `sources.usable` / `not_usable`. `revenue_today_minor_units` = `cash.collected_minor_units`. `payouts_due` and `payments_to_verify` have no source: the type needs them made optional and the cards hidden (screen change in the link issue). `is_sample` = `is_simulated` |
 | `LiveMapRead` | `LiveMapData` | `code` = driver `plate`; `vehicle` = `delivery_type` (`null` for an order without one: the screen draws a neutral marker); `station_area` = source `approximate_location`; `customer_area` = zone name |
-| `ActivityItem` | `ActivityEntry` | `to_status` `quote_requested` → `new_order`, `accepted` → `accepted`, `delivered` → `delivered`, other statuses → `admin`; `support_request` → `complaint`. `text` built by the adapter |
+| `ActivityItem` | `ActivityEntry` | `to_status` `quote_requested` → `new_order`, `accepted` → `accepted`, `delivered` → `delivered`, other statuses → `admin`; `support_request` → `complaint`. `text` built by the adapter; a driver step is named as on the order timeline ("... to En route", #275) |
 | `AdminReportRead` | `AdminReport` | `by_rider[].earned_minor_units` has no source (the column is hidden); `by_station` = `by_source` with `loads` = `pickups`; `revenue_minor_units` = `cash.collected_minor_units` |
 | `AdminSupportRequest` | `AdminIssue` | `id` and `number` = `reference`; `type`: `late` → `late`, `wrong_quantity` → `wrong_quantity`, others → `other`; `title` from the type; `reported_by` `customer`; `urgent` `false`; `resolution.action` has no source (the screen shows the note only) |
 | `contacts` | `getIssuePeople` result | `role` `customer` → "Customer", `driver` → "Rider" or "Driver" by delivery type when known |

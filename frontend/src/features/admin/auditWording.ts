@@ -14,6 +14,12 @@
 export const AUDIT_REASON_ACTIONS: ReadonlySet<string> = new Set(['driver_approved', 'driver_suspended', 'driver_activated', 'driver_deactivated'])
 
 /**
+ * What the Reason column shows for a driver decision whose reason was removed when the driver was anonymized
+ * (`details.reason_removed: true`, #298). Approved by @nnamdi-security on #298 (2026-10-31).
+ */
+export const AUDIT_REASON_REMOVED = 'Removed on anonymization'
+
+/**
  * What a record kind (`target_type`) is called on a row. Confirmed by the technical
  * lead on #293 (2026-10-31). A kind not listed shows as the code itself.
  */

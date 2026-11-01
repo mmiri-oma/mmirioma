@@ -82,6 +82,7 @@ class DriverRow:
         zones: The zones they serve, the sign-up zone first.
         live_jobs: Assignments ``offered`` or ``accepted``.
         completed_jobs: Assignments ``completed``.
+        delivered_jobs: ``completed`` assignments whose order is ``delivered`` (#275).
     """
 
     user: User
@@ -90,6 +91,7 @@ class DriverRow:
     zones: list[ServiceZone]
     live_jobs: int
     completed_jobs: int
+    delivered_jobs: int
 
 
 @dataclass(frozen=True)
@@ -178,6 +180,7 @@ async def _rows(
                 zones=zones.get(profile.id, []),
                 live_jobs=job_counts.live if job_counts else 0,
                 completed_jobs=job_counts.completed if job_counts else 0,
+                delivered_jobs=job_counts.delivered if job_counts else 0,
             )
         )
     return rows

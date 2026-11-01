@@ -269,6 +269,29 @@ def test_list_filters_search_counts_and_job_counts(created: Created) -> None:
         row = (await listed(q=driver.phone[-7:])).rows[0]
         assert (row.live_jobs, row.completed_jobs) == (1, 1)
         assert order.id != done.id
+        # That completed job's order is not delivered, so it is no trip (#275).
+        assert row.delivered_jobs == 0
+
+        # Trips (#275): a failed, a cancelled and a delivered job all end
+        # `completed`; only the delivered one is a trip.
+        for ending in (OrderStatus.FAILED, OrderStatus.CANCELLED, OrderStatus.DELIVERED):
+            ended = await confirmed_order(sessions, created)
+            async with sessions() as session:
+                await session.execute(
+                    update(Order).where(Order.id == ended.id).values(status=ending)
+                )
+                session.add(
+                    Assignment(
+                        order_id=ended.id,
+                        driver_user_id=driver.id,
+                        status=AssignmentStatus.COMPLETED,
+                        offered_by=admin.id,
+                        ended_at=datetime.now(UTC),
+                    )
+                )
+                await session.commit()
+        row = (await listed(q=driver.phone[-7:])).rows[0]
+        assert (row.live_jobs, row.completed_jobs, row.delivered_jobs) == (1, 4, 1)
 
     run(scenario)
 

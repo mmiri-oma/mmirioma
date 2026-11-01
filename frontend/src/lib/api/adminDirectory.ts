@@ -92,8 +92,10 @@ export const driverSchema = z.object({
   zones: z.array(z.object({ id: z.string(), name: z.string() })),
   /** Assignments `offered` or `accepted`. */
   live_jobs: z.number().int(),
-  /** Assignments `completed`. */
+  /** Assignments `completed`, including jobs whose order failed or was cancelled: not a delivery count. */
   completed_jobs: z.number().int(),
+  /** `completed` assignments whose order is `delivered`: the design's "trips" (#275). Absent from an older server. */
+  delivered_jobs: z.number().int().optional(),
   created_at: z.string(),
 })
 export type AdminDriverRead = z.infer<typeof driverSchema>

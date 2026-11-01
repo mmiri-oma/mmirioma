@@ -306,6 +306,7 @@ text above leaves an edge open. None changes a path, field or error code:
   "zones": [ { "id": "9e8d7c6b-5a4f-4e3d-2c1b-0a9f8e7d6c5b", "name": "Independence Layout" } ],
   "live_jobs": 1,
   "completed_jobs": 42,
+  "delivered_jobs": 39,
   "created_at": "2026-10-10T08:00:00Z"
 }
 ```
@@ -319,7 +320,8 @@ text above leaves an edge open. None changes a path, field or error code:
 | `vehicle` | The same object as `vehicle` in the [partner profile](partners.md#partner-object-partnerprofileread), so both sides read one record. The **declared** fields (`delivery_type`, `plate`, `declared_capacity_gallons`, `declared_capacity_litres`) are what the partner typed at sign-up; `delivery_type` and `plate` are `null` for drivers created with the command-line tool before sign-up asked for them. The **verified** fields (`description`, `safe_payload_litres`, `transfer_methods`) are set by an admin at [approval](#post-admindriversidapproval) (FR-013); `description` and `safe_payload_litres` are `null`, and `transfer_methods` empty, until then. The design shows a tanker's payload as gallons (÷ 4, [api-mapping.md](../architecture/api-mapping.md#quantities)) |
 | `zones` | The service zones the driver serves (FR-031 "service area"), by name |
 | `live_jobs` | The driver's assignments with status `offered` or `accepted` ([deliveries.md](deliveries.md#assignment-statuses-built-in-s1-07)). The design's "active orders" |
-| `completed_jobs` | Assignments with status `completed`. The design's "trips" |
+| `completed_jobs` | Assignments with status `completed`. A job also ends `completed` when its order fails or is cancelled ([deliveries.md](deliveries.md), `job_status`), so this is not a delivery count. Kept unchanged for existing clients |
+| `delivered_jobs` | Assignments with status `completed` whose order is `delivered`. The design's "trips": a failed or cancelled job is not a trip, so the Riders page, the driver's "Trips today" and Trip history agree ([amendment](#amendment-275-delivered-jobs-on-the-admin-driver)). Added 2026-11-01; a client must treat it as optional, because an older server does not send it |
 | `created_at` | The design's "Partner since" |
 
 Not in `AdminDriver`, because the SRS has no rule or the backend no record
@@ -821,6 +823,23 @@ Not in the price list, with the reason:
 | Rider pay, driver pay | [Open question 11](#open-questions) |
 | Points rule (naira per point, welcome bonus, redemption, rounding) | [Open question 10](#open-questions) |
 
+### Amendment (#275): delivered jobs on the admin driver
+
+**Status: agreed** on 2026-11-01 by @nnamdi-security (technical lead, G3, on
+[#275](https://github.com/mmiri-oma/mmirioma/issues/275)).
+
+The Riders page showed "Trips" from `completed_jobs`. A job also ends
+`completed` when its order fails or is cancelled, so a driver whose only job
+failed read "1 Trips" while their own Trip history read "0 Trips". This
+amendment adds one field and changes nothing else:
+
+- `AdminDriver.delivered_jobs` (integer, 0 or more): the driver's assignments
+  with status `completed` whose order is `delivered`.
+- `completed_jobs` keeps its meaning, so existing clients keep working.
+- Every response that carries `AdminDriver` sends it (`GET /admin/drivers`,
+  `GET /admin/drivers/{id}`, and the `POST .../approval` and `POST .../activation` responses), because all four build it in one place (`driver_read`).
+- No new table, no migration, no new error code.
+
 ## Error codes added by this contract
 
 | Status | `code` | When |
@@ -859,7 +878,7 @@ For the link issues that follow; the adapters convert with these rules.
 | `vehicle.plate` | `vehicle.plate` | Same value; empty text when `null` (drivers created with the command-line tool before sign-up) |
 | `ApprovalChange` | `setRiderApproval` input | `approved` and `suspended` only; the approve form adds the verified vehicle (a screen change, G2, in the link issue) |
 | `zones[].name` | `service_areas` | Names |
-| `live_jobs`, `completed_jobs`, `created_at` | `active_orders`, `trips`, `partner_since` | Same values |
+| `live_jobs`, `delivered_jobs`, `created_at` | `active_orders`, `trips`, `partner_since` | Same values. `trips` reads `delivered_jobs`, not `completed_jobs` (#275); with no `delivered_jobs` (an older server) the screen shows its empty state, never `completed_jobs` |
 | `ServiceZone.is_active` | `ServiceArea.enabled` | Same value |
 | `ServiceZone.fallback_delivery_fees` | `ServiceArea.fixed_fee_minor_units` | The pilot category's fee (one category is priced in the pilot, #10), or `null` when the zone has none. Saving writes that one entry and keeps the others; adding a zone with a fee sends it as that entry. `ServiceZone.centre` maps to the screen's Latitude and Longitude (`ServiceArea.centre`), typed in by admin (Z4, #111). The design's `station_id` and `distance_km` are dropped from `ServiceArea`; only the mock keeps them, as mock-only data for its dispatch and per-km pricing |
 | `PriceList` | `PriceList` | Different shape: the screen is redesigned (decision 1) |
@@ -922,6 +941,7 @@ migration):
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-01 | Amended for #275: `AdminDriver.delivered_jobs`, the count of `completed` assignments whose order is `delivered`; the design's "trips" now reads it ([amendment](#amendment-275-delivered-jobs-on-the-admin-driver)) | @nnamdi-security (technical lead, G3), #275 |
 | 2026-10-28 | Amended for #160: `GET /admin/water-categories` (`id`, `label`, `is_active`; `code` left out; inactive categories listed) for the Pricing screen's Water picker ([amendment](#amendment-160-the-list-of-water-categories)); building is #161 | @nnamdi-security (technical lead, G3), PR #163 |
 | 2026-10-28 | Built the Drivers section (#45) and settled five edges it left open: a repeat request first, what `counts.available` and `q` count, drivers with no profile, and the partner's `account` message ([decisions](#drivers)); `delivery_type` stays on `driver_profiles` | @nnamdi-security (technical lead), #45 |
 | 2026-10-28 | Revised for #43 (customers and drivers): partner approval `POST /admin/drivers/{id}/approval` with vehicle verification (FR-013) and the `phone_verified` rule; `approval_status`, `phone_verified` and the partners.md vehicle object on `AdminDriver`; `approval_status` filter and `pending` count; `POST /admin/customers` and `POST /admin/drivers` removed; address `label` 1-50; suspension refused while a job is accepted; open questions 1, 2, 4, 7, 8, 10, 11 and 12 decided, 3 and 9 partly; order-details-and-price.md linked as a file | @nnamdi-security (technical lead, G3), PR #146 |
