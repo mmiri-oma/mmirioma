@@ -16,6 +16,9 @@ Designer: @Bonvee120 + Claude Code · Reviewed by: @nnamdi-security
 **Approved (G2)** by @nnamdi-security (technical lead) on 2026-10-31, in two
 decision comments on #293: the reason, the five cash wordings and the interim
 record line first, then the hint, the record names and the 6-character id.
+A third addition (#298), also approved by @nnamdi-security on 2026-10-31: a
+driver row whose reason was removed when the driver was anonymized reads
+"Removed on anonymization" in the Reason column.
 
 The audit log on the Settings page (`/admin/settings`) lists who did what and
 when. A click-through on the real backend found three gaps (#293): the Reason
@@ -79,7 +82,10 @@ writes it (`payments/service.py`).
    / "Driver · 4f3a2c").
 4. **The short id is a stopgap.** When the backend sends a label (#296), the
    line shows it instead of the id.
-5. **No other action gets a reason column value**, even if a later feature
+5. **A removed reason says so (#298).** After a driver is anonymized, the four
+   driver decision rows read "Removed on anonymization" in the Reason column
+   instead of the staff's words, so a removed reason is not mistaken for "None".
+6. **No other action gets a reason column value**, even if a later feature
    stores one in `details`, until it is added to the contract on purpose.
 
 ## Open questions
@@ -88,9 +94,6 @@ None.
 
 ## Known limitations
 
-- **Anonymizing a driver leaves the reason readable.** The privacy tool keeps
-  audit rows (`privacy/service.py`), so a suspension reason stays on screen after
-  the driver is anonymized. Blanking it is a backend change, tracked in #298.
 - **A short id does not say who.** Two rows about the same driver share an id,
   but a dispatcher still has to open the driver to see the name, until #296.
 
