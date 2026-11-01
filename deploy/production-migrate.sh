@@ -42,7 +42,17 @@ echo "Release head:      $(alembic heads 2>/dev/null | awk 'NR==1 {print $1}')"
 if [[ -z "$current" ]]; then
   echo "Empty database: a first install, nothing to destroy. Skipping the destructive check."
 else
-  sql="$(alembic upgrade "${current}:head" --sql 2>/dev/null || true)"
+  # A failed render must stop the script: an empty result would read as
+  # "Nothing pending" and the release would start on the old schema (#320).
+  render_err="$(mktemp)"
+  if ! sql="$(alembic upgrade "${current}:head" --sql 2>"$render_err")"; then
+    echo "Could not render the pending migrations as SQL, so nothing was checked or migrated:" >&2
+    cat "$render_err" >&2
+    rm -f "$render_err"
+    echo "Fix the error above, then run this script again (docs/deployment/hostinger.md, \"Migrations\")." >&2
+    exit 1
+  fi
+  rm -f "$render_err"
   # With nothing pending alembic still prints BEGIN/COMMIT; "Running upgrade" marks real work.
   # (Counted, not `grep -q`: -q closes the pipe early and pipefail would fail the check.)
   pending="$(printf '%s\n' "$sql" | grep -c 'Running upgrade' || true)"
