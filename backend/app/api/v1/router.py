@@ -23,6 +23,7 @@ from app.modules.payments import router as payments
 from app.modules.pricing import router as pricing
 from app.modules.public import router as public
 from app.modules.reporting import router as reporting
+from app.modules.sources import admin_router as admin_water_sources
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health.router)
@@ -43,4 +44,5 @@ api_router.include_router(reporting.router)
 api_router.include_router(admin_support.router)
 api_router.include_router(admin_customers.router)
 api_router.include_router(audit_log.router)
+api_router.include_router(admin_water_sources.router)
 api_router.include_router(admin_notifications.router)

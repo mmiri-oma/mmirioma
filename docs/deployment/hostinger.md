@@ -238,6 +238,29 @@ deploy/prod.sh exec api python -m app.modules.auth.cli activate --phone 08012345
 Use each person's own phone number. Give each person their own account; do not
 share one. Do not run the demo seed.
 
+### Water sources
+
+A new deployment has no water sources, and an order cannot be confirmed from a
+source that is not activated for its category (FR-012). An admin can add and
+manage sources through the admin water-source endpoints
+([admin-water-sources.md](../api/admin-water-sources.md)); the Water sources
+screen for them follows in #309. The command line is the fallback, and the only
+way until that screen ships. Every command names the admin making the change
+and writes the same audit row as the endpoints:
+
+```bash
+deploy/prod.sh exec api python -m app.modules.sources.cli add-source --by 08012345678 --name "Source name" --location "Where it is" --kind borehole
+deploy/prod.sh exec api python -m app.modules.sources.cli list-sources
+deploy/prod.sh exec api python -m app.modules.sources.cli activate --by 08012345678 --source <source id> --category utility --report <report reference> --approved-until 2027-01-31 --cost-per-litre-kobo 150
+deploy/prod.sh exec api python -m app.modules.sources.cli suspend --by 08012345678 --source <source id> --category utility --reason "Why"
+```
+
+Activate only after the independent laboratory verification (FR-012). The app
+records the report reference and cannot check the report itself. `--kind` is
+`borehole` or `ninth_mile`, and `--cost-per-litre-kobo` is the supplier's cost
+in kobo. See `python -m app.modules.sources.cli --help` for `set-kind`,
+`revoke` and `list-categories`.
+
 ## 10. Backups
 
 `deploy/production-backup.sh` writes a `pg_dump --format=custom` file named
