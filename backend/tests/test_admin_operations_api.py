@@ -12,7 +12,7 @@ test_admin_operations_integration.py.
 import asyncio
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
 from app.core.errors import APIError
+from app.modules.audit import labels as audit_labels
 from app.modules.audit import service as audit_service
 from app.modules.audit.models import AuditLog
 from app.modules.auth import service as auth_service
@@ -177,6 +178,16 @@ class FakeAdmin:
             )
         return rows, AUDIT_PAGE["total"]
 
+    async def target_labels(
+        self, _: object, targets: Iterable[tuple[str, uuid.UUID]]
+    ) -> dict[tuple[str, uuid.UUID], str | None]:
+        self._record("target_labels", targets=sorted(targets))
+        by_target = {
+            (item["target_type"], uuid.UUID(item["target_id"])): item["target_label"]
+            for item in AUDIT_PAGE["items"]
+        }
+        return {target: by_target[target] for target in targets}
+
     async def list_for_user(
         self, _: object, **kwargs: Any
     ) -> notifications_service.NotificationPage:
@@ -219,6 +230,7 @@ def admin_fake(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeAdmin]:
     ):
         monkeypatch.setattr(requests, name, getattr(fake, name))
     monkeypatch.setattr(audit_service, "list_logs", fake.list_logs)
+    monkeypatch.setattr(audit_labels, "target_labels", fake.target_labels)
     monkeypatch.setattr(notifications_service, "list_for_user", fake.list_for_user)
     monkeypatch.setattr(notifications_service, "mark_read", fake.mark_read)
     yield fake
@@ -454,7 +466,16 @@ def test_audit_page_matches_the_example(api: TestClient, admin_fake: FakeAdmin) 
                 "limit": 50,
                 "offset": 0,
             },
-        )
+        ),
+        (
+            "target_labels",
+            {
+                "targets": sorted(
+                    (item["target_type"], uuid.UUID(item["target_id"]))
+                    for item in AUDIT_PAGE["items"]
+                )
+            },
+        ),
     ]
 
 

@@ -485,6 +485,7 @@ Newest first.
       "action": "cash_received",
       "target_type": "cash_collection",
       "target_id": "3b9f...",
+      "target_label": "MO-7KQ2M9XH4T",
       "details": { "order_id": "1c7e..." }
     }
   ],
@@ -498,7 +499,31 @@ Newest first.
 | --- | --- |
 | `action` | The snake_case action code written by the feature (`cash_received`, `proof_override_approved`, `support_request_resolved`, ...). The adapter turns known codes into words; an unknown code shows as it is |
 | `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`). The exception is `reason`, on the four driver actions named below |
-| `target_type`, `target_id` | The kind of record and its id. The screen shows the kind in words and a short id until the backend sends a label for the record (`target_label`, #296) |
+| `target_type`, `target_id` | The kind of record and its id. The screen shows the kind in words, then the label below, or the short id when the label is `null` |
+| `target_label` | **Status: agreed** (G3, #296; @nnamdi-security, technical lead, 2026-11-01). `string \| null`, always present. The record's name or reference, looked up when the page is read and **never stored** in `audit_logs`, so anonymizing a record still works. See the table and rules below |
+
+**`target_label` by `target_type`** (agreed by @nnamdi-security, 2026-11-01):
+
+| `target_type` | `target_label` |
+| --- | --- |
+| `order` | The order reference |
+| `cash_collection` | The reference of its order |
+| `support_request` | The request reference |
+| `service_zone` | The area name |
+| `water_source` | The source name |
+| `price_list` | `null`: a saved price list version has no name of its own |
+| `driver`, `user` | The account's name |
+| `cash_remittance` | The name of the driver who handed over |
+| `customer_address`, `deletion_request`, `retention_review` | `null`: an address is personal data, and the other two have no short name |
+
+- `null` when the record no longer exists or its account was anonymized. Never
+  the old name, and never an error: the row stays readable.
+- Never an address, phone number or note. Names appear only for accounts staff
+  already see, and the endpoint is admin-only.
+- Resolved for the whole page in one query per target type, not one per row
+  (a page is at most 100 rows).
+- `target_type`, `target_id`, `details` and the action codes are unchanged.
+  No migration: nothing is added to `audit_logs`.
 
 **The reason (#293, decided 2026-10-31 by @nnamdi-security).** The design's
 `reason` column shows `details.reason` on the four driver actions
@@ -609,7 +634,7 @@ these rows in its own small PR when the link issue starts.
 | `AdminReportRead` | `AdminReport` | `by_rider[].earned_minor_units` has no source (the column is hidden); `by_station` = `by_source` with `loads` = `pickups`; `revenue_minor_units` = `cash.collected_minor_units` |
 | `AdminSupportRequest` | `AdminIssue` | `id` and `number` = `reference`; `type`: `late` → `late`, `wrong_quantity` → `wrong_quantity`, others → `other`; `title` from the type; `reported_by` `customer`; `urgent` `false`; `resolution.action` has no source (the screen shows the note only) |
 | `contacts` | `getIssuePeople` result | `role` `customer` → "Customer", `driver` → "Rider" or "Driver" by delivery type when known |
-| `AuditLogRead` | `AuditEntry` | `actor` = actor name; `action` = words for the code; `reason` `null` |
+| `AuditLogRead` | `AuditEntry` | `actor` = actor name; `action` = words for the code; `reason` `null`; `target_label` is not mapped yet: the screen keeps the short id until the frontend change that follows #296 |
 | Admin notification | `AdminNotification` | `read` = `read_at !== null`; `link` from `kind` and `reference` |
 | `AdminSettingsRead` | `AdminSettings`, `StaffMember` | Read only; `support_hours` and `safe_load` have no source; `code_time_limit` "10 minutes"; staff `role` "Admin", `last_active` = `last_sign_in_at` |
 
@@ -654,6 +679,7 @@ on the current backend, including the delivery type and zone breakdowns
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-01 | Added `AuditLogRead.target_label` (additive, resolved when read, #296) | @nnamdi-security (technical lead, G3) |
 | 2026-10-27 | "Data needed": the note is removed by replacing it with the message's text, so the response keeps its shape (#117) | @nnamdi-security (privacy contact) |
 | 2026-10-27 | Clarified in the build (#102): decisions 7-10 (`range` required, `by_zone[].delivered`, per-driver and per-source rules, indexes); `assignment_expired` not created while offers never expire | @nnamdi-security (technical lead) |
 | 2026-10-27 | Agreed (G3) | @nnamdi-security (technical lead) and @chidimmamogbo (PR #71) |
