@@ -158,6 +158,7 @@ def test_anonymize_partner_output_has_ids_and_counts_but_no_phone(
             decline_notes_removed=2,
             gps_points_cleared=3,
             notifications_deleted=4,
+            reasons_cleared=6,
             notes_to_review=5,
             applied=False,
         )
@@ -174,6 +175,7 @@ def test_anonymize_partner_output_has_ids_and_counts_but_no_phone(
     assert "Decline notes removed: 2" in out
     assert "GPS points cleared: 3" in out
     assert "Notifications deleted: 4" in out
+    assert "Audit reasons removed: 6" in out
     assert "Incident and pickup notes kept, to check by hand: 5" in out
     assert "Dry run: nothing was saved" in out
     assert "0800" not in out and "+234" not in out

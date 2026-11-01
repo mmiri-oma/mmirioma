@@ -1206,11 +1206,110 @@ def test_anonymize_partner_removes_their_details_and_keeps_the_records(created: 
                     "decline_notes_removed": 1,
                     "gps_points_cleared": 2,
                     "notifications_deleted": 1,
+                    "reasons_cleared": 0,
                 },
             )
         ]
         # The old phone no longer finds a partner.
         with pytest.raises(LookupError):
             await anonymize_partner(sessions, s, driver, apply=True)
+
+    run(scenario)
+
+
+def test_anonymize_partner_replaces_the_reasons_on_their_decision_rows_with_a_marker(
+    created: Created,
+) -> None:
+    async def add_audit_row(
+        sessions: Sessions,
+        s: Setup,
+        *,
+        action: str,
+        target_id: uuid.UUID,
+        details: dict[str, object],
+    ) -> uuid.UUID:
+        async with sessions() as session:
+            row = AuditLog(
+                actor_id=s.admin.id,
+                action=action,
+                target_type="driver",
+                target_id=target_id,
+                details=details,
+            )
+            session.add(row)
+            await session.commit()
+            return row.id
+
+    async def details_of(sessions: Sessions, row_id: uuid.UUID) -> dict[str, object]:
+        async with sessions() as session:
+            row = await session.get(AuditLog, row_id)
+            assert row is not None
+            return row.details
+
+    async def scenario(sessions: Sessions) -> None:
+        s = await setup(sessions, created)
+        driver = await add_user(sessions, created, UserRole.DRIVER)
+        other = await add_user(sessions, created, UserRole.DRIVER)
+        await add_partner_profile(sessions, driver)
+        suspended = await add_audit_row(
+            sessions,
+            s,
+            action="driver_suspended",
+            target_id=driver.id,
+            details={"reason": "Papers expired for Sample Driver", "vehicle_profile_id": "v-1"},
+        )
+        deactivated = await add_audit_row(
+            sessions,
+            s,
+            action="driver_deactivated",
+            target_id=driver.id,
+            details={"reason": "Left the pilot"},
+        )
+        no_reason = await add_audit_row(
+            sessions, s, action="driver_activated", target_id=driver.id, details={}
+        )
+        not_a_decision = await add_audit_row(
+            sessions,
+            s,
+            action="driver_note_added",
+            target_id=driver.id,
+            details={"reason": "Not one of the four decision actions"},
+        )
+        someone_elses = await add_audit_row(
+            sessions,
+            s,
+            action="driver_suspended",
+            target_id=other.id,
+            details={"reason": "Another driver's reason"},
+        )
+
+        dry = await anonymize_partner(sessions, s, driver, apply=False)
+        assert (dry.applied, dry.reasons_cleared) == (False, 2)
+        assert (await details_of(sessions, suspended))["reason"] == (
+            "Papers expired for Sample Driver"
+        )
+
+        done = await anonymize_partner(sessions, s, driver, apply=True)
+        assert done.reasons_cleared == 2
+        # The reason is gone and the marker says so; other keys stay.
+        assert await details_of(sessions, suspended) == {
+            "vehicle_profile_id": "v-1",
+            "reason_removed": True,
+        }
+        assert await details_of(sessions, deactivated) == {"reason_removed": True}
+        # No reason was given, so there is nothing to mark.
+        assert await details_of(sessions, no_reason) == {}
+        # Rows that are not the four decisions, and other drivers' rows, are untouched.
+        assert (await details_of(sessions, not_a_decision))["reason"] == (
+            "Not one of the four decision actions"
+        )
+        assert await details_of(sessions, someone_elses) == {"reason": "Another driver's reason"}
+        async with sessions() as session:
+            own = await session.scalar(
+                select(AuditLog).where(
+                    AuditLog.action == "partner_anonymized", AuditLog.target_id == driver.id
+                )
+            )
+        assert own is not None and own.details["reasons_cleared"] == 2
 
     run(scenario)
