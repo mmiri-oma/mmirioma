@@ -3,8 +3,8 @@
 <!-- The website's Privacy page (/privacy, frontend/src/features/marketing/LegalPages.tsx)
 mirrors this notice section by section. Change both together. -->
 
-**Version:** 2.0  
-**Last updated:** 27 October 2026  
+**Version:** 3.0  
+**Last updated:** 1 November 2026  
 **Service area:** Enugu State, Nigeria
 
 At **MmiriOma**, we respect your privacy. This notice explains what personal information we collect when you create an account, request water, receive a delivery, pay, contact us or deliver for us as a rider or driver; why we use it; who receives it; how long we keep it; and how you can exercise your rights. We aim to handle personal data in accordance with the **Nigeria Data Protection Act 2023** and other applicable laws.
@@ -71,9 +71,10 @@ We share only what is needed to run the service:
 - **The driver assigned to your order** sees the contact's first name and last initial, phone number, delivery address, landmark, instructions and quantity, and only while they are assigned to the delivery.
 - **Our authorized staff** (administrators and dispatchers) see order and account details, including riders' and drivers' vehicle and approval details, to confirm, dispatch and support orders and to approve riders and drivers.
 - **Termii**, our SMS provider, receives your phone number and the text of each message we send you.
-- **Railway** (Railway Corporation, United States), our hosting provider, runs the server and stores the service's data and backups in its data centre in Amsterdam, the Netherlands.
+- **Hostinger** (HOSTINGER Global S.à r.l., Luxembourg), our hosting provider, runs the server and stores the service's data and backups in its data centre in Paris, France.
+- **Backblaze** (Backblaze, Inc., United States) stores an off-site copy of our backups in its data centre in Amsterdam, the Netherlands.
 
-The app does not give your details to water suppliers or advertisers. We may disclose data when required by law. Because our hosting provider stores the service's data in the Netherlands, your personal information is processed outside Nigeria; we assess and apply the safeguards required by Nigerian data-protection law for such transfers, and do the same for any other provider that processes personal data outside Nigeria.
+The app does not give your details to water suppliers or advertisers. We may disclose data when required by law. Because our hosting provider stores the service's data in France and our backup provider stores copies of it in the Netherlands, your personal information is processed outside Nigeria; we assess and apply the safeguards required by Nigerian data-protection law for such transfers, and do the same for any other provider that processes personal data outside Nigeria.
 
 ## 8. How long do we keep information?
 

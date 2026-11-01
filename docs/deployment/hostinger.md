@@ -317,10 +317,26 @@ notice's retention, section 8), and copies the folder off the VPS when
 `BACKUP_RCLONE_REMOTE` is set. It uses the same PostGIS image as the database
 for the client tools, on the private network.
 
-**Off-VPS target: not chosen yet (placeholder).** Until
-`BACKUP_RCLONE_REMOTE` is set the script warns on every run, and the backups
-exist only on the server they protect. Choose a target before real customer
-data goes in. The script uses [rclone](https://rclone.org/) (installed on the
+**Off-VPS target: Backblaze B2, EU Central region (Amsterdam)**, chosen by
+the owner on 2026-11-01 (#319). It is a different company and country from
+Hostinger (Paris), and the privacy notice (version 3.0, section 7) names it.
+Not set up yet: until `BACKUP_RCLONE_REMOTE` is set the script warns on every
+run, and the backups exist only on the server they protect. To set it up:
+
+1. Create the Backblaze account with the **EU Central** region (an account's
+   region cannot be changed later).
+2. Create a private bucket. Turn on its default server-side encryption: the
+   privacy notice calls the backups "encrypted" (sections 8 and 10), and the
+   dump files themselves are not.
+3. Add a lifecycle rule that deletes files about 30 days after upload (the
+   notice's retention).
+4. Create an application key for that bucket only, configure it with
+   `rclone config` on the VPS, and put `<remote>:<bucket>` in
+   `BACKUP_RCLONE_REMOTE`.
+5. Run `deploy/production-backup.sh` once and restore that copy into a scratch
+   database ("Restoring" below).
+
+The rest of this section applies to any target. The script uses [rclone](https://rclone.org/) (installed on the
 VPS, not in this repository) with `rclone copy`, which never deletes remote
 files; set expiry (about 30 days) as a lifecycle rule on the storage side.
 Configure the remote once with `rclone config`, then put its name in
@@ -414,13 +430,12 @@ migration run with the helper script against a populated database.
 
 ## 13. Outstanding before go-live
 
-1. **The privacy notice names Railway** as the hosting provider (Amsterdam),
-   in the legal page (`frontend/src/features/marketing/LegalPages.tsx`) and
-   `PRIVACY_NOTICE.md`. After this move it is wrong. It needs the new
-   provider and data-centre location (chosen in Hostinger's panel) and the
-   legal review in `docs/process/privacy-retention.md`, "Open items" (item 2).
-   Not changed here: it is a legal text.
-2. **Off-VPS backup target** (section 10) and a first restore test.
+1. **Privacy notice:** version 3.0 names Hostinger (Paris) and Backblaze
+   (Amsterdam) (#319). It still needs @nnamdi-security's approval as data
+   controller and the legal review in `docs/process/privacy-retention.md`,
+   "Open items".
+2. **Off-VPS backups:** Backblaze B2 EU Central chosen (section 10). Set it up
+   and test a first restore.
 3. **Termii:** sender ID registered, DND channel activated, a live test on a
    team phone (`python -m app.modules.messaging.live_test`, `docs/features/sms.md`).
 4. **Email (Resend), maps (Geoapify) and payments (Paystack)** are not in the

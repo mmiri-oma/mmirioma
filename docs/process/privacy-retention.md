@@ -250,10 +250,15 @@ admin account and writes an audit row.
 1. **Review by a Nigerian legal or data-protection adviser**, where
    practicable (NFR-005). Not done as of 2026-10-27. The technical lead
    records here whether it was done, or why it was not practicable.
-2. **Hosting provider:** the notice (version 2.0) names Railway, Amsterdam
-   (Netherlands). Data leaves Nigeria, so check the cross-border safeguards
-   in the legal review (item 1), and update the notice before production if
-   the fork is hosted elsewhere.
+2. **Hosting provider:** updated in version 3.0 (#319). The service runs
+   with Hostinger (HOSTINGER Global S.à r.l., Luxembourg) in Paris, France,
+   and off-site backup copies go to Backblaze (Backblaze, Inc., United
+   States) in Amsterdam, the Netherlands. Data leaves Nigeria for two
+   providers, one of them a US company, so check the cross-border safeguards
+   in the legal review (item 1). The notice calls backups "encrypted": the
+   Backblaze bucket needs server-side encryption on, and the local copies on
+   the server are plain dump files (`docs/deployment/hostinger.md`,
+   section 10).
 3. **Accounting retention:** confirm the 6-year period against the legal
    operator's status and Nigerian accounting and tax law.
 4. **Rider and driver deletion:** done: `anonymize-partner` (#119; "Deletion:
