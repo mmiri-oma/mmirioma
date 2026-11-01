@@ -309,13 +309,21 @@ const PROGRESS_LABEL: Record<string, string> = {
 }
 
 /**
+ * The name of a driver's step (`departed` to `delivered`), or `null` for any other status. The order timeline and the
+ * activity feed both use it, so a step keeps one name across the admin app (#275).
+ */
+export function progressStepLabel(status: string): string | null {
+  return Object.hasOwn(PROGRESS_LABEL, status) ? PROGRESS_LABEL[status] : null
+}
+
+/**
  * The line for a driver's step: the status change into `departed`,
  * `collected`, `en_route`, `arrived`, `unloading` or `delivered`. `null` for
  * every other event.
  */
 function progressLine(event: AdminOrderEvent): string | null {
   if (event.kind !== 'status_change' || !event.to_status) return null
-  return PROGRESS_LABEL[event.to_status] ?? null
+  return progressStepLabel(event.to_status)
 }
 
 /**
