@@ -4,11 +4,22 @@ import uuid
 from collections.abc import Collection
 from typing import Any
 
-from sqlalchemy import ColumnElement, func, select
+from sqlalchemy import ColumnElement, Text, cast, func, literal, select, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.audit.models import AuditLog
 from app.modules.auth.models import User
+
+#: Audit rows about a driver, whose ``details.reason`` is the staff note of the decision
+#: (``partners/directory.py``; the exception to "ids and kinds only" in ``audit.models``).
+DRIVER_AUDIT_TARGET_TYPE = "driver"
+DRIVER_DECISION_ACTIONS = (
+    "driver_approved",
+    "driver_suspended",
+    "driver_activated",
+    "driver_deactivated",
+)
 
 
 def record(
@@ -70,6 +81,42 @@ async def actors_with_rows(
         select(AuditLog.actor_id).where(AuditLog.actor_id.in_(user_ids)).distinct()
     )
     return set(rows)
+
+
+async def clear_driver_reasons(session: AsyncSession, *, driver_id: uuid.UUID) -> int:
+    """Replace the staff reason on a driver's decision rows with a marker.
+
+    Used when the driver is anonymized (NFR-003, #298). A reason is a free-text
+    staff note that can name the driver, so it must not stay readable. On the
+    four driver decision rows about this account, ``details.reason`` is
+    removed and ``details.reason_removed`` is set to true, so an auditor can
+    tell "a reason was given and removed" from "no reason was given"
+    (NFR-004). The row, its actor, time, action and every other key stay.
+    Runs in the caller's transaction and does not commit.
+
+    Args:
+        session: The session the anonymization runs in.
+        driver_id: The driver's account id (the rows' ``target_id``).
+
+    Returns:
+        How many rows had a reason removed (a count, no text).
+    """
+    result = await session.execute(
+        update(AuditLog)
+        .where(
+            AuditLog.target_type == DRIVER_AUDIT_TARGET_TYPE,
+            AuditLog.target_id == driver_id,
+            AuditLog.action.in_(DRIVER_DECISION_ACTIONS),
+            AuditLog.details.has_key("reason"),
+        )
+        .values(
+            details=AuditLog.details.op("-")(cast(literal("reason"), Text)).op("||")(
+                literal({"reason_removed": True}, type_=JSONB)
+            )
+        )
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount  # type: ignore[attr-defined, no-any-return]
 
 
 async def list_logs(

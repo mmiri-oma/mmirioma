@@ -103,7 +103,7 @@ No tables of its own. The tool changes rows of other modules:
 | `assignments` | Kept; their decline notes replaced by "Removed at the partner's request." |
 | `delivery_attempts`, `delivery_proofs` | GPS points they recorded cleared, except on disputed orders and orders with an open hold or review |
 | `pickup_records`, `order_exceptions`, `cash_collections`, `cash_remittances` | Kept (safety and accounting records); incident and pickup notes counted for the privacy contact |
-| `audit_logs` | `partner_anonymized` (counts: `zones_removed`, `decline_notes_removed`, `gps_points_cleared`, `notifications_deleted`) |
+| `audit_logs` | The driver's four decision rows (`driver_approved`, `driver_suspended`, `driver_activated`, `driver_deactivated`): `details.reason` removed and `details.reason_removed: true` set (#298); other rows and keys kept. Writes `partner_anonymized` (counts: `zones_removed`, `decline_notes_removed`, `gps_points_cleared`, `notifications_deleted`, `reasons_cleared`) |
 
 `correct-name` changes `users.name` and writes `account_name_corrected`.
 `set-deletion-status` changes the request's status, time, `handled_by` and
@@ -125,7 +125,12 @@ None.
   decline notes, in-app messages and the GPS points they recorded (except on
   orders still needed as evidence) are removed. Jobs, pickups, proofs,
   incidents and their notes, cash records, audit rows and the approval
-  status are kept. Audited as `partner_anonymized` with counts only.
+  status are kept. The one change to audit rows (#298, technical lead,
+  2026-10-31): on the driver's four decision rows the staff reason, a free-text
+  note that can name them, is replaced by `reason_removed: true`, so an auditor
+  can tell "a reason was removed" from "none was given" (NFR-004). The row, its
+  actor, time, action and other keys stay. A dry run changes nothing. Audited as
+  `partner_anonymized` with counts only (`reasons_cleared` is a count).
 
 - **Finished orders** are `delivered` and `cancelled` only. A `failed`
   order may be rescheduled and a `disputed` one is open: staff cancel a

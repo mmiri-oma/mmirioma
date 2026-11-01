@@ -18,6 +18,10 @@ decision about a driver (``driver_approved``, ``driver_suspended``,
 reason is kept. Such a reason is a staff note and must not contain customer
 data; the audit endpoint is admin-only. Add no other reason without the same
 decision (docs/api/admin-operations.md, ``GET /admin/audit-logs``).
+
+When that driver is anonymized (NFR-003, #298), the reason is removed from
+those rows and ``reason_removed: true`` is set in its place (boolean, so the
+"ids and kinds only" rule holds): see ``audit.service.clear_driver_reasons``.
 """
 
 import uuid
