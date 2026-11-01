@@ -35,5 +35,17 @@
   water source), which these tests do not expect. None of them touch the audit
   module; the audit tests and `test_admin_operations_integration.py` pass.
   The test database was not cleaned.
+- **Seen again (chidimmamogbo + agent, #275, #320):** the same six failures
+  on another Windows machine. The tests that run a script do it directly
+  (`subprocess.run(["deploy/<name>.sh", ...])`), which Windows refuses with
+  `OSError: [WinError 193] %1 is not a valid Win32 application`. PR #322
+  (#320) adds a seventh test of the same kind
+  (`test_migrate_stops_when_the_pending_sql_cannot_be_rendered`), so a
+  Windows run now shows 7 failures; all pass in CI. To check a script change
+  by hand on Windows, run the same steps in Git Bash
+  (`bash deploy/production-migrate.sh ...`). A fake command put first on
+  `PATH` must use the Git Bash form of the folder (`cygpath -u`, for example
+  `/c/Users/...` or `/tmp/...`): a `C:/...` entry is split at its colon, and
+  the real `docker` answered instead of the fake.
 - **Status:** workaround
-- **Refs:** #296; `backend/tests/test_deployment_config.py`, `deploy/`.
+- **Refs:** #296, #320, #321; `backend/tests/test_deployment_config.py`, `deploy/`.
