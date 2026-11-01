@@ -92,6 +92,7 @@ export function ChangePhone() {
         </SuccessStep>
       ) : sent && request ? (
         <CodeStep
+          purpose="phone_change"
           sent={sent}
           intro={
             <>

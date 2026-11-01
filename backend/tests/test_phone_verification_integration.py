@@ -22,7 +22,12 @@ from app.main import create_app
 from app.modules.auth import phone_verification
 from app.modules.auth.dependencies import CSRF_HEADER_NAME
 from app.modules.auth.models import PhoneVerification, User, VerificationPurpose
-from app.modules.messaging.sms import MockSmsProvider, get_sms_provider
+from app.modules.messaging.sms import (
+    MockSmsProvider,
+    SmsDeliveryStatus,
+    SmsFailureReason,
+    get_sms_provider,
+)
 from tests.test_auth_integration import (
     PASSWORD,
     TEST_DATABASE_URL,
@@ -377,3 +382,73 @@ def test_new_code_replaces_the_old_one_and_codes_work_once(
     rows = run(lambda session: verification_rows(session, phone))
     assert all(len(row.code_hash) == 64 and second not in row.code_hash for row in rows)
     assert sorted(row.invalidated_at is not None for row in rows) == [False, True]
+
+
+# --- Delivery status: accepted is not delivered ---------------------------------
+
+
+def test_a_sent_code_is_accepted_not_delivered(
+    http: TestClient, phones: list[str], sms: MockSmsProvider
+) -> None:
+    phone, headers = register(http, phones)
+    sms.status = SmsDeliveryStatus.ACCEPTED
+
+    sent = http.post("/api/v1/auth/phone-verification", headers=headers)
+    status = http.get("/api/v1/auth/phone-verification/status")
+
+    assert sent.json()["delivery_status"] == "accepted"
+    assert status.status_code == 200
+    assert status.json()["delivery_status"] == "accepted"
+    rows = run(lambda session: verification_rows(session, phone))
+    assert [(r.sms_status, r.sms_message_id) for r in rows] == [("accepted", "mock-1")]
+
+
+def test_delivery_report_moves_the_code_to_delivered(
+    http: TestClient, phones: list[str], sms: MockSmsProvider
+) -> None:
+    _, headers = register(http, phones)
+    http.post("/api/v1/auth/phone-verification", headers=headers)
+    sms.status = SmsDeliveryStatus.DELIVERED
+
+    assert (
+        http.get("/api/v1/auth/phone-verification/status").json()["delivery_status"] == "delivered"
+    )
+
+
+def test_failed_delivery_is_reported_and_keeps_every_limit(
+    http: TestClient, phones: list[str], sms: MockSmsProvider
+) -> None:
+    """A code the carrier refused is shown as failed, but cooldown and expiry stand (FR-003)."""
+    _, headers = register(http, phones)
+    http.post("/api/v1/auth/phone-verification", headers=headers)
+    sms.status = SmsDeliveryStatus.FAILED
+
+    status = http.get("/api/v1/auth/phone-verification/status")
+
+    assert status.json()["delivery_status"] == "failed"
+    resend = http.post("/api/v1/auth/phone-verification", headers=headers)
+    assert resend.status_code == 429
+    assert len(sms.outbox) == 1
+
+
+def test_status_without_a_code_is_expired(http: TestClient, phones: list[str]) -> None:
+    register(http, phones)
+
+    response = http.get("/api/v1/auth/phone-verification/status")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "verification_code_expired"
+
+
+def test_provider_refusal_reason_is_not_shown_to_the_customer(
+    http: TestClient, phones: list[str], sms: MockSmsProvider
+) -> None:
+    _, headers = register(http, phones)
+    sms.fail = True
+    sms.fail_reason = SmsFailureReason.SENDER_ID
+
+    failed = http.post("/api/v1/auth/phone-verification", headers=headers)
+
+    assert failed.status_code == 503
+    assert failed.json()["error"]["code"] == "sms_unavailable"
+    assert "sender" not in failed.text.lower()

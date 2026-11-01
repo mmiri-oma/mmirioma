@@ -74,6 +74,8 @@ allowed before verification), following SRS v0.2:
 | POST | `/auth/phone-verification` | customer or driver + CSRF | none | 202 `PhoneCodeSent` | 409 `phone_already_verified`, 429 `too_many_attempts`, 503 `sms_unavailable` |
 | POST | `/auth/phone-verification/verify` | customer or driver + CSRF | `{code}` | 200 `User` (`phone_verified: true`) | 400 `verification_code_invalid`, 400 `verification_code_expired`, 422 `validation_error`, 429 `too_many_attempts` |
 | POST | `/auth/phone-change` | customer + CSRF | `{phone, password}` | 202 `PhoneCodeSent` (to the new number) | 403 `password_incorrect`, 409 `phone_unchanged`, 409 `phone_already_registered`, 422 `validation_error`, 429 `too_many_attempts`, 503 `sms_unavailable` |
+| GET | `/auth/phone-verification/status` | customer or driver | none | 200 `PhoneCodeStatus` | 400 `verification_code_expired` (no usable code) |
+| GET | `/auth/phone-change/status` | customer | none | 200 `PhoneCodeStatus` | 400 `verification_code_expired` (no usable code) |
 | POST | `/auth/phone-change/verify` | customer + CSRF | `{code}` | 200 `User` (new `phone`, `phone_verified: true`) | 400 `verification_code_invalid`, 400 `verification_code_expired`, 409 `phone_already_registered`, 422 `validation_error`, 429 `too_many_attempts` |
 
 `PhoneCodeSent`:
@@ -82,9 +84,38 @@ allowed before verification), following SRS v0.2:
 {
   "phone": "+2348000000001",
   "expires_at": "2026-10-17T09:05:00Z",
+  "resend_available_at": "2026-10-17T09:01:00Z",
+  "delivery_status": "accepted"
+}
+```
+
+`delivery_status` (added 2026-10-31, optional for clients, always `accepted`
+here) says the SMS provider **took** the message. That is not proof the phone
+received it: a number on Nigeria's Do-Not-Disturb list or a network that
+refuses the message still shows as accepted. The two status endpoints read the
+provider's delivery report:
+
+```json
+{
+  "delivery_status": "failed",
+  "expires_at": "2026-10-17T09:05:00Z",
   "resend_available_at": "2026-10-17T09:01:00Z"
 }
 ```
+
+- `delivery_status`: `accepted` (handed to the carrier, no report yet),
+  `delivered` (the carrier reported it reached the handset) or `failed` (the
+  carrier or provider reported it did not arrive: DND, rejected, expired or
+  failed). An unreadable or missing report stays `accepted`, never `delivered`.
+- The client polls about every 5 seconds while `accepted`; the server asks the
+  provider at most every 3 seconds per code. On `failed` the client says the
+  code did not reach the phone and offers "Send a new code".
+- A failed delivery changes no limit: the 60-second cooldown, 3 codes per hour,
+  5-minute expiry and 5 attempts all stand (FR-003).
+- A failure to hand the message over is still 503 `sms_unavailable`, with the
+  same customer message whatever the cause. The cause (Sender ID, route not
+  enabled, empty wallet, account) is logged for operators only
+  (`reason=...`), never returned.
 
 - `code` is exactly 6 digits; surrounding spaces are trimmed. Anything else is
   422 `validation_error` with `loc` `["body", "code"]`.
@@ -251,6 +282,7 @@ Frontend note: the mock (`mockChangePassword`) answers 400
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-10-31 | Additive: `delivery_status` on `PhoneCodeSent`, and `GET /auth/phone-verification/status` and `GET /auth/phone-change/status` (Termii delivery reports). No existing field, status or error code changes | Proposed in the `fix/termii-otp-and-driver-area` branch; needs one reviewer's agreement in the PR |
 | 2026-10-26 | Change password (#8): `POST /auth/password`; a change ends the account's other sessions | @nnamdi-security (technical lead, #36), with @chidimmamogbo's decisions on #8 |
 | 2026-10-26 | Partner amendment (#47, [partners.md](partners.md)): partners sign up with `POST /auth/partner-register`, the one exception to "no self-registration for staff"; drivers may use the phone-verification endpoints (not phone change); admins still come only from the command-line tool | @nnamdi-security (technical lead, #36), with @chidimmamogbo's decisions on #47 |
 | 2026-10-17 | Phone verification (SRS v0.2 FR-003, FR-004) | @Cloudcrackamara (2026-10-18), @nnamdi-security |

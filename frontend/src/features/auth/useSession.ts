@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '../../lib/api/client'
 import type { LoginInput, RegisterInput, Session, User } from '../../lib/api/auth'
-import type { PhoneChangeInput } from '../../lib/api/phoneVerification'
+import type { CodePurpose, PhoneChangeInput } from '../../lib/api/phoneVerification'
 import { clearDraft } from '../customer/order/draft'
-import { getMe, login, logout, register, requestPhoneChange, requestPhoneVerification, verifyPhone, verifyPhoneChange } from './authApi'
+import { getMe, getPhoneCodeStatus, login, logout, register, requestPhoneChange, requestPhoneVerification, verifyPhone, verifyPhoneChange } from './authApi'
 
 export const SESSION_KEY = ['session'] as const
 
@@ -110,4 +110,28 @@ export function useRequestPhoneChange() {
 export function useVerifyPhoneChange() {
   const apply = useApplyUser()
   return useMutation({ mutationFn: (code: string) => verifyPhoneChange(code), onSuccess: apply })
+}
+
+/** How often the app asks whether an SMS code arrived, while it is still only "accepted". */
+const DELIVERY_POLL_MS = 5_000
+
+/**
+ * Whether the newest SMS code reached the phone (docs/api/auth.md, status
+ * endpoints). Polls every few seconds while the provider has only accepted the
+ * message, and stops at `delivered` or `failed`. A new code (`sentAt` changes)
+ * starts a fresh check. Errors are ignored: not knowing is shown as "no news",
+ * never as delivered.
+ *
+ * @param purpose - Which flow the code belongs to.
+ * @param sentAt - When the code was sent (any value that changes per send).
+ */
+export function useCodeDelivery(purpose: CodePurpose, sentAt: number) {
+  const status = useQuery({
+    queryKey: ['phone-code-status', purpose, sentAt],
+    queryFn: () => getPhoneCodeStatus(purpose),
+    retry: false,
+    staleTime: 0,
+    refetchInterval: (query) => (query.state.data?.delivery_status === 'accepted' || query.state.data === undefined ? DELIVERY_POLL_MS : false),
+  })
+  return status.data?.delivery_status ?? 'accepted'
 }

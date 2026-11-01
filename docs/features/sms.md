@@ -156,6 +156,73 @@ Live test on real phones:
 5. Repeat on a phone on the Do-Not-Disturb list, which only the `dnd` route
    reaches.
 
+## Delivery to every network (Airtel and Glo not receiving codes)
+
+**Symptom (production, 2026-10-31):** MTN customers receive the verification
+code, Airtel and Glo customers do not, although the app showed the code as
+sent.
+
+**What the code change established.**
+
+- The app only ever knew "Termii accepted the request" (`"code": "ok"`). That
+  does not mean the handset got the SMS, so a message dropped by a carrier or
+  the Do-Not-Disturb filter looked like a success. This was the app's own
+  defect and is fixed (see below).
+- Numbers were already normalized to `+234` plus ten digits and sent to Termii
+  as `234XXXXXXXXXX`, whether typed as `080...`, `+234...` or `234...`. A kept
+  trunk zero (`+2340803...`) is now handled too. Number format is not the cause.
+- The app sends every verification code with `TERMII_CHANNEL` (default `dnd`)
+  and `TERMII_SENDER_ID`. Which network drops a message is decided by Termii's
+  routing and the carriers, per account. **This cannot be seen from the code or
+  proven without the Termii account**, so the cause below is a shortlist to
+  check, not a finding.
+
+**Check these in the Termii dashboard / with Termii support, in this order.**
+
+1. **Channel in production.** `TERMII_CHANNEL` must be `dnd`. Termii documents
+   `generic` as a promotional route that does not reach DND numbers and is not
+   for OTPs; if production was set to `generic`, MTN can still deliver while
+   other networks refuse.
+2. **DND route activation.** Termii: the `dnd` channel "requires activation on
+   your account, which you request from support". Ask support to confirm it is
+   active for **Airtel and Glo** destinations, not only MTN.
+3. **Sender ID.** Ask Termii (or `GET /api/sender-id`) to confirm
+   `TERMII_SENDER_ID` has status `active` and is approved on **every** network.
+   A pending or network-limited Sender ID is a common reason one network drops
+   messages. A new Sender ID is requested in the Termii dashboard or with
+   `POST /api/sender-id/request` (needs Termii's approval; no workaround in
+   code).
+4. **Delivery reports.** For a failed Airtel or Glo message, Termii's report
+   shows why (`DND Active on Phone Number`, `Rejected`, `Message Failed`,
+   `Expired`). Read it with the live test:
+   `python -m app.modules.messaging.live_test --to <airtel or glo phone> --send --only verification_code --check-delivery 30`.
+   Send the same to an MTN phone and compare.
+
+**Do not** switch channels or routes to "try something": `generic` is not for
+OTPs, `whatsapp` and `voice` need their own Termii approval and, for WhatsApp,
+approved templates. If Termii must enable a route or approve a Sender ID, ask
+them; the app needs no code change for that.
+
+**What changed in the app.**
+
+- `SmsProvider.send` returns the provider's message id, and
+  `delivery_status(message_id)` reads Termii's report. Only an explicit
+  `Delivered` counts as delivered; unknown or unreadable reports stay
+  `accepted`.
+- `phone_verifications` stores `sms_message_id`, `sms_status`
+  (`accepted`/`delivered`/`failed`) and `sms_status_checked_at` (migration
+  `0023`). The status endpoints (`GET /auth/phone-verification/status`,
+  `/auth/phone-change/status`) refresh it from the provider.
+- The code screen polls every 5 seconds. On `failed` it says "The code did not
+  reach your phone" and the customer can send a new code when the 60-second
+  cooldown ends. Expiry (5 min), attempts (5), cooldown (60 s) and 3 per hour
+  are unchanged.
+- A refusal at send time is classified (`invalid_number`, `sender_id`,
+  `route_not_enabled`, `insufficient_balance`, `account_inactive`,
+  `rate_limited`, `provider_unavailable`, `rejected`) and logged as
+  `reason=...` with no phone number, code or key. The customer still gets the
+  same 503 `sms_unavailable` message.
+
 ## 10. Known limitations
 
 - The cancellation and refund outcome SMS (FR-043, FR-044) is not built.
@@ -163,8 +230,12 @@ Live test on real phones:
   fallback F10, agreed 2026-10-23); the live test lists it as not available.
 - The dispatched SMS outcome is only logged, not stored, so staff cannot see
   in the app whether it was accepted.
-- Termii's delivery reports are not read: the app knows "accepted", never
-  "delivered".
+- Delivery reports are read on demand (verification codes, and the live test
+  with `--check-delivery`). The other P0 messages (confirmation, dispatch,
+  delivery code, payment) still record only "accepted".
+- Termii's history endpoint documents `Delivered` and `Failed` and the webhook
+  lists more statuses; the app maps the documented words only. A report can
+  lag by minutes, so `accepted` for a while is normal.
 - The live test sends sample texts directly; it does not exercise each
   feature's flow end to end. The flows' sending is covered by their tests
   with the mock provider.

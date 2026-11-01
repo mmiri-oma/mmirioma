@@ -72,6 +72,7 @@ export function VerifyPhone() {
         </SuccessStep>
       ) : sent ? (
         <CodeStep
+          purpose="account_phone"
           sent={sent}
           intro={
             <p className="m-0 text-sub text-slate">

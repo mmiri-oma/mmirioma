@@ -79,8 +79,41 @@ def test_request_code_returns_202_with_times(client: TestClient, calls: list) ->
         "phone": "+2348000000001",
         "expires_at": "2026-10-17T09:05:00Z",
         "resend_available_at": "2026-10-17T09:01:00Z",
+        # The provider took the SMS; that is not proof it arrived.
+        "delivery_status": "accepted",
     }
     assert calls[0][1]["purpose"] is VerificationPurpose.ACCOUNT_PHONE
+
+
+@pytest.mark.parametrize("delivery", ["accepted", "delivered", "failed"])
+def test_status_endpoint_reports_delivery(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, calls: list, delivery: str
+) -> None:
+    async def delivery_status(_: object, **kwargs: Any) -> phone_verification.CodeStatus:
+        calls.append(("delivery_status", kwargs))
+        return phone_verification.CodeStatus(
+            delivery_status=delivery,
+            expires_at=SENT.expires_at,
+            resend_available_at=SENT.resend_available_at,
+        )
+
+    monkeypatch.setattr(phone_verification, "delivery_status", delivery_status)
+    client.cookies.set(SESSION_COOKIE_NAME, UserRole.CUSTOMER.value)
+
+    response = client.get("/api/v1/auth/phone-verification/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "delivery_status": delivery,
+        "expires_at": "2026-10-17T09:05:00Z",
+        "resend_available_at": "2026-10-17T09:01:00Z",
+    }
+    assert calls[-1][1]["purpose"] is VerificationPurpose.ACCOUNT_PHONE
+
+
+def test_status_endpoint_needs_a_session(client: TestClient) -> None:
+    assert client.get("/api/v1/auth/phone-verification/status").status_code == 401
+    assert client.get("/api/v1/auth/phone-change/status").status_code == 401
 
 
 @pytest.mark.parametrize(

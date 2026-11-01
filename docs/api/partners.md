@@ -387,7 +387,7 @@ goes in its own PR.
 | `PartnerNotification.read` | `read_at !== null` |
 | `PartnerSignupInput.vehicle_type` | `delivery_type` |
 | `PartnerSignupInput.tank_gallons` | `declared_capacity_gallons` |
-| `PartnerSignupInput.service_area` (free text) | `service_zone_id`, picked from `GET /service-zones` |
+| `PartnerSignupInput.service_zone_id` | `service_zone_id`: the ID of the active zone the partner picked in the sign-up dropdown, listed by `GET /service-zones` (until 2026-10-31 the screen sent free text and the adapter matched it to a zone by name) |
 
 ## Open questions
 

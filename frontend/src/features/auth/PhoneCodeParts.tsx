@@ -14,6 +14,8 @@ import { errorMessage } from '../../lib/api/errorMessage'
 import { USE_MOCKS } from '../../lib/api/mode'
 import { formatPhone } from '../../lib/format/phone'
 import { retryAfterSeconds } from '../../lib/forms'
+import { useCodeDelivery } from './useSession'
+import type { CodePurpose } from '../../lib/api/phoneVerification'
 import { cleanCode, resendWaitMs, waitText, type SentCode } from './phoneCode'
 
 /** Show "No SMS yet?" this long after a send if nothing was typed (decision 6). */
@@ -61,6 +63,8 @@ interface CodeStepProps {
   resendError: unknown
   /** True right after a successful resend, for the "New code sent." message. */
   resent: boolean
+  /** Which flow the code belongs to, so the screen can ask whether the SMS arrived. */
+  purpose: CodePurpose
   /** Extra handling for a verify error this screen owns (P2 "number taken"); return null to fall back. */
   renderVerifyError?: (error: unknown) => ReactNode | null
 }
@@ -84,6 +88,7 @@ export function CodeStep(p: CodeStepProps) {
   const { code, typed, incomplete } = current
   const secondsLeft = useSecondsLeft(p.sent.received_at + resendWaitMs(p.sent))
   const sinceSend = useSecondsLeft(p.sent.received_at + SLOW_SMS_MS)
+  const delivery = useCodeDelivery(p.purpose, p.sent.received_at)
   const verifyWait = useSecondsLeft(
     p.verifyError instanceof ApiError && p.verifyError.code === 'too_many_attempts'
       ? p.verifySubmittedAt + (retryAfterSeconds(p.verifyError) ?? 60) * 1000
@@ -124,7 +129,13 @@ export function CodeStep(p: CodeStepProps) {
         {p.resendError ? <ProblemNotice error={p.resendError} smsNote="Your last code may still work. Try again in a moment." /> : null}
         {owned}
         {showProblem && <ProblemNotice error={p.verifyError} smsNote="Try again in a moment." />}
-        {sinceSend === 0 && !typed && !dead && <Notice tone="info">No SMS yet? Check the number above, then send a new code.</Notice>}
+        {delivery === 'failed' && !dead && (
+          <Notice tone="error">
+            <b>The code did not reach your phone.</b> Your network may have blocked the SMS. Check the number above and send a new code
+            {secondsLeft > 0 ? ' when the timer ends' : ''}.
+          </Notice>
+        )}
+        {delivery !== 'failed' && sinceSend === 0 && !typed && !dead && <Notice tone="info">No SMS yet? Check the number above, then send a new code.</Notice>}
         <div>
           <label htmlFor="sms-code" className="mb-1.5 block text-label font-bold">
             Code

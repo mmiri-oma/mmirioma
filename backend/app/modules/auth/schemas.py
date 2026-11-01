@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
@@ -89,9 +89,29 @@ class PhoneCodeSentRead(BaseModel):
         phone: Number the code went to (E.164).
         expires_at: When the code stops working (5 minutes after sending).
         resend_available_at: Earliest time a new code can be requested.
+        delivery_status: Always ``accepted`` here: the SMS provider took the
+            message, which is not proof the phone received it. Poll the
+            status endpoint for ``delivered`` or ``failed``.
     """
 
     phone: str
+    expires_at: datetime
+    resend_available_at: datetime
+    delivery_status: Literal["accepted", "delivered", "failed"] = "accepted"
+
+
+class PhoneCodeStatusRead(BaseModel):
+    """Where the newest code stands (``GET .../status``).
+
+    Attributes:
+        delivery_status: ``accepted`` (handed to the carrier, no report yet),
+            ``delivered`` or ``failed`` (the code did not arrive: offer a
+            resend once ``resend_available_at`` has passed).
+        expires_at: When the code stops working.
+        resend_available_at: Earliest time a new code can be requested.
+    """
+
+    delivery_status: Literal["accepted", "delivered", "failed"]
     expires_at: datetime
     resend_available_at: datetime
 

@@ -21,7 +21,16 @@ Rules (FR-003 unless noted):
   be trivially reversible; the key means a database leak alone does not
   reveal codes.
 - If the SMS provider fails, nothing is stored (the earlier code stays valid)
-  and the caller gets 503 ``sms_unavailable``: no verification is claimed.
+  and the caller gets 503 ``sms_unavailable``: no verification is claimed. The
+  failure reason (Sender ID, route, balance...) is logged for operators and
+  never shown to the customer.
+- **Accepted is not delivered.** The provider taking the message is stored as
+  ``sms_status = accepted``. :func:`delivery_status` reads the provider's
+  delivery report and moves it to ``delivered`` or ``failed`` (DND, rejected,
+  expired). The customer app polls it and, on ``failed``, tells the customer
+  the code did not arrive and offers a resend. A failed delivery does not
+  shorten the resend cooldown, the hourly limit, the expiry or the attempt
+  limit: those are unchanged (FR-003).
 - **Phone change (FR-004):** the code goes to the **new** number. The account
   keeps its current number until the code is verified; then the number is
   replaced and marked verified, and the old number is kept on the
@@ -31,6 +40,7 @@ Rules (FR-003 unless noted):
 
 import hashlib
 import hmac
+import logging
 import math
 import secrets
 import uuid
@@ -50,14 +60,18 @@ from app.modules.auth.models import (
     User,
     VerificationPurpose,
 )
-from app.modules.messaging.sms import SmsDeliveryError, SmsProvider
+from app.modules.messaging.sms import SmsDeliveryError, SmsDeliveryStatus, SmsProvider
 from app.shared.phone import format_phone_for_display
+
+logger = logging.getLogger(__name__)
 
 CODE_DIGITS = 6
 CODE_LIFETIME = timedelta(minutes=5)
 RESEND_COOLDOWN = timedelta(seconds=60)
 CODES_PER_PHONE_PER_HOUR = 3
 _HOUR = timedelta(hours=1)
+# The provider's delivery report is read at most this often per code.
+STATUS_CHECK_INTERVAL = timedelta(seconds=3)
 
 
 @dataclass(frozen=True)
@@ -68,11 +82,14 @@ class CodeSent:
         phone: Number the code was sent to (E.164).
         expires_at: When the code stops working.
         resend_available_at: Earliest time another code can be requested.
+        delivery_status: ``accepted`` right after sending: the provider took
+            the message, which is not proof it arrived.
     """
 
     phone: str
     expires_at: datetime
     resend_available_at: datetime
+    delivery_status: str = "accepted"
 
 
 def generate_code() -> str:
@@ -242,19 +259,105 @@ async def send_code(
     await session.flush()
 
     try:
-        await sms.send(phone=phone, text=code_message(code))
+        receipt = await sms.send(phone=phone, text=code_message(code))
     except SmsDeliveryError as exc:
         # Nothing was sent, so nothing is recorded: the earlier code (if any)
-        # stays valid and the attempt does not count against the limits.
+        # stays valid and the attempt does not count against the limits. The
+        # reason helps an operator (wrong Sender ID, route off, empty wallet);
+        # the number and the code are not logged.
+        logger.error("Verification SMS not accepted: reason=%s", exc.reason.value)
         await session.rollback()
         raise APIError(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "sms_unavailable",
             "We could not send the code right now. Please try again in a few minutes.",
         ) from exc
+    verification.sms_message_id = receipt.message_id
     await session.commit()
     return CodeSent(
         phone=phone, expires_at=now + CODE_LIFETIME, resend_available_at=now + RESEND_COOLDOWN
+    )
+
+
+@dataclass(frozen=True)
+class CodeStatus:
+    """Where the latest code stands, for the customer app's polling.
+
+    Attributes:
+        delivery_status: ``accepted`` (sent to the carrier, no report yet),
+            ``delivered`` or ``failed`` (did not arrive: offer a resend).
+        expires_at: When the code stops working.
+        resend_available_at: Earliest time another code can be requested.
+    """
+
+    delivery_status: str
+    expires_at: datetime
+    resend_available_at: datetime
+
+
+async def delivery_status(
+    session: AsyncSession,
+    *,
+    user: User,
+    purpose: VerificationPurpose,
+    sms: SmsProvider,
+    now: datetime | None = None,
+) -> CodeStatus:
+    """Report whether the newest code reached the phone. Commits when it learns more.
+
+    Asks the SMS provider for its delivery report (at most every
+    :data:`STATUS_CHECK_INTERVAL`) while the status is still ``accepted``.
+    ``delivered`` and ``failed`` are final for a code. A provider that cannot
+    be reached leaves the status ``accepted``: delivery is never assumed.
+
+    Args:
+        session: Database session.
+        user: The signed-in user.
+        purpose: Which flow the code belongs to.
+        sms: SMS provider.
+        now: Current time, for tests.
+
+    Returns:
+        The status with the code's expiry and resend times.
+
+    Raises:
+        APIError: 400 ``verification_code_expired`` if there is no usable code
+            (never sent, expired, replaced or used).
+    """
+    now = now or datetime.now(UTC)
+    verification = await session.scalar(
+        select(PhoneVerification)
+        .where(
+            PhoneVerification.user_id == user.id,
+            PhoneVerification.purpose == purpose,
+            PhoneVerification.consumed_at.is_(None),
+            PhoneVerification.invalidated_at.is_(None),
+        )
+        .order_by(PhoneVerification.created_at.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    if verification is None or verification.expires_at <= now:
+        raise _code_expired()
+
+    due = (
+        verification.sms_status_checked_at is None
+        or verification.sms_status_checked_at <= now - STATUS_CHECK_INTERVAL
+    )
+    if verification.sms_status == "accepted" and verification.sms_message_id and due:
+        reported = await sms.delivery_status(verification.sms_message_id)
+        verification.sms_status_checked_at = now
+        if reported is not SmsDeliveryStatus.ACCEPTED:
+            verification.sms_status = reported.value
+            if reported is SmsDeliveryStatus.FAILED:
+                logger.warning(
+                    "Verification SMS reported as not delivered (id %s)", verification.id
+                )
+        await session.commit()
+    return CodeStatus(
+        delivery_status=verification.sms_status,
+        expires_at=verification.expires_at,
+        resend_available_at=verification.created_at + RESEND_COOLDOWN,
     )
 
 

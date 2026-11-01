@@ -30,8 +30,9 @@ is listed as not available rather than sent.
 import argparse
 import asyncio
 import sys
+import time as clock
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, time, timedelta
 
 from app.core.config import get_settings
@@ -40,7 +41,13 @@ from app.modules.auth import phone_verification
 from app.modules.confirmation.service import confirmation_message
 from app.modules.deliveries import codes as delivery_codes
 from app.modules.deliveries.service import dispatched_message
-from app.modules.messaging.sms import SmsDeliveryError, SmsProvider, get_sms_provider, mask_phone
+from app.modules.messaging.sms import (
+    SmsDeliveryError,
+    SmsDeliveryStatus,
+    SmsProvider,
+    get_sms_provider,
+    mask_phone,
+)
 from app.modules.payments.service import payment_message
 from app.shared.lagos_time import LAGOS_TZ
 from app.shared.phone import normalize_nigerian_phone
@@ -82,11 +89,16 @@ class SendResult:
         sent_at: When the request was made (UTC).
         error: ``None`` if the provider accepted it, else the provider error,
             which never contains the text or the API key.
+        message_id: The provider's message id when it accepted the message.
+        delivery: The provider's delivery report, once read with
+            ``--check-delivery``; ``None`` until then.
     """
 
     key: str
     sent_at: datetime
     error: str | None
+    message_id: str | None = None
+    delivery: SmsDeliveryStatus | None = None
 
     @property
     def accepted(self) -> bool:
@@ -166,11 +178,34 @@ async def send_messages(
     for message in messages:
         sent_at = datetime.now(UTC)
         try:
-            await provider.send(phone=phone, text=message.text)
-            results.append(SendResult(message.key, sent_at, None))
+            receipt = await provider.send(phone=phone, text=message.text)
+            results.append(SendResult(message.key, sent_at, None, receipt.message_id))
         except SmsDeliveryError as exc:
             results.append(SendResult(message.key, sent_at, str(exc)))
     return results
+
+
+async def read_delivery(provider: SmsProvider, results: Sequence[SendResult]) -> list[SendResult]:
+    """Attach the provider's delivery report to each accepted message.
+
+    This is how the team tells "accepted" from "delivered" per network: send to
+    an MTN, an Airtel and a Glo phone, then compare the reports.
+
+    Args:
+        provider: The configured SMS provider.
+        results: Results from :func:`send_messages`.
+
+    Returns:
+        The same results with ``delivery`` filled in for accepted messages.
+    """
+    updated: list[SendResult] = []
+    for result in results:
+        if result.message_id is None:
+            updated.append(result)
+            continue
+        status = await provider.delivery_status(result.message_id)
+        updated.append(replace(result, delivery=status))
+    return updated
 
 
 def _select(messages: list[LiveTestMessage], only: str | None) -> list[LiveTestMessage]:
@@ -199,6 +234,10 @@ def _print_results(results: Sequence[SendResult], phone: str) -> None:
     for result in results:
         when = result.sent_at.astimezone(LAGOS_TZ).strftime("%Y-%m-%d %H:%M:%S WAT")
         outcome = "accepted by Termii" if result.accepted else f"NOT accepted: {result.error}"
+        if result.delivery is not None:
+            outcome += f"; delivery report: {result.delivery.value}"
+        if result.message_id:
+            outcome += f" (id {result.message_id})"
         print(f"  {when}  {result.key:<18} {outcome}")
 
 
@@ -219,6 +258,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--to", required=True, help="Nigerian mobile number of a team phone")
     parser.add_argument("--send", action="store_true", help="send (default: preview only)")
     parser.add_argument("--only", help="comma-separated message keys (default: all)")
+    parser.add_argument(
+        "--check-delivery",
+        type=int,
+        metavar="SECONDS",
+        help="after sending, wait this long, then read Termii's delivery report for each message",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -238,7 +283,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         # Shows Termii's message ID for each accepted message (masked phone).
         configure_logging()
-        results = asyncio.run(send_messages(get_sms_provider(), phone=phone, messages=messages))
+        provider = get_sms_provider()
+        results = asyncio.run(send_messages(provider, phone=phone, messages=messages))
+        if args.check_delivery is not None:
+            clock.sleep(max(0, args.check_delivery))  # CLI only, never in a request handler
+            results = asyncio.run(read_delivery(provider, results))
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1

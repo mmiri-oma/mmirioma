@@ -249,6 +249,12 @@ tokens.
 - **States:** loading (submit disabled); error (`ErrorBlock` with Retry,
   submit disabled); no zones ("No areas are open for sign-up yet. Please try
   again later.", submit disabled); field error "Choose the area you work in".
+- **Amendment 2026-10-31** (production fix, branch `fix/termii-otp-and-driver-area`;
+  one reviewer to confirm in the PR): the no-zones notice also gives the
+  MmiriOma support phone number (the public contact), so a driver who cannot
+  sign up has someone to call. Wording: "Driver sign-up is not open right now
+  because no delivery areas are set up yet. Please try again later, or contact
+  MmiriOma support on <number>."
 
 ### Z4. Admin Service areas: edit form and list
 

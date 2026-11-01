@@ -8,7 +8,7 @@ import type { LoginInput, RegisterInput, Session, User } from '../../lib/api/aut
 import { USE_MOCKS } from '../../lib/api/mode'
 import { lazyMock } from '../../lib/api/lazyMock'
 import * as realPhone from '../../lib/api/phoneVerification'
-import type { PhoneChangeInput, PhoneCodeSent } from '../../lib/api/phoneVerification'
+import type { CodePurpose, PhoneChangeInput, PhoneCodeSent, PhoneCodeStatus } from '../../lib/api/phoneVerification'
 
 /** The mock modules load on first use, and not at all in a build without mocks (#236). */
 const mock = lazyMock(__USE_MOCKS__ && (() => import('../../mocks/authMock')))
@@ -53,4 +53,18 @@ export function requestPhoneChange(input: PhoneChangeInput): Promise<PhoneCodeSe
 /** Check the code sent to the new number; the returned user has the new phone. */
 export function verifyPhoneChange(code: string): Promise<User> {
   return USE_MOCKS ? mockPhone.mockVerifyPhoneChange(code) : realPhone.verifyPhoneChange(code)
+}
+
+/**
+ * Whether the newest SMS code reached the phone. In mock mode no SMS is sent,
+ * so the code counts as delivered (it is printed in the browser console).
+ */
+export function getPhoneCodeStatus(purpose: CodePurpose): Promise<PhoneCodeStatus> {
+  if (!USE_MOCKS) return realPhone.getPhoneCodeStatus(purpose)
+  const now = Date.now()
+  return Promise.resolve({
+    delivery_status: 'delivered',
+    expires_at: new Date(now + 5 * 60_000).toISOString(),
+    resend_available_at: new Date(now).toISOString(),
+  })
 }

@@ -13,6 +13,7 @@ import {
   listPartnerNotifications,
   markPartnerNotificationsRead,
   partnerProfileFromRead,
+  listSignupAreas,
   partnerSignup,
   setOnline,
   updatePartnerProfile,
@@ -119,15 +120,21 @@ describe('partner account adapters (#67)', () => {
     vehicle_type: 'tanker',
     plate: 'enu 456 cd',
     tank_gallons: 4000,
-    service_area: '  independence   LAYOUT ',
+    service_zone_id: serviceZones.items[0].id,
   }
   const driverSession = { ...authSession, user: { ...authSession.user, role: 'driver' } }
 
-  it('partnerSignup matches the typed area to a zone and registers', async () => {
-    const { client, sent } = setup({ body: serviceZones }, { body: driverSession, status: 201 })
-    const session = await partnerSignup(signupInput, client)
+  it('listSignupAreas lists the active zones by name', async () => {
+    const { client, sent } = setup({ body: serviceZones })
+    const areas = await listSignupAreas(client)
     expect(sent(0)).toMatchObject({ url: 'http://api.test/api/v1/service-zones', method: 'GET' })
-    expect(sent(1)).toEqual({
+    expect(areas).toEqual(serviceZones.items.map((z) => ({ id: z.id, name: z.name })))
+  })
+
+  it('partnerSignup registers with the chosen zone ID', async () => {
+    const { client, sent } = setup({ body: driverSession, status: 201 })
+    const session = await partnerSignup(signupInput, client)
+    expect(sent(0)).toEqual({
       url: 'http://api.test/api/v1/auth/partner-register',
       method: 'POST',
       body: {
@@ -144,22 +151,13 @@ describe('partner account adapters (#67)', () => {
   })
 
   it('partnerSignup sends no capacity for a Keke', async () => {
-    const { client, sent } = setup({ body: serviceZones }, { body: driverSession, status: 201 })
+    const { client, sent } = setup({ body: driverSession, status: 201 })
     await partnerSignup({ ...signupInput, vehicle_type: 'keke', tank_gallons: 4000 }, client)
-    expect(sent(1).body).toMatchObject({ delivery_type: 'keke', declared_capacity_gallons: null })
-  })
-
-  it('partnerSignup refuses an area no zone matches, without registering', async () => {
-    const { client, fetchMock } = setup({ body: serviceZones })
-    const error = await rejection(partnerSignup({ ...signupInput, service_area: 'Abakpa' }, client))
-    const msg = 'We do not serve "Abakpa" yet. Areas we serve: Independence Layout.'
-    expect([error.status, error.code]).toEqual([422, 'validation_error'])
-    expect(error.details).toEqual([{ loc: ['body', 'service_area'], msg, type: 'value_error' }])
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(sent(0).body).toMatchObject({ delivery_type: 'keke', declared_capacity_gallons: null })
   })
 
   it('partnerSignup passes phone_already_registered through', async () => {
-    const { client } = setup({ body: serviceZones }, { body: envelope('phone_already_registered'), status: 409 })
+    const { client } = setup({ body: envelope('phone_already_registered'), status: 409 })
     const error = await rejection(partnerSignup(signupInput, client))
     expect([error.status, error.code]).toEqual([409, 'phone_already_registered'])
   })
@@ -169,7 +167,7 @@ describe('partner account adapters (#67)', () => {
       { loc: ['body', 'declared_capacity_gallons'], msg: 'Use 500 to 20,000 gallons', type: 'value_error' },
       { loc: ['body', 'plate'], msg: 'Use 4 to 15 characters', type: 'value_error' },
     ]
-    const { client } = setup({ body: serviceZones }, { body: envelope('validation_error', details), status: 422 })
+    const { client } = setup({ body: envelope('validation_error', details), status: 422 })
     const error = await rejection(partnerSignup(signupInput, client))
     expect(error.code).toBe('validation_error')
     expect(error.details).toEqual([
@@ -184,11 +182,11 @@ describe('partner account adapters (#67)', () => {
       { loc: ['body', 'plate'], msg: 'Use 4 to 15 characters', type: 'value_error' },
       { loc: ['body'], msg: 'Request body is not valid', type: 'value_error' },
     ]
-    const { client } = setup({ body: serviceZones }, { body: envelope('validation_error', details), status: 422 })
+    const { client } = setup({ body: envelope('validation_error', details), status: 422 })
     const error = await rejection(partnerSignup(signupInput, client))
     expect(error.code).toBe('validation_error')
     expect(error.details).toEqual([
-      { loc: ['body', 'service_area'], msg: 'We do not serve "independence   LAYOUT" yet.', type: 'value_error' },
+      { loc: ['body', 'service_zone_id'], msg: 'This area is not open for sign-up any more. Choose another area.', type: 'value_error' },
       { loc: ['body', 'plate'], msg: 'Use 4 to 15 characters', type: 'value_error' },
       { loc: ['body'], msg: 'Request body is not valid', type: 'value_error' },
     ])
@@ -196,7 +194,7 @@ describe('partner account adapters (#67)', () => {
 
   it('partnerSignup leaves a field named like an inherited key alone (#80)', async () => {
     const details = [{ loc: ['body', 'constructor'], msg: 'Unexpected field', type: 'extra_forbidden' }]
-    const { client } = setup({ body: serviceZones }, { body: envelope('validation_error', details), status: 422 })
+    const { client } = setup({ body: envelope('validation_error', details), status: 422 })
     expect((await rejection(partnerSignup(signupInput, client))).details).toEqual(details)
   })
 
