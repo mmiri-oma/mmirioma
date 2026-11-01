@@ -1831,8 +1831,10 @@ slot. Condition name `delivery_window_set` is in the [errors](#errors) list.
 | `approved_until` | Lagos date the approval is valid through (inclusive), or `null` when not activated |
 | `reasons` | [Eligibility reasons](#source-eligibility-shared-with-r2); `[]` means it may be chosen |
 
-The source's cost per litre is **never** returned to the client (C1: it is
-the supplier's cost, not the customer's price).
+The source's cost per litre is **never** returned to a client (C1: it is
+the supplier's cost, not the customer's price), except by the admin
+water-source endpoints in [admin-water-sources.md](admin-water-sources.md#cost-per-litre-the-boundary-amends-c1)
+(#309), which are admin-only. This response never carries it.
 
 `AdminOrderDetail` gains (additive; `null` on unconfirmed and older orders):
 
@@ -2018,7 +2020,8 @@ Migrations, reviewed and tested as usual. **Built in #112** (revision
 - `water_source_categories` (one activation per source and category):
   `source_id`, `water_category_id`, `status` (`activated`, `suspended`,
   `revoked`), `approved_until` (date), `report_reference` (up to 100),
-  `cost_per_litre_minor_units` (BigInteger kobo; never sent to clients),
+  `cost_per_litre_minor_units` (BigInteger kobo; never sent to clients, except by
+  the admin water-source endpoints, #309),
   `status_reason` (up to 500, for suspended and revoked), timestamps. Unique
   on (`source_id`, `water_category_id`).
 - `orders.water_category_id` (nullable foreign key) and
