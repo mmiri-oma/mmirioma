@@ -22,7 +22,7 @@ import {
   type AuditLogRead,
 } from '../../../lib/api/adminSupport'
 import { apiClient, type ApiClient } from '../../../lib/api/client'
-import { AUDIT_REASON_ACTIONS, auditTarget } from '../auditWording'
+import { AUDIT_REASON_ACTIONS, AUDIT_REASON_REMOVED, auditTarget } from '../auditWording'
 
 /** Most requests the Support page reads: the server's page maximum. */
 const SUPPORT_PAGE_SIZE = 100
@@ -135,11 +135,14 @@ const AUDIT_WORDS: Record<string, string> = {
 /**
  * The staff reason on an audit row (#293): `details.reason` for the four driver decisions, `null` for every other row,
  * and for a reason that is not text or is only spaces. Other actions keep their notes off the screen (admin-operations.md).
+ * A driver row whose reason was removed on anonymization (`details.reason_removed: true`, #298) reads
+ * "Removed on anonymization", so it is not mistaken for a row that never had a reason.
  */
 function auditReason(read: AuditLogRead): string | null {
   if (!AUDIT_REASON_ACTIONS.has(read.action)) return null
   const reason = read.details.reason
-  return typeof reason === 'string' && reason.trim() !== '' ? reason.trim() : null
+  if (typeof reason === 'string' && reason.trim() !== '') return reason.trim()
+  return read.details.reason_removed === true ? AUDIT_REASON_REMOVED : null
 }
 
 /** One audit row. A code with no words shows as the code. The record is a kind and a short id until the backend sends a label (#296). */

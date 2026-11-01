@@ -172,6 +172,20 @@ describe('audit log', () => {
     }
   })
 
+  it.each(['driver_approved', 'driver_suspended', 'driver_activated', 'driver_deactivated'])(
+    'says the reason was removed on %s once the driver is anonymized (#298)',
+    (action) => {
+      expect(auditEntryFromRead(row(action, { reason_removed: true })).reason).toBe('Removed on anonymization')
+    },
+  )
+
+  it('shows no removed-reason text without the marker, on other actions, or for a marker that is not true (#298)', () => {
+    expect(auditEntryFromRead(row('driver_suspended', {})).reason).toBeNull()
+    expect(auditEntryFromRead(row('driver_suspended', { reason_removed: false })).reason).toBeNull()
+    expect(auditEntryFromRead(row('driver_suspended', { reason_removed: 'yes' })).reason).toBeNull()
+    expect(auditEntryFromRead(row('price_list_saved', { reason_removed: true })).reason).toBeNull()
+  })
+
   it('ignores a reason that is not text, or only spaces, and trims the rest', () => {
     expect(auditEntryFromRead(row('driver_suspended', { reason: 5 })).reason).toBeNull()
     expect(auditEntryFromRead(row('driver_suspended', { reason: '   ' })).reason).toBeNull()

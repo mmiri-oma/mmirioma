@@ -136,7 +136,9 @@ Points the body left open, decided by the technical lead
   One exception, decided on #293: the reason of a staff decision about a driver
   (`driver_approved`, `driver_suspended`, `driver_activated`,
   `driver_deactivated`) is stored in `details.reason`, because the audit row is
-  the only place it is kept (see `GET /admin/audit-logs`).
+  the only place it is kept (see `GET /admin/audit-logs`). When the driver is
+  anonymized, `reason` is removed and `details.reason_removed: true` is set in
+  its place (#298).
 - Phones and names of customers and drivers go to staff only (NFR-003).
   Reports carry no customer data (FR-053: "minimal customer data").
 - Shared errors (401 `not_authenticated`, 403 `forbidden`, 403
@@ -498,7 +500,7 @@ Newest first.
 | Field | Rule |
 | --- | --- |
 | `action` | The snake_case action code written by the feature (`cash_received`, `proof_override_approved`, `support_request_resolved`, ...). The adapter turns known codes into words; an unknown code shows as it is |
-| `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`). The exception is `reason`, on the four driver actions named below |
+| `details` | The row's metadata: ids and kinds only, never personal data (`backend/app/modules/audit/models.py`). The exception is `reason`, on the four driver actions named below, or `reason_removed: true` in its place once the driver is anonymized (#298) |
 | `target_type`, `target_id` | The kind of record and its id. The screen shows the kind in words, then the label below, or the short id when the label is `null` |
 | `target_label` | **Status: agreed** (G3, #296; @nnamdi-security, technical lead, 2026-11-01). `string \| null`, always present. The record's name or reference, looked up when the page is read and **never stored** in `audit_logs`, so anonymizing a record still works. See the table and rules below |
 
@@ -540,9 +542,16 @@ keeping it off the screen would leave it unreadable. The rules:
   audited.
 - The adapter reads `details.reason` only for those four codes, so a reason
   added to another action later does not appear until it is added here.
-- Anonymizing a driver keeps the audit rows (`privacy/service.py`), so a
-  reason stays readable afterwards. Blanking it on anonymization is a backend
-  change, tracked apart from #293.
+- **Anonymizing a driver (#298, decided 2026-10-31 by @nnamdi-security).**
+  The privacy tool keeps the audit rows but, on these four actions where the
+  driver is the target, removes `details.reason` and sets
+  `details.reason_removed: true` (`privacy/service.py`, `audit.service`).
+  A free-text note can name the driver, and a marker lets an auditor tell "a
+  reason was removed" from "none was given". The row, its actor, time and
+  other keys stay. The adapter shows "Removed on anonymization" in the Reason
+  column for a row with `reason_removed: true`, only for the same four codes.
+  The anonymization's own row (`partner_anonymized`) carries `reasons_cleared`,
+  a count.
 
 ## Notifications (admin)
 
