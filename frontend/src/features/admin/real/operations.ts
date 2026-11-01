@@ -25,7 +25,7 @@ import {
   type LiveMapRead,
 } from '../../../lib/api/adminOperations'
 import type { AdminShellData, LiveMapData } from '../../../mocks/adminMock'
-import { adminStatusFromBackend } from './orders'
+import { adminStatusFromBackend, progressStepLabel } from './orders'
 
 /** `MO-7KQ2` for `MO-7KQ2M9XH4T`: the short form staff read in lists (as the mock does). */
 function shortReference(reference: string): string {
@@ -169,7 +169,8 @@ function activityEntry(item: AdminActivityRead['items'][number]): ActivityEntry 
         text = `${subject} delivered`
         break
       default: {
-        const label = ADMIN_STATUS_LABEL[adminStatusFromBackend(item.to_status)]
+        // A driver step keeps its own name, as on the order timeline (#275, G2); other statuses use the status label.
+        const label = progressStepLabel(item.to_status) ?? ADMIN_STATUS_LABEL[adminStatusFromBackend(item.to_status)]
         text = actor ? `${actor} moved ${subject} to ${label}` : `${subject} is now ${label}`
       }
     }

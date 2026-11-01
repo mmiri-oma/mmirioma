@@ -241,13 +241,17 @@ active job, for calling.
   online while pending or suspended shows the server's `partner_not_approved`
   message. A driver with no driver profile gets the error screen
   (`no_driver_profile`).
-- Real API sign-up: an area that matches no active zone fails as a
-  `validation_error` on `service_area` before anything is sent ("We do not
-  serve "X" yet. Areas we serve: …"), shown under the area field. A zone
-  the server refuses gets the same message and keeps the other field errors
-  (#80). In a `validation_error`, `declared_capacity_gallons` is renamed
-  `tank_gallons` and `service_zone_id` `service_area`, so each message
-  appears under its field.
+- Real API sign-up: "Area you work in" is a dropdown of the active service
+  zones (`GET /service-zones`, no session), shown by name and sent as
+  `service_zone_id`; no area name is hardcoded. While the list loads the
+  select and "Create account" are off; if it fails, an error with "Try again"
+  replaces the select; if no zone is active, a notice says driver sign-up is
+  not open and gives the support number (from the public contact). The server
+  still checks the zone: one switched off since the list loaded comes back as
+  a `validation_error` on `service_zone_id` and the form says "This area is
+  not open for sign-up any more. Choose another area.", keeping the other
+  field errors (#80). In a `validation_error`, `declared_capacity_gallons` is
+  renamed `tank_gallons` so its message appears under its field.
 - Sign-up: a field error the form has no slot for (`vehicle_type`, or the
   whole body, `loc: ["body"]`) shows in the top notice, next to the field
   errors (#80). A refused sign-up never ends without a message.
@@ -296,7 +300,9 @@ they order (the customer mock); the partner app gets it only after unloading.
   and the two attempts, and the dispatcher sees the times as "Contact attempt N"
   lines in the order panel's timeline (#280), and in a proof review's evidence.
 - **"The dispatcher will contact you."** on the failed screen promises staff
-  action, so the pilot needs a dispatcher to follow up a failed delivery.
+  action. The dispatcher finds a failed delivery under the Orders page's
+  "Delivery failed" tab (#273), but nothing alerts them: no notification, no
+  dashboard count. The pilot still needs someone to look at that tab.
 - **No paused-job banner.** The job carries no hold in the app's types, so a
   paused job shows its notice only when an arrival, attempt or end request is
   refused with 409 `job_on_hold` ("This job is paused. The dispatcher will

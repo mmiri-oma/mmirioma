@@ -118,6 +118,8 @@ class PartnerAnonymizeResult:
         decline_notes_removed: Their own words on declines, replaced.
         gps_points_cleared: GPS points they recorded, cleared.
         notifications_deleted: Their in-app notifications deleted.
+        reasons_cleared: Audit rows about them whose staff reason was
+            replaced by the ``reason_removed`` marker.
         notes_to_review: Incident and pickup safety notes they wrote, kept
             as safety records, for the privacy contact to check by hand.
         applied: False for a dry run (nothing was saved).
@@ -128,6 +130,7 @@ class PartnerAnonymizeResult:
     decline_notes_removed: int
     gps_points_cleared: int
     notifications_deleted: int
+    reasons_cleared: int
     notes_to_review: int
     applied: bool
 
@@ -318,9 +321,13 @@ async def anonymize_partner(
     reset and its zones deleted, and the partner's decline notes replaced
     (``dispatch.retention``); the GPS points they recorded are cleared
     except on orders still needed as evidence (``deliveries.retention``);
-    their in-app notifications are deleted; and an audit row is written.
-    Assignments, pickups, proofs, incidents, cash records, audit rows and the
-    approval status are kept.
+    their in-app notifications are deleted; the staff reason on the audit
+    rows of decisions about them (approved, suspended, activated,
+    deactivated) is replaced by a ``reason_removed`` marker, because a
+    free-text note can name them (NFR-003, #298); and an audit row is
+    written. Assignments, pickups, proofs, incidents, cash records, the audit
+    rows themselves (actor, time, action, other details) and the approval
+    status are kept.
 
     Args:
         session: Database session.
@@ -367,6 +374,7 @@ async def anonymize_partner(
         session, recorded_by=partner_id, keep_order_ids=open_matters | disputed, now=now
     )
     deleted_notes = await notifications.delete_for_users(session, user_ids=[partner_id])
+    reasons = await audit.clear_driver_reasons(session, driver_id=partner_id)
     audit.record(
         session,
         actor_id=actor.id,
@@ -378,6 +386,7 @@ async def anonymize_partner(
             "decline_notes_removed": declines,
             "gps_points_cleared": gps,
             "notifications_deleted": deleted_notes,
+            "reasons_cleared": reasons,
         },
     )
     await _finish(session, apply)
@@ -387,6 +396,7 @@ async def anonymize_partner(
         decline_notes_removed=declines,
         gps_points_cleared=gps,
         notifications_deleted=deleted_notes,
+        reasons_cleared=reasons,
         notes_to_review=notes,
         applied=apply,
     )

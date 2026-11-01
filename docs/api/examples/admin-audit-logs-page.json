@@ -11,6 +11,7 @@
       "action": "support_request_resolved",
       "target_type": "support_request",
       "target_id": "6a8c0e2a-4b6d-4f8a-9c1e-3a5c7e9b1d16",
+      "target_label": "SR-4KQ7M2XH",
       "details": {}
     },
     {
@@ -24,6 +25,7 @@
       "action": "proof_override_approved",
       "target_type": "order",
       "target_id": "1c7e9a3b-5d2f-4a6c-8e0b-2d4f6a8c0e20",
+      "target_label": "MO-7KQ2M9XH4T",
       "details": {
         "exception_id": "3e5a7c9e-1b3d-4f5a-9c7e-1b3d5f7a9c22"
       }

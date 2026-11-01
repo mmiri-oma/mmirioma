@@ -15,6 +15,8 @@ import type { CorrectionRequest, ReceiveRequest, ReconcileRequest } from '../../
 import { USE_MOCKS } from '../../lib/api/mode'
 import { lazyMock } from '../../lib/api/lazyMock'
 import { notConnected } from '../../lib/api/notConnected'
+import * as waterSources from '../../lib/api/adminWaterSources'
+import type { ActivationStatusWrite, ActivationWrite, WaterSourceCreate, WaterSourceUpdate } from '../../lib/api/adminWaterSources'
 import * as areas from './real/areas'
 import * as cash from './real/cash'
 import * as holds from './real/holds'
@@ -33,6 +35,7 @@ import type { ApprovalAction, OrderList, RiderFilter } from '../../mocks/adminMo
 const cashMock = lazyMock(__USE_MOCKS__ && (() => import('../../mocks/adminCashMock')))
 const mock = lazyMock(__USE_MOCKS__ && (() => import('../../mocks/adminMock')))
 const priceMock = lazyMock(__USE_MOCKS__ && (() => import('../../mocks/priceListMock')))
+const waterSourceMock = lazyMock(__USE_MOCKS__ && (() => import('../../mocks/waterSourceMock')))
 
 export type { AdminShellData, ApprovalAction, LiveMapData, OrderList, PaymentFilter, RiderFilter, RiderList } from '../../mocks/adminMock'
 
@@ -105,6 +108,20 @@ export const savePriceList = (draft: PriceListDraft) => (USE_MOCKS ? priceMock.c
 export const listWaterCategories = () => (USE_MOCKS ? priceMock.listWaterCategories() : pricing.waterCategories())
 export const listPriceAreas = () =>
   USE_MOCKS ? mock.listAreas().then((areas) => areas.map((a) => ({ id: a.id, name: a.name, is_active: a.enabled }))) : pricing.priceAreas()
+
+/*
+ * Water sources (#309): linked to docs/api/admin-water-sources.md. The screen uses the
+ * contract's types as they are. In mock mode the records are SAMPLE DATA.
+ */
+export const WATER_SOURCES_ARE_SAMPLE = USE_MOCKS
+export const listWaterSources = () => (USE_MOCKS ? waterSourceMock.listWaterSources() : waterSources.listAdminWaterSources())
+export const addWaterSource = (body: WaterSourceCreate) => (USE_MOCKS ? waterSourceMock.createWaterSource(body) : waterSources.createAdminWaterSource(body))
+export const editWaterSource = (id: string, body: WaterSourceUpdate) =>
+  USE_MOCKS ? waterSourceMock.updateWaterSource(id, body) : waterSources.updateAdminWaterSource(id, body)
+export const activateWaterSource = (id: string, categoryId: string, body: ActivationWrite) =>
+  USE_MOCKS ? waterSourceMock.activateWaterSource(id, categoryId, body) : waterSources.putAdminActivation(id, categoryId, body)
+export const setWaterSourceStatus = (id: string, categoryId: string, body: ActivationStatusWrite) =>
+  USE_MOCKS ? waterSourceMock.setWaterSourceStatus(id, categoryId, body) : waterSources.setAdminActivationStatus(id, categoryId, body)
 
 export const listPayments = api('Payments', mock.listPayments)
 export const confirmPayment = api('Payments', mock.confirmPayment)

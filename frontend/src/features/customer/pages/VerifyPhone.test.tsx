@@ -8,6 +8,7 @@ import { createQueryClient } from '../../../app/queryClient'
 import { mockRegister } from '../../../mocks/authMock'
 import { read, resetMockDb } from '../../../mocks/db'
 import { mockRequestPhoneVerification, mockVerifyPhone, openCodeForTests } from '../../../mocks/phoneVerificationMock'
+import * as authApi from '../../auth/authApi'
 import { ChangePhone } from './ChangePhone'
 import { VerifyPhone } from './VerifyPhone'
 
@@ -116,6 +117,33 @@ describe('VerifyPhone (mock mode)', () => {
     await mockVerifyPhone(openCodeForTests()!)
     renderAt('/verify-phone')
     expect(await screen.findByText(/is verified\. You can send water requests now\./)).toBeInTheDocument()
+  })
+})
+
+describe('VerifyPhone SMS delivery report', () => {
+  const status = (delivery_status: 'accepted' | 'delivered' | 'failed') => ({
+    delivery_status,
+    expires_at: new Date(Date.now() + 300_000).toISOString(),
+    resend_available_at: new Date(Date.now() + 60_000).toISOString(),
+  })
+
+  it('tells the customer when the carrier reports the code did not arrive', async () => {
+    vi.spyOn(authApi, 'getPhoneCodeStatus').mockResolvedValue(status('failed'))
+    const user = userEvent.setup()
+    renderAt('/verify-phone')
+    await user.click(await screen.findByRole('button', { name: 'Send code' }))
+    expect(await screen.findByText('The code did not reach your phone.')).toBeInTheDocument()
+    // The code field still works: a late SMS can still be typed, and limits are unchanged.
+    expect(screen.getByLabelText('Code')).toBeEnabled()
+  })
+
+  it('shows no failure while the provider has only accepted the message', async () => {
+    vi.spyOn(authApi, 'getPhoneCodeStatus').mockResolvedValue(status('accepted'))
+    const user = userEvent.setup()
+    renderAt('/verify-phone')
+    await user.click(await screen.findByRole('button', { name: 'Send code' }))
+    await screen.findByLabelText('Code')
+    expect(screen.queryByText('The code did not reach your phone.')).not.toBeInTheDocument()
   })
 })
 

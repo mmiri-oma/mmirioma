@@ -130,7 +130,11 @@ The API tests check each response body equals its example.
 - **Counts.** `available` uses the dashboard's definition (active, approved and
   available) so the header and the dashboard agree. `pending` counts active
   accounts only. `live_jobs` and `completed_jobs` count `offered` or
-  `accepted` and `completed` assignments.
+  `accepted` and `completed` assignments. `delivered_jobs` counts the
+  `completed` assignments whose order is `delivered`: a failed or cancelled
+  job also ends `completed`, so only `delivered_jobs` is the Riders page's
+  "Trips" (#275, `job_counts_by_driver` in `dispatch/service.py`, one join on
+  the order).
 - **Search.** `q` matches a part of the name, the vehicle type (the verified
   description, or the declared kind `keke` or `tanker`, so a pending partner is
   found) and, with 4 or more digits, the phone in `+234…` or `0…` form.
@@ -191,6 +195,10 @@ TEST_DATABASE_URL=postgresql+asyncpg://... .venv/bin/pytest tests/test_admin_dri
   (no source). Approving a partner with no verified vehicle collects it (vehicle,
   safe payload in litres, transfer method) with what the partner declared shown as
   a claim; a suspended partner who already has one is approved with nothing extra.
+  The form's examples follow the declared vehicle type (#294): a Keke sees "e.g.
+  Keke" and "Litres you measured" (no capacity is defined for a Keke, so no
+  number); a tanker, or an unknown type, sees "e.g. Tanker truck" and "e.g. 12000".
+  Wording approved by @nnamdi-security on 2026-11-01 (G2, comment on #294).
   Suspending asks for a reason, and a refused field shows the server's words under
   it. The "Suspended" pill has no count (the server has none). Tests:
   `features/admin/directory.screens.test.tsx`.

@@ -17,6 +17,37 @@ export interface PhoneCodeSent {
   expires_at: string
   /** ISO 8601 UTC: the earliest time a new code can be requested. */
   resend_available_at: string
+  /**
+   * `accepted` right after sending: the SMS provider took the message, which
+   * is not proof the phone received it. Use {@link getPhoneCodeStatus}.
+   */
+  delivery_status?: CodeDeliveryStatus
+}
+
+/** What is known about the SMS that carried the newest code. */
+export type CodeDeliveryStatus = 'accepted' | 'delivered' | 'failed'
+
+/** Which code flow a status request is about. */
+export type CodePurpose = 'account_phone' | 'phone_change'
+
+/** Body of `GET /auth/phone-verification/status` and `/auth/phone-change/status`. */
+export interface PhoneCodeStatus {
+  delivery_status: CodeDeliveryStatus
+  expires_at: string
+  resend_available_at: string
+}
+
+/**
+ * Whether the newest code reached the phone
+ * (`GET /api/v1/auth/phone-verification/status`, or `/phone-change/status`).
+ * `accepted` only means the SMS provider took the message; `failed` means the
+ * carrier reported it did not arrive, so the screen offers a resend.
+ *
+ * @throws {ApiError} `verification_code_expired` (400) when there is no usable code.
+ */
+export function getPhoneCodeStatus(purpose: CodePurpose, client: ApiClient = apiClient) {
+  const path = purpose === 'account_phone' ? 'phone-verification' : 'phone-change'
+  return client.request<PhoneCodeStatus>(`/api/v1/auth/${path}/status`)
 }
 
 export interface PhoneChangeInput {

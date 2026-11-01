@@ -17,8 +17,10 @@ def normalize_nigerian_phone(raw: str) -> str:
     """Convert a Nigerian mobile number to E.164 (``+2348000000001``).
 
     Accepts the local form (``08000000001``), the international form with or
-    without ``+`` (``2348000000001``, ``+2348000000001``), and ignores spaces,
-    dashes, dots and brackets.
+    without ``+`` (``2348000000001``, ``+2348000000001``), the international
+    form with the local ``0`` kept (``+2340800000001``), and ignores spaces,
+    dashes, dots and brackets. Termii needs ``234`` plus ten digits, which is
+    this form without the ``+``.
 
     Args:
         raw: Number as typed by the user.
@@ -39,6 +41,9 @@ def normalize_nigerian_phone(raw: str) -> str:
         national = digits[1:]
     else:
         national = digits
+    # People often keep the trunk "0" after the country code (+234 0803...).
+    if len(national) == 11 and national.startswith("0") and digits.lstrip("+").startswith("234"):
+        national = national[1:]
     if not _NATIONAL_NUMBER.fullmatch(national):
         raise ValueError("Enter a Nigerian mobile number, for example 08000000001")
     return f"+234{national}"

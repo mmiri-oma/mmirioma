@@ -18,6 +18,7 @@ import type {
   PartnerNotificationList,
   PartnerProfile,
   PartnerSignupInput,
+  SignupArea,
   VehicleType,
 } from '../../../domain/partner'
 import { litresFromGallons } from '../../../domain/quantity'
@@ -33,7 +34,6 @@ import {
   updateDriverProfile,
   type NotificationRead,
   type PartnerProfileRead,
-  type ZoneOption,
 } from '../../../lib/api/partners'
 
 const APPROVAL_STATUSES: readonly ApprovalStatus[] = ['pending', 'approved', 'suspended']
@@ -126,44 +126,28 @@ export function partnerNotificationsFromRead(items: NotificationRead[]): Partner
   }))
 }
 
-const zoneKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase()
-
-/** The form's message for an area no active zone matches. */
-function areaNotServedMessage(area: string, zones: ZoneOption[]): string {
-  const served = zones.length ? ` Areas we serve: ${zones.map((z) => z.name).join(', ')}.` : ''
-  return `We do not serve "${area.trim()}" yet.${served}`
-}
+/** Contract field names to the sign-up form's, so the screen puts server errors under the right field. */
+const SIGNUP_FIELD: Record<string, string> = { declared_capacity_gallons: 'tank_gallons', delivery_type: 'vehicle_type' }
 
 type FieldError = { loc?: unknown[]; msg?: string; type?: string }
 
-/** Contract field names to the sign-up form's, so the screen puts server errors under the right field. */
-const SIGNUP_FIELD: Record<string, string> = { declared_capacity_gallons: 'tank_gallons', delivery_type: 'vehicle_type', service_zone_id: 'service_area' }
+/** The active service zones a new partner can choose from (`GET /service-zones`, no session needed). */
+export async function listSignupAreas(client: ApiClient = apiClient): Promise<SignupArea[]> {
+  const zones = await listServiceZoneOptions(undefined, client)
+  return zones.map((zone) => ({ id: zone.id, name: zone.name })).sort((a, b) => a.name.localeCompare(b.name))
+}
 
 /**
- * Sign up (`POST /auth/partner-register`). The screen's free-text area is
- * matched to an active zone from `GET /service-zones` by name, ignoring case
- * and extra spaces (agreed for #67; partners.md maps `service_area` to
- * `service_zone_id`).
+ * Sign up (`POST /auth/partner-register`) with the ID of the zone the partner
+ * chose from {@link listSignupAreas}. The server checks that the zone exists
+ * and is active.
  *
  * @throws {ApiError} `validation_error` (422) with `details` named after the
- *   form's fields: from the server, or made here for an area no zone matches
- *   (`service_area`, nothing sent). A zone the server refuses keeps the other
- *   field errors and gets the same area message. Also
+ *   form's fields; a zone switched off since the list was loaded is reported
+ *   on `service_zone_id` with a message the form can show. Also
  *   `phone_already_registered` (409) and `too_many_attempts` (429).
  */
 export async function partnerSignup(input: PartnerSignupInput, client: ApiClient = apiClient): Promise<Session> {
-  const zones = await listServiceZoneOptions(undefined, client)
-  const zone = zones.find((z) => zoneKey(z.name) === zoneKey(input.service_area))
-  if (!zone) {
-    const msg = areaNotServedMessage(input.service_area, zones)
-    throw new ApiError({
-      kind: 'http',
-      status: 422,
-      code: 'validation_error',
-      message: msg,
-      details: [{ loc: ['body', 'service_area'], msg, type: 'value_error' }],
-    })
-  }
   try {
     return await registerPartner(
       {
@@ -173,7 +157,7 @@ export async function partnerSignup(input: PartnerSignupInput, client: ApiClient
         delivery_type: input.vehicle_type,
         plate: input.plate,
         declared_capacity_gallons: input.vehicle_type === 'tanker' ? input.tank_gallons : null,
-        service_zone_id: zone.id,
+        service_zone_id: input.service_zone_id,
       },
       client,
     )
@@ -181,11 +165,9 @@ export async function partnerSignup(input: PartnerSignupInput, client: ApiClient
     if (!(error instanceof ApiError) || error.code !== 'validation_error' || !Array.isArray(error.details)) throw error
     const details = (error.details as FieldError[]).map((d): FieldError => {
       const last = d.loc?.at(-1)
+      if (last === 'service_zone_id') return { ...d, msg: 'This area is not open for sign-up any more. Choose another area.' }
       if (typeof last !== 'string' || !Object.hasOwn(SIGNUP_FIELD, last)) return d
-      const field = SIGNUP_FIELD[last]
-      // The zone closed between the list and the sign-up: say it in the form's words.
-      const msg = field === 'service_area' ? areaNotServedMessage(input.service_area, []) : d.msg
-      return { ...d, loc: [...d.loc!.slice(0, -1), field], msg }
+      return { ...d, loc: [...d.loc!.slice(0, -1), SIGNUP_FIELD[last]] }
     })
     throw new ApiError({ kind: error.kind, status: error.status, code: error.code, message: error.message, details, cause: error })
   }

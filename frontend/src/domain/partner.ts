@@ -295,5 +295,12 @@ export interface PartnerSignupInput {
   plate: string
   /** Tanker drivers only. */
   tank_gallons: number | null
-  service_area: string
+  /** ID of an active service zone chosen from {@link SignupArea}s (`GET /service-zones`). */
+  service_zone_id: string
+}
+
+/** An area a new partner can choose at sign-up: an active service zone, by name. */
+export interface SignupArea {
+  id: string
+  name: string
 }

@@ -52,3 +52,12 @@ def test_national_format_groups_like_the_app() -> None:
 @pytest.mark.parametrize("value", ["", "08133774902", "+4478000000001", "+234813377490"])
 def test_national_format_leaves_other_values_unchanged(value: str) -> None:
     assert format_phone_national(value) == value
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["08031234567", "+2348031234567", "2348031234567", "+2340803 123 4567", "2340803-123-4567"],
+)
+def test_every_way_of_typing_a_number_gives_the_same_e164(raw: str) -> None:
+    """MTN, Airtel and Glo numbers all reach Termii as 234 + 10 digits (the "0" is never kept)."""
+    assert normalize_nigerian_phone(raw) == "+2348031234567"

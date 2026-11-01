@@ -210,7 +210,13 @@ Migrations never run when the API starts. `deploy/production-migrate.sh`:
 2. renders the pending SQL (`alembic upgrade <current>:head --sql`, no
    connection) and **stops** if it contains `DROP TABLE`, `DROP COLUMN`,
    `DROP SCHEMA`, `TRUNCATE` or `DELETE FROM`. After a person has reviewed the
-   migration, rerun with `--allow-destructive`;
+   migration, rerun with `--allow-destructive`. If the SQL cannot be rendered
+   at all, it **stops** with "Could not render the pending migrations as SQL"
+   and alembic's error, and migrates nothing (#320). The usual cause is a
+   migration whose `upgrade()` reads the database, which offline rendering
+   cannot do. Do not start the new release: have the migration reviewed (it
+   may need to work without a connection, or the check must be done by hand
+   on a copy of the database), then run the script again;
 3. takes a backup (`--skip-backup` only for a scratch database);
 4. asks you to type `yes`, runs `alembic upgrade head`, and prints the new revision.
 
@@ -221,7 +227,7 @@ Other commands: `--check` shows the state and the destructive check only.
 The checks in CLAUDE.md still apply before a migration reaches `main`
 (`alembic upgrade head`, `downgrade -1`, `alembic check`).
 
-## 9. Staff accounts
+## 9. Staff accounts and water sources
 
 Staff accounts cannot be created through the API
 (`backend/app/modules/auth/cli.py`). Roles are `admin` (dispatcher and
@@ -238,6 +244,70 @@ deploy/prod.sh exec api python -m app.modules.auth.cli activate --phone 08012345
 Use each person's own phone number. Give each person their own account; do not
 share one. Do not run the demo seed.
 
+### Water sources
+
+A new deployment has no water sources, and water may only be collected from a
+source that is approved for the order's category (FR-012). Quoting and
+confirming an order need at least one. An admin manages sources on the **Water
+sources** page of the admin app (`/admin/water-sources`, #309): add a source,
+edit its name, location and kind, activate or renew it for a category, and
+suspend or revoke it, each with the same audit row as the command line. The
+command-line tool `backend/app/modules/sources/cli.py` (full reference:
+[docs/features/water-sources.md](../features/water-sources.md)) stays as the
+fallback, for example before any admin can sign in. `--by` must be the phone of
+an active **admin** account (section 9 above), and it becomes the actor of the
+audit row.
+
+```bash
+# The two seeded categories (potable, utility)
+deploy/prod.sh exec api python -m app.modules.sources.cli list-categories
+
+# 1. Add the source. --kind is borehole or ninth_mile. It prints the source id.
+deploy/prod.sh exec api python -m app.modules.sources.cli add-source \
+  --by 08012345678 --name "Your Borehole A" --location "Ugwuaji, Enugu" --kind borehole
+
+# 2. Activate it for a category. This is the step that makes it usable.
+deploy/prod.sh exec api python -m app.modules.sources.cli activate \
+  --by 08012345678 --source <source id> --category potable \
+  --report LR-0001 --approved-until 2027-01-30 --cost-per-litre-kobo 150
+
+# 3. Check the result
+deploy/prod.sh exec api python -m app.modules.sources.cli list-sources
+```
+
+Later changes use the same tool: `set-kind --source <id> --kind ninth_mile`,
+`suspend` or `revoke` (both need `--reason`), and `activate` again to renew.
+On a development machine, run the same commands from `backend/` with
+`.venv/bin/python -m app.modules.sources.cli ...`.
+
+Things to know:
+
+- **Activation makes a source usable.** A source with no activation for a
+  category is never eligible, so orders for that category cannot be confirmed
+  from it.
+- **Set the kind for Tanker orders.** A source with no `--kind` matches no
+  Tanker customer's source preference, so a Tanker order cannot be quoted or
+  confirmed with it. Keke orders accept any kind.
+- **Activate only after laboratory verification.** FR-012 requires an
+  independent laboratory approval, and the app cannot check it: it stores only
+  the report reference (`--report`). For testing, use an obviously fake
+  reference such as `LR-TEST`, never one that looks like a real approval.
+- **Cost per litre is in kobo** (`--cost-per-litre-kobo`, a whole number). It is
+  the supplier's cost: only the admin water-source endpoints and the Water
+  sources page show it, and no customer, driver or quote response does. Quotes price the water at
+  the highest cost among the eligible sources of the preferred kind.
+- **`--approved-until` is the last valid day, inclusive,** in Africa/Lagos time.
+  After it the source stops being eligible. The Water sources page shows a badge
+  ("Expires in N days" within 30 days, "Expired" after), but nothing notifies
+  anyone, so check the page and renew before the date.
+- **Suspending does not cancel orders already confirmed** with that source.
+- **Every change writes an audit row** (`water_source_added`,
+  `water_source_activated`, ...), shown on the Settings page's audit log. Cost,
+  report reference and reason are not copied into it.
+- **A mistyped name or location** cannot be edited with the command line. The
+  admin `PATCH /admin/water-sources/{source_id}` endpoint edits the name,
+  location and kind, and writes a `water_source_updated` audit row.
+
 ## 10. Backups
 
 `deploy/production-backup.sh` writes a `pg_dump --format=custom` file named
@@ -247,10 +317,26 @@ notice's retention, section 8), and copies the folder off the VPS when
 `BACKUP_RCLONE_REMOTE` is set. It uses the same PostGIS image as the database
 for the client tools, on the private network.
 
-**Off-VPS target: not chosen yet (placeholder).** Until
-`BACKUP_RCLONE_REMOTE` is set the script warns on every run, and the backups
-exist only on the server they protect. Choose a target before real customer
-data goes in. The script uses [rclone](https://rclone.org/) (installed on the
+**Off-VPS target: Backblaze B2, EU Central region (Amsterdam)**, chosen by
+the owner on 2026-11-01 (#319). It is a different company and country from
+Hostinger (Paris), and the privacy notice (version 3.0, section 7) names it.
+Not set up yet: until `BACKUP_RCLONE_REMOTE` is set the script warns on every
+run, and the backups exist only on the server they protect. To set it up:
+
+1. Create the Backblaze account with the **EU Central** region (an account's
+   region cannot be changed later).
+2. Create a private bucket. Turn on its default server-side encryption: the
+   privacy notice calls the backups "encrypted" (sections 8 and 10), and the
+   dump files themselves are not.
+3. Add a lifecycle rule that deletes files about 30 days after upload (the
+   notice's retention).
+4. Create an application key for that bucket only, configure it with
+   `rclone config` on the VPS, and put `<remote>:<bucket>` in
+   `BACKUP_RCLONE_REMOTE`.
+5. Run `deploy/production-backup.sh` once and restore that copy into a scratch
+   database ("Restoring" below).
+
+The rest of this section applies to any target. The script uses [rclone](https://rclone.org/) (installed on the
 VPS, not in this repository) with `rclone copy`, which never deletes remote
 files; set expiry (about 30 days) as a lifecycle rule on the storage side.
 Configure the remote once with `rclone config`, then put its name in
@@ -344,13 +430,12 @@ migration run with the helper script against a populated database.
 
 ## 13. Outstanding before go-live
 
-1. **The privacy notice names Railway** as the hosting provider (Amsterdam),
-   in the legal page (`frontend/src/features/marketing/LegalPages.tsx`) and
-   `PRIVACY_NOTICE.md`. After this move it is wrong. It needs the new
-   provider and data-centre location (chosen in Hostinger's panel) and the
-   legal review in `docs/process/privacy-retention.md`, "Open items" (item 2).
-   Not changed here: it is a legal text.
-2. **Off-VPS backup target** (section 10) and a first restore test.
+1. **Privacy notice:** version 3.0 names Hostinger (Paris) and Backblaze
+   (Amsterdam) (#319). It still needs @nnamdi-security's approval as data
+   controller and the legal review in `docs/process/privacy-retention.md`,
+   "Open items".
+2. **Off-VPS backups:** Backblaze B2 EU Central chosen (section 10). Set it up
+   and test a first restore.
 3. **Termii:** sender ID registered, DND channel activated, a live test on a
    team phone (`python -m app.modules.messaging.live_test`, `docs/features/sms.md`).
 4. **Email (Resend), maps (Geoapify) and payments (Paystack)** are not in the
@@ -361,6 +446,9 @@ migration run with the helper script against a populated database.
 7. **Monitoring:** an external uptime check on `/api/v1/health/ready` and a
    disk-space alert. Nothing is set up.
 8. **Continuous deployment:** none. Deploys are manual (section 7).
+9. **Water sources:** none exist on a new deployment. Add and activate at
+   least one (section 9) before taking orders, with a real laboratory
+   report reference.
 
 ## 14. Known limitations
 

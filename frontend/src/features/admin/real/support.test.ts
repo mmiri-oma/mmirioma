@@ -144,14 +144,73 @@ describe('resolveIssue', () => {
 })
 
 describe('audit log', () => {
-  it('words a known action, names the actor, and has no reason', () => {
+  it('words a known action, names the actor and the record, and has no reason', () => {
     expect(auditEntryFromRead(auditSample.items[0] as unknown as AuditLogRead)).toEqual({
       id: 'e5a1c3e5-7b9d-4f1a-8c3e-5a7c9e1b3d14',
       at: '2026-10-27T10:05:00Z',
       actor: 'Sample Admin',
       action: 'Resolved a support request',
       reason: null,
+      target: 'Support request · 6a8c0e',
     })
+  })
+
+  const row = (action: string, details: Record<string, unknown> = {}, target = { target_type: 'driver', target_id: '4f3a2c9e-1111-4222-8333-444455556666' }) =>
+    ({ ...(auditSample.items[0] as unknown as AuditLogRead), action, details, ...target }) as AuditLogRead
+
+  it.each(['driver_approved', 'driver_suspended', 'driver_activated', 'driver_deactivated'])('shows the staff reason on %s (#293)', (action) => {
+    expect(auditEntryFromRead(row(action, { reason: 'Papers expired' })).reason).toBe('Papers expired')
+  })
+
+  it('shows no reason on a driver row that has none', () => {
+    expect(auditEntryFromRead(row('driver_approved', { safe_payload_litres: 600 })).reason).toBeNull()
+  })
+
+  it('shows no reason on any other action, even if its details hold one (#293)', () => {
+    for (const action of ['support_request_resolved', 'price_list_saved', 'cash_received', 'order_confirmed', 'service_zone_updated']) {
+      expect(auditEntryFromRead(row(action, { reason: 'A staff note that must stay off the screen' })).reason).toBeNull()
+    }
+  })
+
+  it.each(['driver_approved', 'driver_suspended', 'driver_activated', 'driver_deactivated'])(
+    'says the reason was removed on %s once the driver is anonymized (#298)',
+    (action) => {
+      expect(auditEntryFromRead(row(action, { reason_removed: true })).reason).toBe('Removed on anonymization')
+    },
+  )
+
+  it('shows no removed-reason text without the marker, on other actions, or for a marker that is not true (#298)', () => {
+    expect(auditEntryFromRead(row('driver_suspended', {})).reason).toBeNull()
+    expect(auditEntryFromRead(row('driver_suspended', { reason_removed: false })).reason).toBeNull()
+    expect(auditEntryFromRead(row('driver_suspended', { reason_removed: 'yes' })).reason).toBeNull()
+    expect(auditEntryFromRead(row('price_list_saved', { reason_removed: true })).reason).toBeNull()
+  })
+
+  it('ignores a reason that is not text, or only spaces, and trims the rest', () => {
+    expect(auditEntryFromRead(row('driver_suspended', { reason: 5 })).reason).toBeNull()
+    expect(auditEntryFromRead(row('driver_suspended', { reason: '   ' })).reason).toBeNull()
+    expect(auditEntryFromRead(row('driver_suspended', { reason: '  Papers expired ' })).reason).toBe('Papers expired')
+  })
+
+  it.each([
+    ['cash_recorded', 'Recorded a cash collection'],
+    ['cash_handed_over', 'Handed over cash'],
+    ['cash_received', 'Received cash'],
+    ['cash_reconciled', 'Reconciled cash'],
+    ['cash_corrected', 'Corrected a cash amount'],
+    ['cash_remittance_recorded', 'Recorded a cash handover'],
+  ])('words %s as "%s" (#293, G2 approved)', (code, words) => {
+    expect(auditEntryFromRead(row(code)).action).toBe(words)
+  })
+
+  it('names the record by its kind and the first six characters of its id', () => {
+    expect(auditEntryFromRead(row('driver_suspended')).target).toBe('Driver · 4f3a2c')
+    expect(auditEntryFromRead(row('service_zone_updated', {}, { target_type: 'service_zone', target_id: 'abcdef123456' })).target).toBe('Service area · abcdef')
+  })
+
+  it('shows a kind it has no words for as the code, and no target when the server sent neither', () => {
+    expect(auditEntryFromRead(row('x', {}, { target_type: 'new_kind', target_id: '123456789' })).target).toBe('new_kind · 123456')
+    expect(auditEntryFromRead(row('x', {}, { target_type: '', target_id: '' })).target).toBeNull()
   })
 
   it('shows an action code it has no words for as the code itself', () => {

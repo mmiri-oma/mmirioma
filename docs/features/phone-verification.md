@@ -121,10 +121,24 @@ Full request, response and error rules are in the
 | POST | `/auth/phone-verification/verify` | 200 user | 400 `verification_code_invalid` (`attempts_remaining`), 400 `verification_code_expired` |
 | POST | `/auth/phone-change` | 202, code sent to the new number | 403 `password_incorrect`, 409 `phone_unchanged` / `phone_already_registered`, 429, 503 |
 | POST | `/auth/phone-change/verify` | 200 user with the new phone | 400 as above, 409 `phone_already_registered` |
+| GET | `/auth/phone-verification/status`, `/auth/phone-change/status` | 200 `{delivery_status, expires_at, resend_available_at}` | 400 `verification_code_expired` |
+
+`delivery_status` is `accepted` (the SMS provider took it; not proof it
+arrived), `delivered` or `failed` (the carrier reported it did not arrive).
+The send responses carry `delivery_status: "accepted"`.
 
 `POST /orders` returns 403 `phone_not_verified` for an unverified customer.
 
 ## 6. Business rules
+
+- **Accepted is not delivered** (2026-10-31): the provider accepting the SMS
+  is stored as `phone_verifications.sms_status = accepted`. The delivery report
+  (Termii `GET /api/sms/inbox?message_id=`) moves it to `delivered` or
+  `failed`; an unreadable report leaves it `accepted`. On `failed` the app says
+  the code did not reach the phone and offers a resend. Cooldown, hourly limit,
+  expiry and attempt limit are unchanged.
+- Columns added by migration `0023`: `sms_message_id`, `sms_status`,
+  `sms_status_checked_at`.
 
 From SRS v0.2 FR-003 and FR-004:
 

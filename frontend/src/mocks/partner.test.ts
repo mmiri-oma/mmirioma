@@ -13,6 +13,7 @@ import {
   getEarnings,
   listAvailableJobs,
   listMyActiveJobs,
+  listSignupAreas,
   MOCK_UNREACHABLE_WAIT_MS,
   partnerSignup,
   recordContactAttempt,
@@ -57,9 +58,27 @@ describe('partner pool', () => {
   })
 
   it('new partners wait for approval and cannot go online', async () => {
-    await partnerSignup({ name: 'New', phone: '0809 000 0099', password: 'long-enough', vehicle_type: 'keke', plate: 'ENU 1 KK', tank_gallons: null, service_area: 'GRA' })
+    await partnerSignup({ name: 'New', phone: '0809 000 0099', password: 'long-enough', vehicle_type: 'keke', plate: 'ENU 1 KK', tank_gallons: null, service_zone_id: (await listSignupAreas())[0].id })
     await expect(setOnline(true)).rejects.toMatchObject({ code: 'partner_not_approved' })
     expect(await listAvailableJobs()).toEqual([])
+  })
+})
+
+describe('partner sign-up areas', () => {
+  const input = { name: 'New', phone: '0809 000 0097', password: 'long-enough', vehicle_type: 'keke' as const, plate: 'ENU 3 KK', tank_gallons: null }
+
+  it('lists the enabled areas by name, and the sign-up stores the chosen one', async () => {
+    const areas = await listSignupAreas()
+    expect(areas.length).toBeGreaterThan(0)
+    const session = await partnerSignup({ ...input, service_zone_id: areas[0].id })
+    expect(session.user.role).toBe('driver')
+  })
+
+  it('refuses an unknown area with a validation error on service_zone_id', async () => {
+    await expect(partnerSignup({ ...input, service_zone_id: 'no-such-zone' })).rejects.toMatchObject({
+      code: 'validation_error',
+      details: [{ loc: ['body', 'service_zone_id'] }],
+    })
   })
 })
 
@@ -70,7 +89,7 @@ describe('accept, decline, pickup, code', () => {
     const mine = await acceptJob(job.reference)
     expect(mine.stage).toBe('accepted')
     await mockLogout()
-    await partnerSignup({ name: 'Second', phone: '0809 000 0098', password: 'long-enough', vehicle_type: 'keke', plate: 'ENU 2 KK', tank_gallons: null, service_area: 'GRA' })
+    await partnerSignup({ name: 'Second', phone: '0809 000 0098', password: 'long-enough', vehicle_type: 'keke', plate: 'ENU 2 KK', tank_gallons: null, service_zone_id: (await listSignupAreas())[0].id })
     await expect(acceptJob(job.reference)).rejects.toMatchObject({ code: 'partner_not_approved' })
   })
 

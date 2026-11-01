@@ -27,6 +27,7 @@ from app.modules.auth.schemas import (
     LoginRequest,
     PhoneChangeRequest,
     PhoneCodeSentRead,
+    PhoneCodeStatusRead,
     RegisterRequest,
     SessionRead,
     UserRead,
@@ -296,6 +297,45 @@ async def request_phone_verification(
         db, user=customer, purpose=VerificationPurpose.ACCOUNT_PHONE, sms=sms
     )
     return _code_sent(sent)
+
+
+def _code_status(status: phone_verification.CodeStatus) -> PhoneCodeStatusRead:
+    return PhoneCodeStatusRead.model_validate(status, from_attributes=True)
+
+
+@router.get("/phone-verification/status")
+async def phone_verification_status(
+    customer: CurrentCustomerOrDriver, db: DbSession, sms: Sms
+) -> PhoneCodeStatusRead:
+    """Whether the newest code reached the phone (FR-003). Customers and drivers.
+
+    ``accepted`` only means the SMS provider took the message. ``failed`` means
+    the carrier reported it did not arrive, and the app should offer a resend.
+
+    Raises:
+        APIError: 400 ``verification_code_expired`` when there is no usable code.
+    """
+    return _code_status(
+        await phone_verification.delivery_status(
+            db, user=customer, purpose=VerificationPurpose.ACCOUNT_PHONE, sms=sms
+        )
+    )
+
+
+@router.get("/phone-change/status")
+async def phone_change_status(
+    customer: CurrentCustomer, db: DbSession, sms: Sms
+) -> PhoneCodeStatusRead:
+    """Whether the newest code for a phone change reached the new number (FR-004).
+
+    Raises:
+        APIError: 400 ``verification_code_expired`` when there is no usable code.
+    """
+    return _code_status(
+        await phone_verification.delivery_status(
+            db, user=customer, purpose=VerificationPurpose.PHONE_CHANGE, sms=sms
+        )
+    )
 
 
 @router.post("/phone-verification/verify", responses=_CODE_CHECK_ERRORS)

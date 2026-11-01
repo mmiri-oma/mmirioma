@@ -68,6 +68,7 @@ def driver_read(row: directory.DriverRow) -> AdminDriverRead:
         zones=[ZoneRead(id=zone.id, name=zone.name) for zone in row.zones],
         live_jobs=row.live_jobs,
         completed_jobs=row.completed_jobs,
+        delivered_jobs=row.delivered_jobs,
         created_at=row.user.created_at,
     )
 

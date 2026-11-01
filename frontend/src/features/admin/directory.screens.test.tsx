@@ -51,12 +51,14 @@ function serve(overrides: typeof routes = {}) {
 let App: typeof import('../../app/providers').AppProviders
 let appRoutes: typeof import('../../app/router').routes
 
+// Importing the whole app is the slow part: under a full parallel run it went
+// past Vitest's default 10 s hook timeout, so the hook gets SLOW.
 beforeAll(async () => {
   vi.stubGlobal('fetch', fetchStub)
   vi.stubEnv('VITE_API_BASE_URL', 'http://api.test')
   App = (await import('../../app/providers')).AppProviders
   appRoutes = (await import('../../app/router')).routes
-})
+}, SLOW)
 
 afterAll(() => {
   vi.unstubAllGlobals()
@@ -174,6 +176,25 @@ describe('the Riders screen against the real API (#220, G2 approved by the techn
     expect(screen.queryByText('A reason of at least 5 characters is required')).toBeNull()
   }, SLOW)
 
+  it('tells the dispatcher not to put customer details in the reason, for a suspension and a reactivation (#293)', async () => {
+    renderAt(`/admin/riders?id=${APPROVED_TANKER.id}`)
+    await screen.findByLabelText(/Reason to suspend/, {}, { timeout: WAIT })
+    expect(screen.getByText('Do not include customer details.')).toBeInTheDocument()
+  }, SLOW)
+
+  it('shows the same hint under the reactivation reason (#293)', async () => {
+    renderAt('/admin/riders?id=d-suspended')
+    await screen.findByLabelText(/Reason to reactivate/, {}, { timeout: WAIT })
+    expect(screen.getByText('Do not include customer details.')).toBeInTheDocument()
+  }, SLOW)
+
+  it('shows no hint on an approval, which has no reason box (#293)', async () => {
+    renderAt(`/admin/riders?id=${PENDING_KEKE.id}`)
+    expect(await screen.findByRole('button', { name: 'Approve rider' }, { timeout: WAIT })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Reason to/)).toBeNull()
+    expect(screen.queryByText('Do not include customer details.')).toBeNull()
+  }, SLOW)
+
   it('does not ask for a reason to reactivate: it is optional (#294)', async () => {
     const user = userEvent.setup()
     renderAt('/admin/riders?id=d-suspended')
@@ -216,6 +237,34 @@ describe('the Riders screen against the real API (#220, G2 approved by the techn
       vehicle: { description: 'Tricycle with 1,000 L tank', safe_payload_litres: 1000, transfer_methods: ['ground'] },
     })
   }, SLOW)
+
+  describe('the vehicle form examples follow the vehicle type (#294)', () => {
+    /** Open the approval form for a pending partner whose declared vehicle type is `type`. */
+    async function openForm(type: 'keke' | 'tanker' | null) {
+      const partner = { ...PENDING_KEKE, id: `d-pending-${type}`, vehicle: { ...PENDING_KEKE.vehicle, delivery_type: type } }
+      routes[`GET /admin/drivers/${partner.id}`] = { body: partner }
+      renderAt(`/admin/riders?id=${partner.id}`)
+      await screen.findByText('Vehicle you checked', {}, { timeout: WAIT })
+    }
+
+    it('shows Keke examples for a Keke, with no capacity number', async () => {
+      await openForm('keke')
+      expect(screen.getByLabelText('Vehicle')).toHaveAttribute('placeholder', 'e.g. Keke')
+      expect(screen.getByLabelText('Safe payload per trip (litres)')).toHaveAttribute('placeholder', 'Litres you measured')
+    }, SLOW)
+
+    it('shows the tanker examples for a tanker', async () => {
+      await openForm('tanker')
+      expect(screen.getByLabelText('Vehicle')).toHaveAttribute('placeholder', 'e.g. Tanker truck')
+      expect(screen.getByLabelText('Safe payload per trip (litres)')).toHaveAttribute('placeholder', 'e.g. 12000')
+    }, SLOW)
+
+    it('keeps the tanker examples when the vehicle type is not known', async () => {
+      await openForm(null)
+      expect(screen.getByLabelText('Vehicle')).toHaveAttribute('placeholder', 'e.g. Tanker truck')
+      expect(screen.getByLabelText('Safe payload per trip (litres)')).toHaveAttribute('placeholder', 'e.g. 12000')
+    }, SLOW)
+  })
 
   it('shows a refused vehicle field under that field (422)', async () => {
     const user = userEvent.setup()

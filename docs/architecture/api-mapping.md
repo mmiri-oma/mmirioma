@@ -415,7 +415,7 @@ assign panel (#144). Mock orders send none and stay assignable.
 decided in #15), with the agreed staff labels from docs/api/orders.md. The
 order's payment status maps only where the design has an exact equivalent
 (`unpaid`, `awaiting_verification`, `paid`, `refunded`), plus
-`pending_collection` shown as "Cash to collect" (@chidimmamogbo on PR #92)
+`pending_collection` shown as "Cash to collect" (@chidimmamogbo on PR #92; hidden on `failed` and `cancelled` orders, #274)
 and `partially_paid` shown as "Part paid" (the approved cash design,
 docs/design/cash-remittance.md); for the others the order shows no payment chip, and the cash pages show them
 in full (#19).
@@ -522,7 +522,7 @@ a reviewer who is not the author approves it.
 | the same, fields with no source | `payouts_due`, `payments_to_verify` | The backend does not send them (payouts are out of the MVP; transfers are not verified in the pilot). The two types become optional and the two cards are hidden when absent, never shown as zero. **#217** (screen change, G2) |
 | `LiveMapRead` | `LiveMapData` | `code` = driver `plate`, `null` shows no code; `vehicle` = `delivery_type`, `null` draws a neutral marker; `partner` = driver `name`; `station_area` = source `approximate_location`; `customer_area` = zone name, `null` shows no area. `stations` come from `sources`: `area` = `approximate_location`, `open` = `usable` (the same rule as the dashboard's open and closed counts) |
 | `LiveMapRead.sources` | the Dashboard's "Refill stations" panel | The panel reads the live map's `sources` instead of `listStations`, which has no endpoint (stations stay on the command-line tool). No new request. **#217** |
-| `ActivityItem` | `ActivityEntry` | `kind`: `order_status` with `to_status` `quote_requested` → `new_order`, `accepted` → `accepted`, `delivered` → `delivered`, any other status → `admin`; `support_request` → `complaint`; an unknown kind shows as a plain `admin` line, never an error. `reference` = `order_reference`. `text` is built by the adapter from `actor.name` (staff or driver only; customers are never named) and the status, for example "Sample Driver One accepted MO-7KQ2M9" |
+| `ActivityItem` | `ActivityEntry` | `kind`: `order_status` with `to_status` `quote_requested` → `new_order`, `accepted` → `accepted`, `delivered` → `delivered`, any other status → `admin`; `support_request` → `complaint`; an unknown kind shows as a plain `admin` line, never an error. `reference` = `order_reference`. `text` is built by the adapter from `actor.name` (staff or driver only; customers are never named) and the status, for example "Sample Driver One accepted MO-7KQ2M9". A driver step (`departed`, `collected`, `en_route`, `arrived`, `unloading`) uses the order timeline's step name, as in "Demo Driver moved MO-48NK to En route", not the shared status label ([admin-activity-step-labels.md](../design/admin-activity-step-labels.md), #275) |
 | `AdminSettingsRead` | `AdminSettings`, `StaffMember` | Read only. `support_phone` = `support.phone`; `code_time_limit` = "<n> minutes" from `delivery_code_validity_minutes`; `support_hours` and `safe_load` have no source and are not shown (no `[SUPPORT HOURS]` or `[SAFE LOAD]` placeholders); staff `role` is "Admin", `last_active` = `last_sign_in_at` (`null` reads "Never signed in"). The form loses its save button and editable fields. **#217** (screen change, G2) |
 
 Dashboard and reports count **real** orders by default (`simulated=exclude`,
@@ -604,7 +604,7 @@ for the Settings page (the actor and the time are in their own columns):
 | `source_review_continued` | Let a pickup continue after a source review |
 | `support_request_resolved` | Resolved a support request |
 | `unsafe_stop_resumed` | Resumed a job after an unsafe stop |
-| `water_source_added`, `water_source_kind_set`, `water_source_activated` | Added a water source, Set a water source's kind, Activated a water source |
+| `water_source_added`, `water_source_kind_set`, `water_source_activated`, `water_source_updated` | Added a water source, Set a water source's kind, Activated a water source, Edited a water source |
 
 Codes built from a status (`deletion_request_<status>`,
 `water_source_<status>`) and any code added later show as the code itself,
@@ -613,8 +613,10 @@ until a row is added here. The five cash codes are G2 approved
 
 **Audit log record (#293).** Each row shows what it is about, as the kind of
 record in words and the first 6 characters of `target_id`: "Driver · 4f3a2c".
-It is a stopgap so two rows about different drivers can be told apart; the
-backend's `target_label` (#296) will replace the id with a name or reference.
+It is a stopgap so two rows about different drivers can be told apart. The
+backend now sends `target_label` (#296, agreed 2026-11-01), a name or
+reference looked up when the page is read; a small frontend change will show it
+in place of the id and keep the short id when it is `null`.
 A kind with no words shows as the code itself.
 
 | `target_type` | Words |
@@ -657,7 +659,7 @@ reviewer who is not the author approves it (they are also a G2 request on #220).
 | --- | --- | --- |
 | `GET /admin/drivers` (`delivery_type`, `approval_status`, `is_active`, `q`, `limit`) | `listRiders(filter, query)` | Always `is_active=true` (**#220**): a deactivated account has no design state and is never shown as "suspended". The pills map to the filters: `keke` and `tanker` to `delivery_type`, `pending` and `suspended` to `approval_status`, `all` to none. `limit` is 100 |
 | `counts` | `counts`, `online`, `pending` | `counts.all`, `keke`, `tanker`, `pending` as they are; `online` = `counts.available`; `pending` = `counts.pending`. There is no `suspended` count, so it is `null`, never `0` |
-| `AdminDriver` | `AdminRider` | `approval` = `approval_status`; `online` = `is_available`; `trips` = `completed_jobs`; `active_orders` = `live_jobs`; `partner_since` = `created_at`; `service_areas` = the `zones` names |
+| `AdminDriver` | `AdminRider` | `approval` = `approval_status`; `online` = `is_available`; `trips` = `delivered_jobs` (not `completed_jobs`, which also counts failed and cancelled jobs; `null` when an older server sends no `delivered_jobs`, shown as "Not known yet", #275); `active_orders` = `live_jobs`; `partner_since` = `created_at`; `service_areas` = the `zones` names |
 | `vehicle` | `vehicle` | `type` = `delivery_type` (`null` for a driver created with the command-line tool before sign-up); `plate` = `plate`, empty when `null`; `tank_gallons` = verified `safe_payload_litres` ÷ 4 for a tanker, `null` until approval and for a Keke |
 | not sent | `code`, `rating`, `today_minor_units`, `payout_due_minor_units`, `documents_note`, `reported_issues` | Fleet code, rating, partner pay, documents and partner issues have no source in the MVP ([admin-directory.md](../api/admin-directory.md), "Not in `AdminDriver`"). They are `null` or absent, and the real-mode screen hides the code, the "Today" column, "Rating", "Payout due", "Documents" and "Reported issues" (**#220**) |
 | `GET /admin/drivers/{id}` | `getRider(id)` | A deactivated account (`is_active: false`) is shown as the error state "This account is deactivated.", with the code `driver_inactive` (a client-side error, never "suspended") (**#220**) |

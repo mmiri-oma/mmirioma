@@ -134,6 +134,25 @@ describe('listActivity', () => {
     expect((await listActivity(undefined, client))[0]).toMatchObject({ kind, text })
   })
 
+  // #275 item 3 (G2, @nnamdi-security, 2026-11-01): each driver step keeps its own name, as on the order timeline.
+  it.each([
+    ['departed', 'Demo Driver moved MO-7KQ2 to Departed'],
+    ['collected', 'Demo Driver moved MO-7KQ2 to Collected'],
+    ['en_route', 'Demo Driver moved MO-7KQ2 to En route'],
+    ['arrived', 'Demo Driver moved MO-7KQ2 to Arrived'],
+    ['unloading', 'Demo Driver moved MO-7KQ2 to Unloading'],
+  ])('names the driver step %s, not the shared status label (#275)', async (to, text) => {
+    const item = { ...activitySample.items[0], to_status: to, actor: { ...activitySample.items[0].actor, name: 'Demo Driver' } }
+    const { client } = clientByPath({ '/admin/activity': { body: { items: [item] } } })
+    expect((await listActivity(undefined, client))[0]).toMatchObject({ kind: 'admin', text })
+  })
+
+  it('keeps the step name without an actor (#275)', async () => {
+    const item = { ...activitySample.items[0], to_status: 'en_route', actor: null }
+    const { client } = clientByPath({ '/admin/activity': { body: { items: [item] } } })
+    expect((await listActivity(undefined, client))[0]).toMatchObject({ text: 'MO-7KQ2 is now En route' })
+  })
+
   it('shows a kind it does not know as a plain line, not an error', async () => {
     const item = { ...activitySample.items[0], kind: 'something_new', to_status: null, actor: null }
     const { client } = clientByPath({ '/admin/activity': { body: { items: [item] } } })

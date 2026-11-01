@@ -134,7 +134,8 @@ export function riderFromRead(read: AdminDriverRead): AdminRider {
     service_areas: read.zones.map((zone) => zone.name),
     online: read.is_available,
     approval: approvalFromRead(read.approval_status),
-    trips: read.completed_jobs,
+    // Delivered jobs, never `completed_jobs`: a failed or cancelled job also ends `completed` (#275).
+    trips: read.delivered_jobs ?? null,
     rating: null,
     active_orders: read.live_jobs,
     partner_since: read.created_at,

@@ -96,6 +96,7 @@ async def _run(args: argparse.Namespace) -> str:
                     f"Decline notes removed: {partner.decline_notes_removed}",
                     f"GPS points cleared: {partner.gps_points_cleared}",
                     f"Notifications deleted: {partner.notifications_deleted}",
+                    f"Audit reasons removed: {partner.reasons_cleared}",
                     f"Incident and pickup notes kept, to check by hand: {partner.notes_to_review}",
                     _dry_run_line(partner.applied),
                 ]

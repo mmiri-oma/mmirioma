@@ -24,5 +24,5 @@ export function EndDialogs({
 }) {
   if (ending === null) return null
   const shared = { reference, expectedStatus: hold.order_status, hold: { id: hold.id, kind: hold.kind }, onClose, onDone, onRefresh }
-  return ending === 'fail' ? <FailDialog {...shared} /> : <CancelDialog {...shared} liveDriver />
+  return ending === 'fail' ? <FailDialog {...shared} /> : <CancelDialog {...shared} driver="live" />
 }

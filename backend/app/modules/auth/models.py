@@ -114,11 +114,22 @@ class PhoneVerification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             newer code was sent, or the attempts ran out.
         replaced_phone: For a completed ``phone_change``, the number it
             replaced, so changes stay traceable.
+        sms_message_id: The SMS provider's id for the message that carried the
+            code, used to read its delivery report. Null for rows from before
+            this was recorded.
+        sms_status: ``accepted`` (the provider took the message; not proof it
+            arrived), ``delivered`` or ``failed`` (the carrier reported it did
+            not arrive). Starts ``accepted``; only a delivery report changes it.
+        sms_status_checked_at: When the delivery report was last read, so the
+            provider is not asked more often than needed.
     """
 
     __tablename__ = "phone_verifications"
     __table_args__ = (
         CheckConstraint(f"attempts BETWEEN 0 AND {MAX_CODE_ATTEMPTS}", name="attempts_range"),
+        CheckConstraint(
+            "sms_status IN ('accepted', 'delivered', 'failed')", name="sms_status_valid"
+        ),
         # Per-phone sending limits count recent codes for one number.
         Index("ix_phone_verifications_phone_created_at", "phone", "created_at"),
     )
@@ -143,3 +154,8 @@ class PhoneVerification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     consumed_at: Mapped[datetime | None] = mapped_column(default=None)
     invalidated_at: Mapped[datetime | None] = mapped_column(default=None)
     replaced_phone: Mapped[str | None] = mapped_column(String(16), default=None)
+    sms_message_id: Mapped[str | None] = mapped_column(String(64), default=None)
+    sms_status: Mapped[str] = mapped_column(
+        String(10), default="accepted", server_default="accepted"
+    )
+    sms_status_checked_at: Mapped[datetime | None] = mapped_column(default=None)

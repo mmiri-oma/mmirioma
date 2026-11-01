@@ -27,8 +27,8 @@ import { ConfirmedSummary } from '../confirm/ConfirmedSummary'
 import { CancelDialog, FailDialog } from '../hold/EndDelivery'
 import { DecidedCard, HoldBanner, HoldChip } from '../hold/HoldParts'
 import { HoldSheet } from '../hold/HoldSheet'
-import { backendStatusFor, canCancel, canFail, hasLiveDriver } from '../hold/logic'
-import { holdSummary, METHOD_LABEL, notReadyToAssign, revealDetail } from '../adminFormat'
+import { backendStatusFor, canCancel, canFail, cancelDriverState } from '../hold/logic'
+import { holdSummary, METHOD_LABEL, notReadyToAssign, revealDetail, showsPaymentChip } from '../adminFormat'
 import { AdminFrame, PageHead, PaymentChip, SplitLayout, StatusChip } from '../AdminParts'
 import { adminKeys, useAdminMutation, useAdminOrder, useAdminOrders, useEligibleRiders } from '../queries'
 
@@ -39,6 +39,7 @@ const FILTERS: { value: AdminOrderFilter; label: string }[] = [
   { value: 'in_progress', label: 'In progress' },
   { value: 'on_hold', label: 'On hold' },
   { value: 'delivered', label: 'Delivered' },
+  { value: 'failed', label: 'Delivery failed' },
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
@@ -136,7 +137,7 @@ export function Orders() {
                     { header: 'Type', cell: (o) => (o.choice ? (o.choice.delivery_type === 'keke' ? 'Keke' : 'Tanker') : <span className="text-mute">Not recorded</span>), className: 'font-bold' },
                     { header: 'Quantity', cell: (o) => (o.choice ? <QuantityCell choice={o.choice} /> : o.quantity) },
                     // The order list sends no payment status: it shows on the order (payments.md).
-                    { header: 'Payment', cell: (o) => (o.payment.status ? <PaymentChip status={o.payment.status} /> : <span className="text-mute">On the order</span>) },
+                    { header: 'Payment', cell: (o) => (o.payment.status ? showsPaymentChip(o) && <PaymentChip status={o.payment.status} /> : <span className="text-mute">On the order</span>) },
                     {
                       header: 'Status',
                       cell: (o) => (
@@ -277,7 +278,7 @@ function OrderPanel({ reference, onChange }: { reference: string; onChange: () =
           label="Payment"
           value={
             <span className="flex items-center justify-end gap-2">
-              {METHOD_LABEL[o.payment.method]} {o.payment.status && <PaymentChip status={o.payment.status} />}
+              {METHOD_LABEL[o.payment.method]} {showsPaymentChip(o) && o.payment.status && <PaymentChip status={o.payment.status} />}
             </span>
           }
         />
@@ -316,7 +317,7 @@ function OrderPanel({ reference, onChange }: { reference: string; onChange: () =
           expectedStatus={backendStatusFor(o)}
           hold={null}
           openHold={o.hold}
-          liveDriver={hasLiveDriver(o)}
+          driver={cancelDriverState(o)}
           onClose={() => setCancelling(false)}
           onDone={(message) => {
             setCancelling(false)

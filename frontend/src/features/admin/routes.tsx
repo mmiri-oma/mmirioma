@@ -51,6 +51,7 @@ export const adminRoutes: RouteObject[] = [
         : { path: 'stations', element: <Navigate to="/admin" replace /> },
       { path: 'areas', ...page(() => import('./pages/Areas').then((m) => ({ Component: m.Areas }))) }, // added
       { path: 'pricing', ...page(() => import('./pages/Pricing').then((m) => ({ Component: m.Pricing }))) }, // a-pricing
+      { path: 'water-sources', ...page(() => import('./pages/WaterSources').then((m) => ({ Component: m.WaterSources }))) }, // docs/design/admin-water-sources.md (#309)
       // Loyalty points and rider earnings are out of the MVP (lib/features.ts, #156): old links go to the dashboard.
       POINTS_ENABLED
         ? { path: 'loyalty', ...page(() => import('./pages/Loyalty').then((m) => ({ Component: m.Loyalty }))) } // added (a-pricing tab)
