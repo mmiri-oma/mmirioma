@@ -51,12 +51,14 @@ function serve(overrides: typeof routes = {}) {
 let App: typeof import('../../app/providers').AppProviders
 let appRoutes: typeof import('../../app/router').routes
 
+// Importing the whole app is the slow part: under a full parallel run it went
+// past Vitest's default 10 s hook timeout, so the hook gets SLOW.
 beforeAll(async () => {
   vi.stubGlobal('fetch', fetchStub)
   vi.stubEnv('VITE_API_BASE_URL', 'http://api.test')
   App = (await import('../../app/providers')).AppProviders
   appRoutes = (await import('../../app/router')).routes
-})
+}, SLOW)
 
 afterAll(() => {
   vi.unstubAllGlobals()
