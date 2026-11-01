@@ -221,7 +221,7 @@ Other commands: `--check` shows the state and the destructive check only.
 The checks in CLAUDE.md still apply before a migration reaches `main`
 (`alembic upgrade head`, `downgrade -1`, `alembic check`).
 
-## 9. Staff accounts
+## 9. Staff accounts and water sources
 
 Staff accounts cannot be created through the API
 (`backend/app/modules/auth/cli.py`). Roles are `admin` (dispatcher and
@@ -237,6 +237,64 @@ deploy/prod.sh exec api python -m app.modules.auth.cli activate --phone 08012345
 
 Use each person's own phone number. Give each person their own account; do not
 share one. Do not run the demo seed.
+
+### Water sources
+
+A new deployment has no water sources, and water may only be collected from a
+source that is approved for the order's category (FR-012). Quoting and
+confirming an order need at least one. There is no admin screen for sources:
+the technical lead manages them with the command-line tool
+`backend/app/modules/sources/cli.py` (full reference:
+[docs/features/water-sources.md](../features/water-sources.md)). `--by` must be
+the phone of an active **admin** account (section 9 above), and it becomes the
+actor of the audit row.
+
+```bash
+# The two seeded categories (potable, utility)
+deploy/prod.sh exec api python -m app.modules.sources.cli list-categories
+
+# 1. Add the source. --kind is borehole or ninth_mile. It prints the source id.
+deploy/prod.sh exec api python -m app.modules.sources.cli add-source \
+  --by 08012345678 --name "Your Borehole A" --location "Ugwuaji, Enugu" --kind borehole
+
+# 2. Activate it for a category. This is the step that makes it usable.
+deploy/prod.sh exec api python -m app.modules.sources.cli activate \
+  --by 08012345678 --source <source id> --category potable \
+  --report LR-0001 --approved-until 2027-01-30 --cost-per-litre-kobo 150
+
+# 3. Check the result
+deploy/prod.sh exec api python -m app.modules.sources.cli list-sources
+```
+
+Later changes use the same tool: `set-kind --source <id> --kind ninth_mile`,
+`suspend` or `revoke` (both need `--reason`), and `activate` again to renew.
+On a development machine, run the same commands from `backend/` with
+`.venv/bin/python -m app.modules.sources.cli ...`.
+
+Things to know:
+
+- **Activation makes a source usable.** A source with no activation for a
+  category is never eligible, so orders for that category cannot be confirmed
+  from it.
+- **Set the kind for Tanker orders.** A source with no `--kind` matches no
+  Tanker customer's source preference, so a Tanker order cannot be quoted or
+  confirmed with it. Keke orders accept any kind.
+- **Activate only after laboratory verification.** FR-012 requires an
+  independent laboratory approval, and the app cannot check it: it stores only
+  the report reference (`--report`). For testing, use an obviously fake
+  reference such as `LR-TEST`, never one that looks like a real approval.
+- **Cost per litre is in kobo** (`--cost-per-litre-kobo`, a whole number). It is
+  the supplier's cost, and no client ever sees it. Quotes price the water at
+  the highest cost among the eligible sources of the preferred kind.
+- **`--approved-until` is the last valid day, inclusive,** in Africa/Lagos time.
+  After it the source stops being eligible. Nothing warns anyone beforehand, so
+  note the date and renew before it.
+- **Suspending does not cancel orders already confirmed** with that source.
+- **Every change writes an audit row** (`water_source_added`,
+  `water_source_activated`, ...), shown on the Settings page's audit log. Cost,
+  report reference and reason are not copied into it.
+- **A mistyped name or location cannot be edited** with the tool; it needs a
+  database change, so check them before adding.
 
 ## 10. Backups
 
@@ -361,6 +419,9 @@ migration run with the helper script against a populated database.
 7. **Monitoring:** an external uptime check on `/api/v1/health/ready` and a
    disk-space alert. Nothing is set up.
 8. **Continuous deployment:** none. Deploys are manual (section 7).
+9. **Water sources:** none exist on a new deployment. Add and activate at
+   least one (section 9) before taking orders, with a real laboratory
+   report reference.
 
 ## 14. Known limitations
 

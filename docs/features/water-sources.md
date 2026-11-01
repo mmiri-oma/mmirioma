@@ -170,6 +170,10 @@ Manual check: `python -m app.modules.sources.cli list-categories`, then the
 commands in the module docstring with your admin phone; `list-sources`
 shows each activation.
 
+On the production VPS, run the same commands through `deploy/prod.sh exec api ...`;
+the walkthrough and the points to watch are in
+[docs/deployment/hostinger.md](../deployment/hostinger.md), "Water sources".
+
 ## 10. Known limitations
 
 - **Only confirmed orders have a water category:** it is set at
