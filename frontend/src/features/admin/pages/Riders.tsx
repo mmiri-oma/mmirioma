@@ -280,6 +280,15 @@ function fieldErrors(error: unknown): FieldErrors {
 }
 
 /**
+ * The example text in the vehicle form, by the rider's declared vehicle type (#294). A Keke has no standard
+ * capacity in the SRS or `partners.md`, so its payload box shows no example number; an unknown type keeps the
+ * tanker examples.
+ */
+function vehicleExamples(type: AdminRider['vehicle']['type']): { vehicle: string; payload: string } {
+  return type === 'keke' ? { vehicle: 'e.g. Keke', payload: 'Litres you measured' } : { vehicle: 'e.g. Tanker truck', payload: 'e.g. 12000' }
+}
+
+/**
  * The vehicle an admin verifies when approving a partner who has none yet (FR-013): its description, the safe
  * payload per trip and the transfer methods. What the partner declared at sign-up is shown as a claim only.
  */
@@ -295,19 +304,20 @@ function VehicleFields({
   errors: FieldErrors
 }) {
   const declared = rider.declared_vehicle
+  const examples = vehicleExamples(rider.vehicle.type)
   const claim = [declared?.plate, declared?.capacity_litres ? `${describeQuantity(declared.capacity_litres, 'gallons', 'short')}` : null].filter(Boolean).join(' · ')
   return (
     <fieldset className="m-0 flex flex-col gap-2.5 rounded-card bg-[#F4F7FB] p-3.5">
       <legend className="p-0 text-[14px] font-extrabold">Vehicle you checked</legend>
       {claim && <p className="m-0 text-caption text-mute">Declared by the partner, not checked: {claim}.</p>}
-      <TextField label="Vehicle" value={form.description} error={errors.description} onChange={(e) => onChange({ ...form, description: e.target.value })} placeholder="e.g. Tanker truck" />
+      <TextField label="Vehicle" value={form.description} error={errors.description} onChange={(e) => onChange({ ...form, description: e.target.value })} placeholder={examples.vehicle} />
       <TextField
         label="Safe payload per trip (litres)"
         inputMode="numeric"
         value={form.payload}
         error={errors.payload}
         onChange={(e) => onChange({ ...form, payload: e.target.value.replace(/[^\d]/g, '') })}
-        placeholder="e.g. 12000"
+        placeholder={examples.payload}
       />
       <div className="flex flex-col gap-1">
         <span className="text-[14px] font-bold">Transfer method</span>
