@@ -159,7 +159,7 @@ function RiderPanel({ id }: { id: string }) {
       </div>
       {/* The backend has no rating, pay, documents note or issue count (partner pay is out of the MVP): absent in real mode, so hidden. */}
       <div className={cx('grid gap-2 text-center', USE_MOCKS ? 'grid-cols-3' : 'grid-cols-1')}>
-        <Mini value={r.trips} label="Trips" />
+        <Mini value={r.trips ?? 'Not known yet'} label="Trips" />
         {USE_MOCKS && <Mini value={r.rating ?? 'New'} label="Rating" />}
         {r.payout_due_minor_units !== undefined && <Mini value={formatNaira(r.payout_due_minor_units)} label="Payout due" />}
       </div>

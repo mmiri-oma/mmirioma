@@ -99,6 +99,7 @@ def row_from(body: dict[str, Any]) -> directory.DriverRow:
         zones=zones,
         live_jobs=body["live_jobs"],
         completed_jobs=body["completed_jobs"],
+        delivered_jobs=body["delivered_jobs"],
     )
 
 
