@@ -604,7 +604,7 @@ for the Settings page (the actor and the time are in their own columns):
 | `source_review_continued` | Let a pickup continue after a source review |
 | `support_request_resolved` | Resolved a support request |
 | `unsafe_stop_resumed` | Resumed a job after an unsafe stop |
-| `water_source_added`, `water_source_kind_set`, `water_source_activated` | Added a water source, Set a water source's kind, Activated a water source |
+| `water_source_added`, `water_source_kind_set`, `water_source_activated`, `water_source_updated` | Added a water source, Set a water source's kind, Activated a water source, Edited a water source |
 
 Codes built from a status (`deletion_request_<status>`,
 `water_source_<status>`) and any code added later show as the code itself,

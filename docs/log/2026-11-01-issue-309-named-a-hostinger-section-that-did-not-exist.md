@@ -15,5 +15,10 @@
   `backend/app/modules/sources/cli.py`) and a pointer to the admin endpoints,
   so the fallback is documented where the issue expects it. If the original
   section turns up on another branch, merge the two.
-- **Status:** workaround
+- **Update (2026-11-01):** the section had been written separately in commit `52a73c2`
+  (docs(deploy): add the water sources setup steps to the Hostinger guide) and
+  reached `development` while PR #315 was open. The two were merged in `c6d7960`,
+  keeping the fuller text of `52a73c2`. The wording now points to the Water
+  sources page.
+- **Status:** resolved
 - **Refs:** #309; `docs/deployment/hostinger.md`.

@@ -242,14 +242,14 @@ share one. Do not run the demo seed.
 
 A new deployment has no water sources, and water may only be collected from a
 source that is approved for the order's category (FR-012). Quoting and
-confirming an order need at least one. An admin can manage sources through the
-admin water-source endpoints
-([admin-water-sources.md](../api/admin-water-sources.md)); the Water sources
-screen for them follows in #309. Until it ships, the technical lead uses the
+confirming an order need at least one. An admin manages sources on the **Water
+sources** page of the admin app (`/admin/water-sources`, #309): add a source,
+edit its name, location and kind, activate or renew it for a category, and
+suspend or revoke it, each with the same audit row as the command line. The
 command-line tool `backend/app/modules/sources/cli.py` (full reference:
-[docs/features/water-sources.md](../features/water-sources.md)), which stays as
-the fallback and writes the same audit rows. `--by` must be the phone of an
-active **admin** account (section 9 above), and it becomes the actor of the
+[docs/features/water-sources.md](../features/water-sources.md)) stays as the
+fallback, for example before any admin can sign in. `--by` must be the phone of
+an active **admin** account (section 9 above), and it becomes the actor of the
 audit row.
 
 ```bash
@@ -287,14 +287,13 @@ Things to know:
   the report reference (`--report`). For testing, use an obviously fake
   reference such as `LR-TEST`, never one that looks like a real approval.
 - **Cost per litre is in kobo** (`--cost-per-litre-kobo`, a whole number). It is
-  the supplier's cost: only the admin water-source endpoints return it, and no
-  customer, driver or quote response does. Quotes price the water at
+  the supplier's cost: only the admin water-source endpoints and the Water
+  sources page show it, and no customer, driver or quote response does. Quotes price the water at
   the highest cost among the eligible sources of the preferred kind.
 - **`--approved-until` is the last valid day, inclusive,** in Africa/Lagos time.
-  After it the source stops being eligible. The admin endpoints report each
-  activation's `expiry` (`expires_soon` within 30 days), but nothing notifies
-  anyone and the screen that shows it is not built yet, so note the date and
-  renew before it.
+  After it the source stops being eligible. The Water sources page shows a badge
+  ("Expires in N days" within 30 days, "Expired" after), but nothing notifies
+  anyone, so check the page and renew before the date.
 - **Suspending does not cancel orders already confirmed** with that source.
 - **Every change writes an audit row** (`water_source_added`,
   `water_source_activated`, ...), shown on the Settings page's audit log. Cost,
