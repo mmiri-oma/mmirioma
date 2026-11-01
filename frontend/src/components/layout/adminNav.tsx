@@ -36,6 +36,7 @@ const ALL_NAV: NavEntry[] = [
   { to: '/admin/stations', label: 'Refill stations', icon: () => <StationDoorIcon />, enabled: STATIONS_PAGE_ENABLED },
   { to: '/admin/areas', label: 'Service areas', icon: () => <MapIcon /> },
   { to: '/admin/pricing', label: 'Pricing and delivery', icon: () => <TagDotIcon /> },
+  { to: '/admin/water-sources', label: 'Water sources', icon: () => <StationDoorIcon /> },
   { to: '/admin/loyalty', label: 'Loyalty points', icon: () => <StarIcon />, enabled: POINTS_ENABLED },
   { to: '/admin/payments', label: 'Payments', icon: () => <CreditCardIcon />, enabled: PAYMENTS_PAGE_ENABLED },
   { to: '/admin/cash', label: 'Cash', icon: () => <BanknoteIcon /> },

@@ -25,9 +25,9 @@ water category (FR-012). This feature records:
   ([pricing.md](pricing.md); [order-details-and-price.md](../api/order-details-and-price.md#water-source-and-category),
   point 2).
 
-An admin manages sources through the admin water-source endpoints (#309,
-[admin-water-sources.md](../api/admin-water-sources.md)); the Water sources
-screen for them is still to be built. The command-line tool (F1) does the same
+An admin manages sources on the Water sources page (`/admin/water-sources`, #309,
+[design](../design/admin-water-sources.md)), which calls the admin water-source
+endpoints ([admin-water-sources.md](../api/admin-water-sources.md)). The command-line tool (F1) does the same
 work and stays as the fallback. A record here says an admin entered an approval
 after laboratory verification; the app cannot verify that, and a database flag
 is not legal compliance (FR-012).
@@ -65,6 +65,9 @@ R2 source review (holds.source_eligibility)
 | `backend/app/modules/sources/cli.py` | The command-line tool (the fallback) |
 | `backend/app/modules/sources/admin.py` | What the admin endpoints do: look the source and category up by id (404 if missing), call the service function the command line uses, return the whole source |
 | `backend/app/modules/sources/admin_schemas.py` | Request and response bodies of the admin endpoints, the expiry state (30-day window) and the rule that `approved_until` is not in the past |
+| `frontend/src/lib/api/adminWaterSources.ts` | Typed calls and Zod checks for the admin endpoints (#309) |
+| `frontend/src/features/admin/pages/WaterSources.tsx`, `waterSources/` | The Water sources page, its three dialogs and the rules and words (`logic.ts`) |
+| `frontend/src/mocks/waterSourceMock.ts` | The mock endpoints for the demo, all SAMPLE DATA |
 | `backend/app/modules/sources/admin_router.py` | `GET`/`POST /admin/water-sources`, `PATCH /admin/water-sources/{id}`, `PUT .../activations/{category_id}`, `POST .../activations/{category_id}/status` |
 | `backend/app/modules/deliveries/holds.py` | `source_eligibility`: R2's answer from the shared check |
 | `backend/app/modules/orders/models.py` | `Order.water_category_id` |
@@ -193,6 +196,14 @@ TEST_DATABASE_URL=... pytest tests/test_water_sources_integration.py tests/test_
   endpoints (401, 403, CSRF), the shape of the answer, every 422 (empty or long
   text, a past date, a float or negative cost, `activated` as a status, an empty
   or `null` patch), and the expiry state at 0, 1, 30 and 31 days and after.
+- Frontend (`frontend/`): `lib/api/adminWaterSources.test.ts` (each call's path,
+  method and body; the error codes; a wrong shape and a non-integer cost are
+  refused), `features/admin/waterSources/logic.test.ts` (the expiry badge, the
+  cost in whole kobo with no rounding, each form's messages),
+  `waterSources.screens.test.tsx` (the page against the real API: every state,
+  each dialog, the line that the app does not check the report, the 404 Refresh)
+  and `waterSources.mock.test.tsx` and `mocks/waterSourceMock.test.ts` (the mock
+  demo, tagged SAMPLE DATA).
 - `test_admin_water_sources_integration.py`: through HTTP, add, edit (a repeat
   edit writes no audit row), activate, suspend, renew, revoke and move to
   suspended, with each audit row and no typed value or cost in its details; the
@@ -216,15 +227,16 @@ the walkthrough and the points to watch are in
   confirmation ([order-confirmation.md](order-confirmation.md), #113). Orders
   confirmed before that (by script) have none, so their source review
   answers `cannot_check`.
-- **The Water sources screen is not built yet** (#309, design approved as
-  text; the visual mockup is pending). Until it ships, an admin uses the
-  endpoints or the command line. A category's label and supported uses can
-  still be changed only in the database.
+- **The Water sources page was built from the written design** (#309). The
+  design was approved as text; the visual mockup from Claude Design is still to
+  be attached and checked, and the layout may change when it is. A category's
+  label and supported uses can still be changed only in the database.
 - **Approvals do not expire on their own** beyond the date check, and no
-  notification is sent before `approved_until` (decision 4 on #309). The
-  endpoints report an `expiry` state for a badge on the screen.
-- **The audit log screen has no words yet for `water_source_updated`**; it shows
-  the code until the frontend adds them.
+  notification is sent before `approved_until` (decision 4 on #309). The page
+  shows an "Expires in N days" or "Expired" badge from the endpoints' `expiry`.
+- **The audit log has words for `water_source_updated`** ("Edited a water
+  source") but `water_source_suspended` and `water_source_revoked` still show as
+  the code until their words are added.
 - **Existing sources have no kind** after migration `0018`: the technical
   lead sets each with `set-kind` before Tanker orders can be quoted.
 - **A suspended source does not block orders already confirmed with it**

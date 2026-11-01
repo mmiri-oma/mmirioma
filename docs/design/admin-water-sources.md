@@ -17,6 +17,12 @@ visual mockup is made from the prompt in Claude Design and attached before the
 screen is built. The record becomes `Status: approved` when one reviewer who is
 not the author checks it against the SRS and the issue's decisions (G2).
 
+**Build note (2026-11-01).** The screen was built from this written design,
+before the visual mockup, at the owner's request. The mockup is still to be
+attached and checked; if it differs, the layout changes and the wording above
+stays. The built screen follows this record state by state (see
+`frontend/src/features/admin/pages/WaterSources.tsx`).
+
 A new deployment has no water sources, and the only way to add one is a
 command on the server. This screen lets an admin add a source, correct its name
 and location, activate or renew it for a water category, and suspend or revoke

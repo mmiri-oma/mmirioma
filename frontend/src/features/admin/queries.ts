@@ -24,6 +24,7 @@ export const adminKeys = {
   rider: (id: string) => ['admin', 'rider', id] as const,
   stations: (query: string) => ['admin', 'stations', query] as const,
   areas: ['admin', 'areas'] as const,
+  waterSources: ['admin', 'water-sources'] as const,
   prices: ['admin', 'prices'] as const,
   priceList: ['admin', 'price-list', 'current'] as const,
   priceListHistory: ['admin', 'price-list', 'history'] as const,
@@ -64,6 +65,8 @@ export const useRider = (id: string | null) => useQuery({ queryKey: adminKeys.ri
 /** `enabled` is false in real-API mode, where there is no stations endpoint (the Dashboard reads the live map's sources instead, #217). */
 export const useStations = (query: string, enabled = true) =>
   useQuery({ queryKey: adminKeys.stations(query), queryFn: () => api.listStations(query), placeholderData: keepPreviousData, enabled })
+/** The Water sources screen (#309): every source with its activations, and both categories. */
+export const useWaterSources = () => useQuery({ queryKey: adminKeys.waterSources, queryFn: api.listWaterSources })
 export const useAreas = () => useQuery({ queryKey: adminKeys.areas, queryFn: api.listAreas })
 /** The mock-era flat price table (mock only: Service areas' sample fee, Loyalty points). */
 export const useSamplePriceTables = () => useQuery({ queryKey: adminKeys.prices, queryFn: api.listSamplePriceTables })
