@@ -43,6 +43,18 @@ export const PAYMENT_LABEL: Record<AdminPaymentStatus, string> = {
   refunded: 'Refunded as points',
 }
 
+/**
+ * Whether the order's payment chip shows. "Cash to collect" is untrue once the
+ * order has failed or been cancelled, since no unloading will happen and the
+ * Cash page shows nothing waiting; the other payment states stay because
+ * refunds and recorded money depend on them (#274, decision by
+ * @nnamdi-security). The stored payment status is unchanged.
+ */
+export function showsPaymentChip(order: Pick<AdminOrder, 'status' | 'payment'>): boolean {
+  if (order.payment.status === null) return false
+  return !(order.payment.status === 'pending_collection' && (order.status === 'failed' || order.status === 'cancelled'))
+}
+
 export const PAYMENT_TONE: Record<AdminPaymentStatus, ChipTone> = {
   // The normal state of a confirmed pay-on-delivery order, not a problem.
   pending_collection: 'gray',

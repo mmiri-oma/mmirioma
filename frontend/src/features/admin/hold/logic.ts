@@ -255,6 +255,8 @@ export function cancelNoteError(note: string, expectedStatus: string): string | 
 /** The sentence the CANCEL dialog says about the driver (design #129, C1): the job ends only if a driver has one. */
 export const CANCEL_DRIVER_LIVE = "The driver's job ends and leaves their list. Nothing notifies the driver."
 export const CANCEL_DRIVER_NONE = "No driver is assigned, so no driver's job changes."
+/** A rider is on the order but the job is no longer live (for example after a failed delivery): #274. */
+export const CANCEL_DRIVER_ENDED = "This order's job has ended, so no driver's job changes."
 export const CANCEL_CUSTOMER = 'No cancellation message is sent to the customer yet: tell them yourself.'
 
 /** Why the cost sentence could not be shown: the order cannot be cancelled (409), or the lookup failed. */
@@ -301,6 +303,29 @@ export function canCancel(order: { status: string }): boolean {
  */
 export function hasLiveDriver(order: { status: string }): boolean {
   return ['assigned', 'loading', 'on_the_way'].includes(order.status)
+}
+
+/** What the CANCEL dialog says about the driver: a live job, a job that has ended, or no driver. */
+export type CancelDriverState = 'live' | 'ended' | 'none'
+
+export const CANCEL_DRIVER_NOTE: Record<CancelDriverState, string> = {
+  live: CANCEL_DRIVER_LIVE,
+  ended: CANCEL_DRIVER_ENDED,
+  none: CANCEL_DRIVER_NONE,
+}
+
+/**
+ * Picks the CANCEL dialog's driver note from the order, not only its status
+ * (#274). The panel shows a rider on a failed order, so "No driver is
+ * assigned" would be false there; the job has simply ended.
+ *
+ * @param order The order's status and the rider the panel shows, if any.
+ * @returns `live` while the job is live, `ended` when a rider is shown but the
+ *   job is not live, `none` when there is no rider.
+ */
+export function cancelDriverState(order: { status: string; partner: unknown | null }): CancelDriverState {
+  if (hasLiveDriver(order)) return 'live'
+  return order.partner ? 'ended' : 'none'
 }
 
 export const FAIL_TOAST = 'Delivery marked as failed.'

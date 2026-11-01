@@ -3,7 +3,9 @@ import type { ProofEvidence } from '../../../lib/api/adminHolds'
 import { ApiError } from '../../../lib/api/client'
 import { endReasonLabel } from '../../../domain/admin'
 import {
+  CANCEL_DRIVER_NOTE,
   CANCEL_REASONS,
+  cancelDriverState,
   cancelNoteError,
   CHANGED_MESSAGE,
   FAIL_REASONS,
@@ -259,6 +261,20 @@ describe('the cancel entry on the order panel (#176)', () => {
     ['failed', false],
   ])('says a driver’s job is live for %s: %s', (status, live) => {
     expect(hasLiveDriver({ status })).toBe(live)
+  })
+})
+
+describe('the driver note in the CANCEL dialog (#274)', () => {
+  const RIDER = { id: 'd1', name: 'Demo Driver' }
+  it.each([
+    ['assigned', RIDER, 'live', "The driver's job ends and leaves their list. Nothing notifies the driver."],
+    ['on_the_way', RIDER, 'live', "The driver's job ends and leaves their list. Nothing notifies the driver."],
+    ['failed', RIDER, 'ended', "This order's job has ended, so no driver's job changes."],
+    ['failed', null, 'none', "No driver is assigned, so no driver's job changes."],
+    ['awaiting_rider', null, 'none', "No driver is assigned, so no driver's job changes."],
+  ])('says %s with partner %j is %s', (status, partner, state, note) => {
+    expect(cancelDriverState({ status, partner })).toBe(state)
+    expect(CANCEL_DRIVER_NOTE[state as 'live' | 'ended' | 'none']).toBe(note)
   })
 })
 

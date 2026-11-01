@@ -182,3 +182,23 @@ None. The reason labels stay as written: "The customer asked to cancel" and
 "MmiriOma is unable to deliver" (@nnamdi-security, 2026-10-28). The note
 required at `unloading` (decision 13) applies to both reasons, as decided on
 PR #208.
+
+## Change: the driver note and the payment chip on ended orders (#274)
+
+Two wording fixes for an order that failed or was cancelled, decided by
+@nnamdi-security on #274.
+
+- **C1 driver note, now by the order and not only its status.** A live driver
+  (`assigned`, `loading`, `on_the_way`): "The driver's job ends and leaves
+  their list. Nothing notifies the driver." (unchanged). A rider is shown but
+  the job is not live (for example `failed`): "This order's job has ended, so
+  no driver's job changes." (new). No rider: "No driver is assigned, so no
+  driver's job changes." (unchanged). **G2 approval of the new sentence:**
+  @nnamdi-security, 2026-11-01.
+- **Payment chip.** The order panel and list show no "Cash to collect" chip on
+  `failed` and `cancelled` orders: no cash will be collected for them, and the
+  Cash page shows nothing waiting. `paid`, `partially_paid`, `refund_due` and
+  `refunded` keep showing. The Payment row keeps the method ("Pay on
+  delivery"); there is no replacement label. The stored `pending_collection`
+  is unchanged, and the chip returns if a failed order is rescheduled to
+  `confirmed`.
