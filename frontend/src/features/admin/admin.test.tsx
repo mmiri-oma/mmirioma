@@ -14,8 +14,12 @@ import { notReadyToAssign, timeAgo } from './adminFormat'
 
 // Whole-app renders load lazy page chunks, which can take seconds on a busy
 // machine or CI runner; give them room instead of Vitest's 5 s default.
-const WAIT = 10_000
-const SLOW = 20_000
+// Measured on a 4-core machine: the Orders page's first panel took 4-5 s
+// alone and 16-18 s with six test processes running, most of it Testing
+// Library's own polling (role queries and their error messages) on a large
+// page, so 10 s was not enough under a full parallel run (#209 test flake).
+const WAIT = 20_000
+const SLOW = 40_000
 /** A creation time later than any seeded order's, so the order sorts first in the list at any hour (the seed's "today" times follow the clock). */
 const NEWEST = () => new Date(Date.now() + 86_400_000).toISOString()
 
@@ -450,7 +454,7 @@ describe('admin pages', () => {
     for (const customer of Object.values(read().customers)) for (const order of customer.orders) if (order.reference === accepted.reference) order.created_at = NEWEST()
     renderAt('/admin/orders')
     await user.click(await screen.findByRole('button', { name: 'Fail this delivery' }, { timeout: WAIT }))
-    const dialog = await screen.findByRole('alertdialog')
+    const dialog = await screen.findByRole('alertdialog', {}, { timeout: WAIT })
     await user.click(within(dialog).getByLabelText('Unsafe access'))
     // While the dialog is open another order starts waiting for a rider (a new order, a withdrawn job): the list's first slot now belongs to it.
     read().jobs.find((j) => j.reference === 'MO-6RTA2KXP9B')!.stage = 'available'
