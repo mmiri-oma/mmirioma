@@ -1,7 +1,8 @@
 """Water source records: add sources and manage their category activations.
 
 Used by the command-line tool (:mod:`app.modules.sources.cli`, pilot
-fallback F1); there are no admin screens for sources yet. Each change is
+fallback F1) and by the admin endpoints (:mod:`app.modules.sources.admin`,
+#309). Each change is
 written with one ``audit_logs`` row in the same transaction (NFR-004), with
 the technical lead's admin account as the actor. Audit metadata holds ids
 and statuses only: never the report reference, the reason text or the cost.
@@ -22,6 +23,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -181,18 +183,81 @@ async def has_activation(session: AsyncSession, *, water_category_id: uuid.UUID)
     return found is not None
 
 
+async def update_source(
+    session: AsyncSession,
+    *,
+    actor: User,
+    source_id: uuid.UUID,
+    name: str | None = None,
+    approximate_location: str | None = None,
+    kind: WaterSourceKind | None = None,
+) -> WaterSource:
+    """Edit a source's name, location and kind (#309, decision 3). Commits.
+
+    Only the values that differ from the stored ones are written. If none
+    differ, nothing is written and no audit row is added. Otherwise one
+    ``water_source_updated`` row names the changed fields, never their values
+    (audit details keep to ids and kinds).
+
+    Args:
+        session: Database session.
+        actor: The admin making the change.
+        source_id: The source.
+        name: New name, or None to keep it.
+        approximate_location: New pickup location in words, or None to keep it.
+        kind: New kind, or None to keep it. A kind cannot be cleared here.
+
+    Returns:
+        The source.
+
+    Raises:
+        LookupError: No source has this id.
+    """
+    source = await session.get(WaterSource, source_id, with_for_update=True)
+    if source is None:
+        raise LookupError("no water source has this id")
+    changed: list[str] = []
+    if name is not None and name != source.name:
+        source.name = name
+        changed.append("name")
+    if approximate_location is not None and approximate_location != source.approximate_location:
+        source.approximate_location = approximate_location
+        changed.append("approximate_location")
+    if kind is not None and kind != source.kind:
+        source.kind = kind
+        changed.append("kind")
+    if changed:
+        _audit(session, actor=actor, action="water_source_updated", source=source, fields=changed)
+    await session.commit()
+    await session.refresh(source)
+    return source
+
+
 async def list_categories(session: AsyncSession) -> list[WaterCategory]:
     """Return every water category, by label."""
     return list(await session.scalars(select(WaterCategory).order_by(WaterCategory.label)))
 
 
-async def list_sources(session: AsyncSession) -> list[SourceWithActivations]:
-    """Return every source by name, with its activations by category label."""
-    sources = list(await session.scalars(select(WaterSource).order_by(WaterSource.name)))
+async def list_sources(
+    session: AsyncSession, *, source_id: uuid.UUID | None = None
+) -> list[SourceWithActivations]:
+    """Return sources by name, each with its activations by category label.
+
+    Args:
+        session: Database session.
+        source_id: Only this source (an empty list if it does not exist), or
+            None for every source.
+    """
+    source_filters = [] if source_id is None else [WaterSource.id == source_id]
+    sources = list(
+        await session.scalars(select(WaterSource).where(*source_filters).order_by(WaterSource.name))
+    )
+    activation_filters = [] if source_id is None else [WaterSourceCategory.source_id == source_id]
     rows = (
         await session.execute(
             select(WaterSourceCategory, WaterCategory)
             .join(WaterCategory, WaterCategory.id == WaterSourceCategory.water_category_id)
+            .where(*activation_filters)
             .order_by(WaterCategory.label)
         )
     ).all()
@@ -345,12 +410,15 @@ def _audit(
     source: WaterSource,
     category: WaterCategory | None = None,
     status: ActivationStatus | None = None,
+    fields: list[str] | None = None,
 ) -> None:
-    details: dict[str, str] = {}
+    details: dict[str, Any] = {}
     if category is not None:
         details["water_category_id"] = str(category.id)
     if status is not None:
         details["status"] = status.value
+    if fields is not None:
+        details["fields"] = fields
     audit_service.record(
         session,
         actor_id=actor.id,
