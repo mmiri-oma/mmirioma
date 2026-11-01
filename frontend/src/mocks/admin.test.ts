@@ -452,6 +452,21 @@ describe('hold review (#166)', () => {
   })
 })
 
+describe('the "Delivery failed" filter (#273)', () => {
+  it('finds a failed order without opening All, and the counts add up', async () => {
+    const before = await listOrders('failed')
+    expect(before.counts.failed).toBe(0)
+    const job = read().jobs.find((j) => j.stage === 'accepted')!
+    await transitionOrder(job.reference, { to: 'failed', expected_status: 'accepted', reason_code: 'unsafe_access', note: null, hold_id: null })
+    const failed = await listOrders('failed')
+    expect(failed.orders.map((o) => o.reference)).toEqual([job.reference])
+    expect(failed.counts.failed).toBe(1)
+    expect(failed.counts.all).toBe(before.counts.all)
+    // A failed order is no longer counted under In progress.
+    expect(failed.counts.in_progress).toBe(before.counts.in_progress - 1)
+  })
+})
+
 describe('contact attempts on a mock order\'s timeline (#280)', () => {
   const minute = 60_000
 

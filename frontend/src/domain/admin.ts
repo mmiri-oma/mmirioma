@@ -57,7 +57,7 @@ export type AdminPaymentStatus = PaymentStatus | 'pending_collection' | 'partial
  * and on the way. "On hold" lists every order with an open hold, whatever its
  * status (admin-hold-review.md, R0).
  */
-export type AdminOrderFilter = 'all' | 'awaiting_confirmation' | 'awaiting_rider' | 'in_progress' | 'on_hold' | 'delivered' | 'cancelled'
+export type AdminOrderFilter = 'all' | 'awaiting_confirmation' | 'awaiting_rider' | 'in_progress' | 'on_hold' | 'delivered' | 'failed' | 'cancelled'
 
 /** Why a driver's job is on hold (docs/api/deliveries.md, "Hold object on admin orders"). */
 export type HoldKind = 'proof_review' | 'source_review' | 'unsafe_stop'

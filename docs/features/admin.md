@@ -22,6 +22,9 @@ through reports and the audit log.
    water is collected, assign or reassign an eligible rider (approved, right
    vehicle and tank size, not declined before); the rider gets it on their
    dashboard and must start it or decline with a reason. Cancel with a reason.
+   The tabs include **Delivery failed** with its count (#273), so a delivery the
+   driver ended (for example "Customer not reachable") is found without opening
+   All; the dispatcher then follows it up or cancels it.
 4. **Create order** (`/admin/orders/new`): pick or add a customer, delivery
    type, details, address (or add one), payment method; the price comes from
    the current price list. Then leave it in the pool or assign a rider.

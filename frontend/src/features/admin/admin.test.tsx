@@ -46,6 +46,20 @@ describe('admin pages', () => {
     expect(screen.getAllByRole('link', { name: /Service areas/ }).length).toBeGreaterThan(0)
   }, SLOW)
 
+  it('lists a failed delivery under the "Delivery failed" tab, with a count (#273)', async () => {
+    const user = userEvent.setup()
+    await mockLogin({ phone: '0800 000 0100', password: DEMO_PASSWORD })
+    const job = read().jobs.find((j) => j.stage === 'accepted')!
+    job.stage = 'failed'
+    job.ended = { kind: 'failed', reason_code: 'customer_unreachable', note: null, by: 'Chinedu', at: new Date().toISOString() }
+    renderAt('/admin/orders')
+    await user.click(await screen.findByRole('tab', { name: 'Delivery failed (1)' }, { timeout: WAIT }))
+    const table = await screen.findByRole('table', { name: 'Orders' }, { timeout: WAIT })
+    expect(await within(table).findByRole('button', { name: job.reference }, { timeout: WAIT })).toBeInTheDocument()
+    // Only failed orders are listed: a still-pending one is not.
+    await vi.waitFor(() => expect(within(table).queryByRole('button', { name: 'MO-6RTA2KXP9B' })).not.toBeInTheDocument(), { timeout: WAIT })
+  }, SLOW)
+
   it('does not say a rider chooses the station before the order is confirmed (#152)', async () => {
     await mockLogin({ phone: '0800 000 0100', password: DEMO_PASSWORD })
     // No seeded order is unconfirmed: step back one that only the customer app knows (no rider job).

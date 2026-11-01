@@ -373,7 +373,7 @@ export async function listOrders(filter: AdminOrderFilter = 'all', query?: strin
   const s = read()
   requireAdmin(s)
   const found = allOrders(s).filter((o) => matchesQuery(orderSearchText(o), query))
-  const counts = { all: 0, awaiting_confirmation: 0, awaiting_rider: 0, in_progress: 0, on_hold: 0, delivered: 0, cancelled: 0 } as Record<AdminOrderFilter, number>
+  const counts = { all: 0, awaiting_confirmation: 0, awaiting_rider: 0, in_progress: 0, on_hold: 0, delivered: 0, failed: 0, cancelled: 0 } as Record<AdminOrderFilter, number>
   for (const f of Object.keys(counts) as AdminOrderFilter[]) counts[f] = found.filter((o) => matchesFilter(o, f)).length
   return { orders: found.filter((o) => matchesFilter(o, filter)), counts }
 }

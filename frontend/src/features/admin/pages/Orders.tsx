@@ -39,6 +39,7 @@ const FILTERS: { value: AdminOrderFilter; label: string }[] = [
   { value: 'in_progress', label: 'In progress' },
   { value: 'on_hold', label: 'On hold' },
   { value: 'delivered', label: 'Delivered' },
+  { value: 'failed', label: 'Delivery failed' },
   { value: 'cancelled', label: 'Cancelled' },
 ]
 

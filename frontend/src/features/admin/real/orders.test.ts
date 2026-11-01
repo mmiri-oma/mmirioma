@@ -210,7 +210,20 @@ describe('listOrders (real)', () => {
     expect(listCall).toContain('on_hold=true')
     expect(listCall).not.toContain('status=')
     // The other pills never send it.
-    expect(calls.filter((u) => u.includes('limit=1&') && !u.includes('on_hold=true')).length).toBe(6)
+    expect(calls.filter((u) => u.includes('limit=1&') && !u.includes('on_hold=true')).length).toBe(7)
+  })
+
+  it('lists failed deliveries under "Delivery failed" and counts them from the total (#273)', async () => {
+    const { fetch, client } = clientByUrl((url) => {
+      if (url.includes('limit=1&')) return { body: page([], url.includes('status=failed') ? 2 : 9) }
+      return { body: page([ROW]) }
+    })
+    const result = await listOrders('failed', undefined, client)
+    expect(result.counts.failed).toBe(2)
+    const listCall = fetch.mock.calls.map((c) => String(c[0])).find((u) => u.includes('limit=100'))!
+    expect(listCall).toContain('status=failed')
+    expect(listCall).not.toContain('status=delivered')
+    expect(listCall).not.toContain('on_hold=true')
   })
 
   it('keeps an order on the "On hold" pill only while it has a hold (reference lookup)', async () => {
@@ -232,7 +245,7 @@ describe('listOrders (real)', () => {
     const { client } = clientByUrl(() => ({ body: NOT_FOUND, status: 404 }))
     expect(await listOrders('all', 'MO-0000000000', client)).toEqual({
       orders: [],
-      counts: { all: 0, awaiting_confirmation: 0, awaiting_rider: 0, in_progress: 0, on_hold: 0, delivered: 0, cancelled: 0 },
+      counts: { all: 0, awaiting_confirmation: 0, awaiting_rider: 0, in_progress: 0, on_hold: 0, delivered: 0, failed: 0, cancelled: 0 },
     })
   })
 
