@@ -197,6 +197,43 @@ class TestScripts:
         assert result.returncode == 2
         assert "Unknown option" in result.stderr
 
+    def test_migrate_stops_when_the_pending_sql_cannot_be_rendered(self, tmp_path: Path) -> None:
+        # A fake `docker` first on PATH stands in for compose (#320): the
+        # database has a revision, and `alembic upgrade <rev>:head --sql`
+        # fails. The script must stop, not report "Nothing pending".
+        fake = tmp_path / "bin" / "docker"
+        fake.parent.mkdir()
+        fake.write_text(
+            "#!/usr/bin/env bash\n"
+            'case "$*" in\n'
+            '  *" up -d --wait db"*) exit 0 ;;\n'
+            '  *" migrate current"*) echo "0021 (head)" ;;\n'
+            '  *" migrate heads"*) echo "0022 (head)" ;;\n'
+            '  *" migrate upgrade 0021:head --sql"*)'
+            ' echo "offline mode cannot run this migration" >&2; exit 1 ;;\n'
+            '  *) echo "unexpected: $*" >&2; exit 99 ;;\n'
+            "esac\n",
+            encoding="utf-8",
+        )
+        fake.chmod(0o755)
+        env_file = tmp_path / "env"
+        env_file.write_text("SITE_DOMAIN=example.test\n", encoding="utf-8")
+        result = _run(
+            [str(DEPLOY / "production-migrate.sh"), "--check"],
+            env={
+                **os.environ,
+                "PATH": f"{fake.parent}{os.pathsep}{os.environ['PATH']}",
+                "PROD_ENV_FILE": str(env_file),
+            },
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 1
+        assert "Nothing pending" not in result.stdout
+        assert "Could not render the pending migrations" in result.stderr
+        # Alembic's own error is shown, not swallowed.
+        assert "offline mode cannot run this migration" in result.stderr
+
     def test_backup_needs_a_database_password(self, tmp_path: Path) -> None:
         env_file = tmp_path / "env"
         env_file.write_text("SITE_DOMAIN=example.test\n", encoding="utf-8")

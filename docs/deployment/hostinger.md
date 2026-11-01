@@ -210,7 +210,13 @@ Migrations never run when the API starts. `deploy/production-migrate.sh`:
 2. renders the pending SQL (`alembic upgrade <current>:head --sql`, no
    connection) and **stops** if it contains `DROP TABLE`, `DROP COLUMN`,
    `DROP SCHEMA`, `TRUNCATE` or `DELETE FROM`. After a person has reviewed the
-   migration, rerun with `--allow-destructive`;
+   migration, rerun with `--allow-destructive`. If the SQL cannot be rendered
+   at all, it **stops** with "Could not render the pending migrations as SQL"
+   and alembic's error, and migrates nothing (#320). The usual cause is a
+   migration whose `upgrade()` reads the database, which offline rendering
+   cannot do. Do not start the new release: have the migration reviewed (it
+   may need to work without a connection, or the check must be done by hand
+   on a copy of the database), then run the script again;
 3. takes a backup (`--skip-backup` only for a scratch database);
 4. asks you to type `yes`, runs `alembic upgrade head`, and prints the new revision.
 
