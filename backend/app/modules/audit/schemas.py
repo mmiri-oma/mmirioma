@@ -46,7 +46,10 @@ class AuditLogRead(BaseModel):
 
     ``details`` is the row's metadata: ids and kinds only, never personal
     data. Reasons and notes stay on the business record, so there is no
-    ``reason`` field.
+    ``reason`` field. ``target_label`` names the record (an order reference, an
+    area or driver name) and is looked up when the page is read, never stored;
+    it is ``None`` for a record that is gone or anonymized and for the target
+    types that have no label (docs/api/admin-operations.md).
     """
 
     id: uuid.UUID
@@ -55,6 +58,7 @@ class AuditLogRead(BaseModel):
     action: str
     target_type: str
     target_id: uuid.UUID
+    target_label: str | None
     details: dict[str, Any]
 
 

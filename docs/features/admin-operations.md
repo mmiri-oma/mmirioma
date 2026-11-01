@@ -57,6 +57,8 @@ saving settings are out of the MVP).
 | `backend/app/modules/customers/requests.py` | Admin list (search, open first), detail with contacts, resolve (audited, final), open count |
 | `backend/app/modules/customers/admin_router.py`, `admin_schemas.py` | The three `/admin/support-requests` endpoints and their bodies |
 | `backend/app/modules/audit/service.py`, `router.py`, `schemas.py` | `GET /admin/audit-logs`, one record's log with `target_type` and `target_id` |
+| `backend/app/modules/audit/labels.py` | `target_label` for each row (#296): a name or reference looked up when the page is read, one query per target type, `null` for a gone or anonymized record |
+| `backend/tests/test_audit_labels_integration.py` | `target_label` for each target type, the `null` cases and the query count (needs `TEST_DATABASE_URL`) |
 | `backend/app/modules/reporting/` | New module, no table: shell, settings, dashboard, live map, activity and reports, reading other modules through their services |
 | `backend/app/modules/orders/reporting.py` | Order counts (by status, delivery type, zone; "including open"), deliveries with on-time counts, recent events, all real or simulated (BR-09) |
 | `backend/app/modules/dispatch/service.py` (part 2) | Oldest waiting order, available drivers, jobs on the road, deliveries per driver |
@@ -240,8 +242,10 @@ in the database does not affect them.
 - **A driver's reason stays readable after the driver is anonymized.** The
   privacy tool keeps audit rows, so a suspension reason still shows in the log.
   Blanking it is a backend change, tracked apart from #293.
-- **A row names its record by a short id, not a name,** until the backend's
-  `target_label` ships (#296).
+- **A row still shows a short id, not the name,** until the frontend reads the
+  backend's `target_label` (#296, built; the screen change follows in #293 or a
+  small linking issue). A kind with no label (address, deletion request,
+  retention review, price list) keeps the short id.
 - **`assignment_expired` is not created.** Offers never expire in the
   backend (admin dispatch decision 1; nothing sets the `expired` assignment
   status), so the contract's "an offer times out" message has no trigger.

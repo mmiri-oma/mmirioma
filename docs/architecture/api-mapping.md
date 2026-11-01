@@ -613,8 +613,10 @@ until a row is added here. The five cash codes are G2 approved
 
 **Audit log record (#293).** Each row shows what it is about, as the kind of
 record in words and the first 6 characters of `target_id`: "Driver · 4f3a2c".
-It is a stopgap so two rows about different drivers can be told apart; the
-backend's `target_label` (#296) will replace the id with a name or reference.
+It is a stopgap so two rows about different drivers can be told apart. The
+backend now sends `target_label` (#296, agreed 2026-11-01), a name or
+reference looked up when the page is read; a small frontend change will show it
+in place of the id and keep the short id when it is `null`.
 A kind with no words shows as the code itself.
 
 | `target_type` | Words |

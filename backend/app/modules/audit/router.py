@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
 from app.core.errors import ErrorResponse
-from app.modules.audit import service
+from app.modules.audit import labels, service
 from app.modules.audit.schemas import AuditActorRead, AuditLogPage, AuditLogParams, AuditLogRead
 from app.modules.auth.dependencies import CurrentAdmin
 
@@ -39,6 +39,9 @@ async def list_audit_logs(
         limit=params.limit,
         offset=params.offset,
     )
+    target_labels = await labels.target_labels(
+        db, [(log.target_type, log.target_id) for log, _ in rows]
+    )
     return AuditLogPage(
         items=[
             AuditLogRead(
@@ -48,6 +51,7 @@ async def list_audit_logs(
                 action=log.action,
                 target_type=log.target_type,
                 target_id=log.target_id,
+                target_label=target_labels[(log.target_type, log.target_id)],
                 details=log.details,
             )
             for log, actor in rows
