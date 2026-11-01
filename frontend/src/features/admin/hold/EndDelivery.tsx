@@ -9,8 +9,7 @@ import { USE_MOCKS } from '../../../lib/api/mode'
 import { FailureNotice } from './HoldFrame'
 import {
   CANCEL_CUSTOMER,
-  CANCEL_DRIVER_LIVE,
-  CANCEL_DRIVER_NONE,
+  CANCEL_DRIVER_NOTE,
   CANCEL_REASONS,
   CANCEL_TOAST,
   FAIL_REASONS,
@@ -20,6 +19,7 @@ import {
   decisionFailure,
   failErrors,
   outcomeFailure,
+  type CancelDriverState,
   type CancelReasonCode,
   type DecisionFailure,
   type FailForm,
@@ -126,12 +126,13 @@ export function CancelDialog({
   expectedStatus,
   hold,
   openHold = hold,
-  liveDriver,
+  driver,
   onClose,
   onDone,
   onRefresh,
 }: EndProps & {
-  liveDriver: boolean
+  /** What the driver note says: a live job, a job that has ended, or no driver (#274). */
+  driver: CancelDriverState
   /**
    * The open hold the cancel will close, for the line "This also closes the
    * <kind> hold." Defaults to `hold`. The order panel's entry passes `hold={null}`
@@ -233,7 +234,7 @@ export function CancelDialog({
           hint={noteRequired ? `Unloading has started: say why. ${note.length} / ${NOTE_MAX}` : `${note.length} / ${NOTE_MAX}`}
         />
         <span className="text-sub">
-          {liveDriver ? CANCEL_DRIVER_LIVE : CANCEL_DRIVER_NONE} <b>{CANCEL_CUSTOMER}</b>
+          {CANCEL_DRIVER_NOTE[driver]} <b>{CANCEL_CUSTOMER}</b>
         </span>
         <HoldLine hold={openHold} />
         {failure && !failure.fields.note && <FailureNotice failure={failure} onRefresh={onRefresh} />}
