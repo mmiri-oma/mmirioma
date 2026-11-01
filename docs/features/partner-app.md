@@ -296,7 +296,9 @@ they order (the customer mock); the partner app gets it only after unloading.
   and the two attempts, and the dispatcher sees the times as "Contact attempt N"
   lines in the order panel's timeline (#280), and in a proof review's evidence.
 - **"The dispatcher will contact you."** on the failed screen promises staff
-  action, so the pilot needs a dispatcher to follow up a failed delivery.
+  action. The dispatcher finds a failed delivery under the Orders page's
+  "Delivery failed" tab (#273), but nothing alerts them: no notification, no
+  dashboard count. The pilot still needs someone to look at that tab.
 - **No paused-job banner.** The job carries no hold in the app's types, so a
   paused job shows its notice only when an arrival, attempt or end request is
   refused with 409 `job_on_hold` ("This job is paused. The dispatcher will

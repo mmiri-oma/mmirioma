@@ -175,7 +175,8 @@ None.
   that time and the two attempts, and the dispatcher sees the times. To list in
   `docs/features/partner-app.md` when the screens are built.
 - **"The dispatcher will contact you."** promises staff action, so the pilot
-  needs a dispatcher to follow up a failed delivery.
+  needs a dispatcher to follow up a failed delivery. The Orders page has a
+  "Delivery failed" tab for finding them (#273); there is no alert.
 - **The report screen's job line** (#257) is not part of this design; its wording
   is decided with #257.
 

@@ -77,6 +77,7 @@ export const STATUSES_BY_FILTER: Record<AdminOrderFilter, BackendStatus[]> = {
   in_progress: ['assigned', 'accepted', 'departed', 'collected', 'en_route', 'arrived', 'unloading'],
   on_hold: [],
   delivered: ['delivered'],
+  failed: ['failed'],
   cancelled: ['cancelled'],
 }
 
