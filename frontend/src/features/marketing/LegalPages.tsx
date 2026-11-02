@@ -620,7 +620,7 @@ function LegalPage({
   intro: string
   sections: Section[]
 }) {
-  useMarketingPage(`${title} | MmiriOma`, intro)
+  useMarketingPage(`${title} | Waterline`, intro)
   const terms = kind === 'terms'
   return (
     <div className="mk-page min-w-0 overflow-x-clip bg-white font-marketing text-[16px] leading-normal text-ink">

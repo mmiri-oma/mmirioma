@@ -1,8 +1,9 @@
 /// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { SITEMAP_PATHS } from './src/lib/seoPaths.ts'
 
 // https://vite.dev/config/  ·  test options: https://vitest.dev/config/
 /**
@@ -14,12 +15,48 @@ function serveMocks(command: 'build' | 'serve', mode: string): boolean {
   return flag === 'true' || (command === 'serve' && flag !== 'false')
 }
 
+/**
+ * The public address of the site, for absolute URLs that crawlers need
+ * (canonical link, share image, sitemap). `VITE_SITE_URL` when set; otherwise
+ * `VITE_API_BASE_URL`, because production serves the site and `/api` from one
+ * origin (docs/deployment/hostinger.md); otherwise the production domain.
+ */
+function siteUrl(mode: string): string {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  return (env.VITE_SITE_URL || env.VITE_API_BASE_URL || 'https://mmiriomadelivery.com').replace(/\/+$/, '')
+}
+
+/**
+ * Search-engine files (docs/features/public-pages.md, "SEO"): fills
+ * `__SITE_URL__` in index.html, and adds robots.txt (keep crawlers out of the
+ * API, staff and developer screens) and sitemap.xml (the public pages from
+ * `SITEMAP_PATHS`) to the build.
+ */
+function seoFiles(mode: string): Plugin {
+  const url = siteUrl(mode)
+  return {
+    name: 'waterline-seo-files',
+    transformIndexHtml: (html) => html.replaceAll('__SITE_URL__', url),
+    generateBundle() {
+      const robots = ['User-agent: *', 'Disallow: /api/', 'Disallow: /admin', 'Disallow: /dev/', '', `Sitemap: ${url}/sitemap.xml`, ''].join('\n')
+      const today = new Date().toISOString().slice(0, 10)
+      const urls = SITEMAP_PATHS.map(
+        (path) => `  <url><loc>${url}${path}</loc><lastmod>${today}</lastmod><changefreq>${path === '/' ? 'weekly' : 'monthly'}</changefreq><priority>${path === '/' ? '1.0' : '0.6'}</priority></url>`,
+      )
+      const sitemap = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', ...urls, '</urlset>', ''].join('\n')
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots })
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap })
+    },
+  }
+}
+
 export default defineConfig(({ command, mode }) => ({
   // A literal in every module, so a build without mocks drops the mock layer and its demo values (#236, `lazyMock.ts`).
   define: { __USE_MOCKS__: JSON.stringify(serveMocks(command, mode)) },
   plugins: [
     react(),
     tailwindcss(),
+    seoFiles(mode),
     // Service worker for the installable apps (docs/architecture/frontend.md, "PWA").
     // We write the worker ourselves (src-sw/sw.ts) because it handles push;
     // the plugin only fills in the list of built files to keep offline.

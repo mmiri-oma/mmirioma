@@ -2,13 +2,21 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cx } from '../../lib/cx'
 import { WHATSAPP_GREETING, whatsappLink } from '../../lib/whatsapp'
-import { CONTACT, FAQ_CATEGORIES, filterFaqs, type FaqFilter } from './content'
+import { CONTACT, FAQ_CATEGORIES, FAQS, filterFaqs, type FaqFilter } from './content'
 import { ArrowRightIcon, ChevronIcon, MailIcon, SearchIcon, WhatsAppIcon } from './icons'
 import { Kicker, MarketingFooter, MarketingHeader, Pic } from './MarketingParts'
 import { formatPhone } from '../../lib/format/phone'
 import { useSupportContact } from './queries'
 import { FloatingActions } from './SiteExtras'
 import { useMarketingPage } from './useMarketingPage'
+import { jsonLd } from '../../lib/seo'
+
+/** The FAQ as schema.org FAQPage data, built once from the same list the page shows. */
+const FAQ_JSON_LD = jsonLd({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+})
 
 const CARD_BUTTON =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] px-5 text-center text-[15px] font-bold no-underline transition-colors duration-150'
@@ -28,6 +36,8 @@ export function FaqPage() {
   return (
     <div className="mk-page min-w-0 overflow-x-clip bg-white font-marketing text-[16px] leading-normal text-ink">
       <MarketingHeader current="faq" />
+      {/* FAQPage structured data: every question and answer, as on the page (schema.org/FAQPage). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: FAQ_JSON_LD }} />
       <main>
         <section className="overflow-hidden bg-mk-panel">
           <div className="mk-wrap flex flex-wrap items-center gap-8 py-16">

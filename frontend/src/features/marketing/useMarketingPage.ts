@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { track } from '../../lib/analytics'
+import { applyShareMeta } from '../../lib/seo'
 
 /** Same stylesheet as index.html (Fraunces and Inter): already there in the app, added here only if missing. */
 const FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..800,0..100,0..1;1,9..144,400..800,0..100,0..1&family=Inter:wght@400..800&display=swap'
-const APP_TITLE = 'Waterline'
+const APP_TITLE = 'Waterline | Water delivery in Enugu'
 const APP_DESCRIPTION = 'Order water in Enugu and have it poured into your tank.'
 
 function setDescription(text: string) {
@@ -19,8 +20,8 @@ function setDescription(text: string) {
  * - sends a Google Analytics page view, which does nothing unless the visitor
  *   accepted analytics (lib/analytics.ts); only public pages call this, so
  *   screens inside the signed-in apps are never reported;
- * - sets the tab title and meta description, and puts the app's back when
- *   leaving;
+ * - sets the tab title, meta description and share tags (Open Graph, X card),
+ *   and puts the app's title and description back when leaving;
  * - scrolls (smoothly, unless reduced motion is on) to `#section` after
  *   navigation, because React Router does not (e.g. "How It Works" from the
  *   FAQ page goes to `/#how`).
@@ -44,11 +45,12 @@ export function useMarketingPage(title: string, description: string) {
   useEffect(() => {
     document.title = title
     setDescription(description)
+    applyShareMeta(title, description, pathname)
     return () => {
       document.title = APP_TITLE
       setDescription(APP_DESCRIPTION)
     }
-  }, [title, description])
+  }, [title, description, pathname])
 
   // Jump to the section named in the hash, or to the top for a new page.
   // `key` changes on every navigation, so tapping the same link again re-scrolls.

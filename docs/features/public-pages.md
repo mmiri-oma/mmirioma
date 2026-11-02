@@ -50,6 +50,33 @@ the legal pages. Anyone can open them, signed in or not.
   jumps to section 13. `/privacy` is the website copy of `PRIVACY_NOTICE.md`
   (version 3.1, #93, #104), section by section; change both together.
 
+### Search and sharing (SEO)
+
+- **Link previews** (WhatsApp, Facebook, X) read only the static
+  `index.html`: title, description, Open Graph and X card tags, and a
+  1200 × 630 share image (`public/marketing/og-waterline.jpg`, the hero
+  picture with "Water at your gate."). Absolute URLs come from
+  `__SITE_URL__`, filled in at build time.
+- **Structured data** (schema.org JSON-LD): in `index.html`, the
+  Organization (name, logo, support phone and email), the WebSite and the
+  Service ("Water delivery in Enugu", area served Enugu). No prices, ratings
+  or opening hours. `/faq` adds FAQPage data built from the same `FAQS` list
+  the page shows.
+- **Per page**: `useMarketingPage` sets the title, description and share
+  tags; the app root (`lib/seo.ts`) sets `index, follow` and a canonical link
+  on public pages and `noindex, nofollow` (no canonical) on every other route,
+  including the apps, the order flow and the 404 page. Which pages are
+  indexable is one list, `lib/seoPaths.ts`, also used for the sitemap.
+- **Build files** (`seoFiles` in `vite.config.ts`): `robots.txt` (keeps
+  crawlers out of `/api/`, `/admin` and `/dev/`, and points to the sitemap) and
+  `sitemap.xml` (the public pages and sign-up pages). The backend serves them
+  as files from the build (`backend/app/core/frontend.py`).
+- **Site address**: `VITE_SITE_URL`, or `VITE_API_BASE_URL` (one origin in
+  production), or `https://mmiriomadelivery.com`.
+- The landing page's `h1` starts with "Water delivery in Enugu" (shown as the
+  small label above the headline). Favicons and app icons are the Waterline
+  drop.
+
 ## 3. Important files
 
 | Path | Responsibility |
@@ -75,6 +102,9 @@ the legal pages. Anyone can open them, signed in or not.
 | `frontend/public/marketing/` | Images (WebP plus PNG/JPG) |
 | `frontend/src/styles/theme.css` | App colours (white canvas, teal primary `#11708C`), `mk-*` colours and the Fraunces / Inter font tokens |
 | `frontend/src/components/brand/Logo.tsx` | The Waterline logo, drawn as SVG |
+| `frontend/src/lib/seo.ts`, `seoPaths.ts` | Robots tag, canonical link and share tags per route; the indexable pages and sitemap list |
+| `frontend/vite.config.ts` (`seoFiles`) | `__SITE_URL__` in index.html, robots.txt and sitemap.xml at build time |
+| `frontend/public/marketing/og-waterline.jpg` | The share image (1200 × 630) |
 
 ## 4. Database models and relationships
 
@@ -168,3 +198,10 @@ and the mock contact. Manual: compare with
   legal texts are updated. `og:image` still points to the old hero photo.
 - The redesign skipped the design-approval gate (G2) at the product owner's
   request; it needs a reviewer's approval on the PR.
+- The pages are rendered in the browser. Google renders JavaScript, but
+  other crawlers and every link preview see only `index.html`, so page text
+  is not in the HTML they read. Prerendering the public pages at build time
+  would fix that; it needs a build tool the team has not approved yet.
+- The share image and icons were drawn once with headless Chrome from the
+  hero picture; redo them if the brand changes. The sitemap's `lastmod` is
+  the build date.

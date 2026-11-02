@@ -29,8 +29,8 @@ const SAMPLE_CODE = '481735'.split('')
  */
 export function Landing() {
   useMarketingPage(
-    'Waterline | Water delivery in Enugu',
-    'Order water by keke or tanker in Enugu. We pour it into your drums or tank, and you see the price before you confirm.',
+    'Water delivery in Enugu, poured into your tank | Waterline',
+    'Order water in Enugu by keke or tanker. We pour it straight into your drums or tank. See the full price before you confirm and pay cash on delivery.',
   )
   const rootRef = useRef<HTMLDivElement>(null)
   const contact = useSupportContact()
@@ -185,8 +185,9 @@ function Hero() {
     <section className="wl-hero" id="top">
       <div className="wl-wrap wl-hero-grid">
         <div>
-          <Eyebrow>Water delivery in Enugu</Eyebrow>
+          {/* The eyebrow is part of the main heading, so the page's h1 says what it is about in search terms. */}
           <h1 className="wl-h1 wl-hero-title">
+            <span className="wl-eyebrow wl-hero-eyebrow">Water delivery in Enugu</span>
             <span className="wl-line">
               <span>Water at</span>
             </span>{' '}

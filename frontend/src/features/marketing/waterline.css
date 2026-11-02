@@ -425,9 +425,19 @@
     gap: 44px;
   }
   .wl-hero-title {
-    margin: 22px 0 26px;
+    margin: 0 0 26px;
     font-size: clamp(3.5rem, 8.4vw, 8rem);
     line-height: 0.9;
+  }
+  .wl-hero-eyebrow {
+    display: flex;
+    margin-bottom: 22px;
+    font-family: var(--font-marketing);
+    font-size: 12.5px;
+    font-weight: 650;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: 0.15em;
   }
   .wl-hero-title .wl-line {
     display: block;

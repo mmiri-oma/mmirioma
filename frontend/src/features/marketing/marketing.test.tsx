@@ -62,6 +62,22 @@ describe('FAQ page', () => {
   })
 })
 
+describe('FAQ structured data', () => {
+  it('describes every question and answer as schema.org FAQPage data', () => {
+    const { container } = render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/faq']}>
+          <FaqPage />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    const data = JSON.parse(container.querySelector('script[type="application/ld+json"]')!.textContent!)
+    expect(data['@type']).toBe('FAQPage')
+    expect(data.mainEntity).toHaveLength(FAQS.length)
+    expect(data.mainEntity[0]).toEqual({ '@type': 'Question', name: FAQS[0].q, acceptedAnswer: { '@type': 'Answer', text: FAQS[0].a } })
+  })
+})
+
 describe('MarketingHeader', () => {
   it('opens the mobile menu and closes it with Escape or a link', async () => {
     const user = userEvent.setup()
