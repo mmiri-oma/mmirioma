@@ -93,7 +93,7 @@ export function AdminShell({ searchPlaceholder, onSearch, user, counts = {}, unr
         <IconButton label="Open menu" className="lg:hidden" onClick={() => setOpen(true)} aria-expanded={open}>
           <MenuIcon size={24} roundJoin={false} />
         </IconButton>
-        <Link to="/admin" aria-label="MmiriOma admin dashboard" className="lg:mr-[52px]">
+        <Link to="/admin" aria-label="Waterline admin dashboard" className="lg:mr-[52px]">
           <Logo height={34} alt="" />
         </Link>
         <form

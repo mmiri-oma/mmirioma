@@ -1,5 +1,5 @@
 /*
- * MmiriOma design tokens as Tailwind v4 theme variables.
+ * Waterline design tokens as Tailwind v4 theme variables.
  *
  * Source: design/MmiriOma-design-handoff/tokens/mo.css (what the screens render
  * with) and tokens/tokens.json. Where the two disagree, mo.css wins because the
@@ -20,14 +20,14 @@
   --color-black: #000000;
 
   /* UI */
-  --color-primary: #1570D8;        /* --blue: primary actions, white text 4.84:1 */
-  --color-primary-dark: #0B4FA8;   /* --blue-d: link hover, text on sky */
-  --color-ink: #0A2540;            /* main text */
+  --color-primary: #11708C;        /* Waterline teal-blue: primary actions, white text 5.6:1 */
+  --color-primary-dark: #0E4A5A;   /* --blue-d: link hover, text on sky */
+  --color-ink: #0C2733;            /* main text */
   --color-mute: #56677D;           /* secondary text */
   --color-line: #E3EAF3;           /* dividers, footer border, line buttons */
-  --color-canvas: #F4F7FB;         /* --bg: page background */
+  --color-canvas: #FFFFFF;         /* page background: white (Waterline theme) */
   --color-surface: #FFFFFF;
-  --color-sky: #EAF3FE;            /* blue tint: selected, alt button, info chip */
+  --color-sky: #E6F3F5;            /* blue tint: selected, alt button, info chip */
   --color-mint: #E7F7EE;
 
   /* Brand (fills and accents only; turquoise is never used for text) */
@@ -67,12 +67,12 @@
   --color-tablist: #EEF3F9;        /* sign-in tab track */
   --color-field: #F1F5FA;          /* admin search field */
   --color-row-line: #F0F4F8;       /* table row divider */
-  --color-avatar-ring: #CFE2FB;
+  --color-avatar-ring: #CFE7EC;
   --color-map: #E9EEF2;
-  --color-blink: #9CC2F2;          /* active OTP box blink */
+  --color-blink: #8CCBD8;          /* active OTP box blink */
 
   /* ---------- Type ---------- */
-  --font-sans: 'Plus Jakarta Sans', 'Plus Jakarta Sans Offline', system-ui, sans-serif;
+  --font-sans: 'Inter', 'Plus Jakarta Sans Offline', system-ui, sans-serif;
 
   --text-big: 30px;                /* big numbers, 800, -1px */
   --text-big--letter-spacing: -1px;
@@ -109,11 +109,11 @@
   --shadow-card: 0 6px 22px rgba(16, 42, 84, 0.07);
   --shadow-stat: 0 6px 20px rgba(16, 42, 84, 0.06);
   --shadow-tile: 0 4px 14px rgba(16, 42, 84, 0.05);
-  --shadow-button: 0 10px 22px rgba(21, 112, 216, 0.28);
-  --shadow-button-sm: 0 6px 14px rgba(21, 112, 216, 0.22);
-  --shadow-selected: 0 8px 18px rgba(21, 112, 216, 0.16);
-  --shadow-nav: 0 8px 18px rgba(21, 112, 216, 0.25);
-  --shadow-segment: 0 6px 14px rgba(21, 112, 216, 0.25);
+  --shadow-button: 0 10px 22px rgba(17, 112, 140, 0.28);
+  --shadow-button-sm: 0 6px 14px rgba(17, 112, 140, 0.22);
+  --shadow-selected: 0 8px 18px rgba(17, 112, 140, 0.16);
+  --shadow-nav: 0 8px 18px rgba(17, 112, 140, 0.25);
+  --shadow-segment: 0 6px 14px rgba(17, 112, 140, 0.25);
   --shadow-control: 0 4px 12px rgba(10, 37, 64, 0.15);
   --shadow-badge: 0 6px 14px rgba(10, 37, 64, 0.3);
 
@@ -143,32 +143,32 @@
    * marketing". The design's other colours map to the app tokens above
    * (ink, slate, mute, line, input-line, primary). Teal text is for headings
    * 24 px and up only (3.1:1). */
-  --color-mk-teal: #13A3AA;        /* second line of big headings */
+  --color-mk-teal: #1D8BA6;        /* second line of big headings */
   --color-mk-mint: #3FE0C5;        /* "earn every day", numbers on navy */
-  --color-mk-kicker: #0B5A8A;      /* uppercase eyebrow labels, 7.4:1 */
+  --color-mk-kicker: #0E4A5A;      /* uppercase eyebrow labels, 7.4:1 */
   --color-mk-kicker-navy: #BFD6EE; /* eyebrow on the drivers banner */
   --color-mk-lead: #24405F;        /* hero and option-card lead text */
-  --color-mk-panel: #F1F7FE;       /* rounded section panels, install section */
+  --color-mk-panel: #F2F8F9;       /* rounded section panels, install section */
   --color-mk-keke: #E3F0FF;        /* Keke Delivery card */
   --color-mk-keke-title: #0E3FA8;
   --color-mk-tanker: #DDF5EE;      /* Tanker Delivery card, "Want to drive" card */
   --color-mk-tanker-tile: #EEF9F5;
   --color-mk-tanker-title: #0F6B3A;
-  --color-mk-chip: #EEF5FD;        /* area chips, count badges */
-  --color-mk-badge: #D6F2F1;       /* hero badge circles */
-  --color-mk-badge-icon: #0E8A8F;
+  --color-mk-chip: #EEF6F7;        /* area chips, count badges */
+  --color-mk-badge: #DCEFF1;       /* hero badge circles */
+  --color-mk-badge-icon: #11708C;
   --color-mk-step3: #0B5A8A;
   --color-mk-step4: #0E7F84;
-  --color-mk-arrow: #3F9BF2;       /* dotted arrows between step cards */
-  --color-mk-drivers: #0A2D5A;     /* drivers banner behind the photo */
-  --color-mk-navy: #082447;        /* footer, approval strip */
+  --color-mk-arrow: #1D8BA6;       /* dotted arrows between step cards */
+  --color-mk-drivers: #0E4A5A;     /* drivers banner behind the photo */
+  --color-mk-navy: #0C2733;        /* footer, approval strip */
   --color-mk-on-navy: #D3E0EE;     /* body text on navy */
   --color-mk-approval: #C3D3E5;    /* approval step lines on navy */
   --color-mk-foot-text: #C9D6E5;   /* footer links (10.5:1) */
   --color-mk-foot-muted: #A9BBCF;  /* copyright row (7.9:1) */
-  --color-mk-foot-rule: #1D3F68;
-  --color-mk-teal-button: #0E6F74; /* "Become a Rider or Driver" on /faq, white 5.9:1 */
-  --color-mk-faq-open: #B9D4F3;    /* open FAQ border */
-  --font-display: 'Outfit', 'Outfit Offline', system-ui, sans-serif;
-  --font-marketing: 'DM Sans', 'DM Sans Offline', system-ui, sans-serif;
+  --color-mk-foot-rule: #1F3D49;
+  --color-mk-teal-button: #11708C; /* "Become a Rider or Driver" on /faq, white 5.9:1 */
+  --color-mk-faq-open: #A9D6DF;    /* open FAQ border */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-marketing: 'Inter', 'Plus Jakarta Sans Offline', system-ui, sans-serif;
 }

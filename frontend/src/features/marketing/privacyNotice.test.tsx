@@ -8,7 +8,7 @@ import { PrivacyPage } from './LegalPages'
 
 // PRIVACY_NOTICE.md is the source (Vite will not load files outside frontend/).
 // When the notice changes, update these two and the page together (#93).
-const NOTICE_VERSION = '3.0'
+const NOTICE_VERSION = '3.1'
 const NOTICE_SECTIONS = [
   '1. Who operates MmiriOma?',
   '2. What information do we collect?',

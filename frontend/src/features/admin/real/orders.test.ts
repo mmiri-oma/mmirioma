@@ -351,7 +351,7 @@ describe('getOrder (real)', () => {
       { label: 'Delivery failed', at: '2026-10-20T09:40:00Z', detail: 'Sample Dispatcher · Source quality concern · "Source flooded. Driver cannot use it."' },
     ])
     const cancelled = timelineFromHistory('2026-10-20T07:00:00Z', [change('cancelled', 'mmirioma_unable', null, '2026-10-20T09:50:00Z')])
-    expect(cancelled.at(-1)).toEqual({ label: 'Cancelled', at: '2026-10-20T09:50:00Z', detail: 'Sample Dispatcher · MmiriOma is unable to deliver' })
+    expect(cancelled.at(-1)).toEqual({ label: 'Cancelled', at: '2026-10-20T09:50:00Z', detail: 'Sample Dispatcher · Waterline is unable to deliver' })
     // A reason the app does not know shows no reason, never a raw code.
     expect(timelineFromHistory('2026-10-20T07:00:00Z', [change('failed', 'a_new_reason', null, '2026-10-20T09:40:00Z')]).at(-1)).toEqual({ label: 'Delivery failed', at: '2026-10-20T09:40:00Z', detail: 'Sample Dispatcher' })
   })

@@ -50,7 +50,7 @@ export function FloatingActions() {
           href={whatsappLink(whatsapp, WHATSAPP_GREETING)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Chat with MmiriOma on WhatsApp (opens WhatsApp)"
+          aria-label="Chat with Waterline on WhatsApp (opens WhatsApp)"
           className="pointer-events-auto flex min-h-14 min-w-14 items-center justify-center gap-2.5 rounded-[18px] bg-[#1DA851] px-4 text-[15px] font-bold text-white no-underline shadow-[0_10px_28px_rgba(16,120,60,0.35)] transition-colors duration-150 hover:bg-[#178A43] hover:text-white"
         >
           <WhatsAppIcon size={26} />

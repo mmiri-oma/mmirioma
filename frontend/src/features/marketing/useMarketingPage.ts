@@ -1,8 +1,11 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { track } from '../../lib/analytics'
 
-const FONTS_HREF = 'https://fonts.googleapis.com/css2?family=Outfit:wght@500..800&family=DM+Sans:wght@400..700&display=swap'
-const APP_TITLE = 'MmiriOma'
+/** Same stylesheet as index.html (Fraunces and Inter): already there in the app, added here only if missing. */
+const FONTS_HREF =
+  'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..800,0..100,0..1;1,9..144,400..800,0..100,0..1&family=Inter:wght@400..800&display=swap'
+const APP_TITLE = 'Waterline'
 const APP_DESCRIPTION = 'Order water in Enugu and have it poured into your tank.'
 
 function setDescription(text: string) {
@@ -11,8 +14,11 @@ function setDescription(text: string) {
 
 /**
  * Shared set-up for the public pages:
- * - loads Outfit and DM Sans from Google Fonts (marketing pages only, decision
- *   Q6; offline copies in styles/fonts.css);
+ * - makes sure Fraunces and Inter are loaded (index.html loads them; offline
+ *   fallback in styles/fonts.css);
+ * - sends a Google Analytics page view, which does nothing unless the visitor
+ *   accepted analytics (lib/analytics.ts); only public pages call this, so
+ *   screens inside the signed-in apps are never reported;
  * - sets the tab title and meta description, and puts the app's back when
  *   leaving;
  * - scrolls (smoothly, unless reduced motion is on) to `#section` after
@@ -30,6 +36,10 @@ export function useMarketingPage(title: string, description: string) {
     link.href = FONTS_HREF
     document.head.appendChild(link)
   }, [])
+
+  useEffect(() => {
+    track('page_view', { page_title: title, page_location: `${window.location.origin}${pathname}` })
+  }, [title, pathname])
 
   useEffect(() => {
     document.title = title

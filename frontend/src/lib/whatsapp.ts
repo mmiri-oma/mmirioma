@@ -13,7 +13,7 @@ export const DEFAULT_SUPPORT_PHONE = '+2348133774902'
 export const DEFAULT_WHATSAPP = DEFAULT_SUPPORT_PHONE
 
 /** The greeting already typed in the chat when someone taps the button. */
-export const WHATSAPP_GREETING = "Hello MmiriOma, I'd like to order water."
+export const WHATSAPP_GREETING = "Hello Waterline, I'd like to order water."
 
 /**
  * A `https://wa.me/` link that opens a chat with `e164` in the WhatsApp app

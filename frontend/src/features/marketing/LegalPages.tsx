@@ -233,11 +233,11 @@ function Rows({ rows }: { rows: [ReactNode, ReactNode][] }) {
 }
 
 /*
- * The Privacy page mirrors PRIVACY_NOTICE.md (version 3.0) section by
+ * The Privacy page mirrors PRIVACY_NOTICE.md (version 3.1) section by
  * section, with the same facts (#93). Change both together; the notice is the
  * source.
  */
-const PRIVACY_VERSION = 'Version 3.0, last updated 1 November 2026.'
+const PRIVACY_VERSION = 'Version 3.1, last updated 2 November 2026.'
 
 const PRIVACY: Section[] = [
   {
@@ -365,9 +365,11 @@ const PRIVACY: Section[] = [
     title: '5. Addresses and location data',
     body: (
       <p>
-        We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. The app does not ask
-        for your phone's location. The only location we record is the optional GPS position of the <b>driver's</b> phone at arrival and at
-        delivery, with the driver's consent (section 2). We do not track you or show live vehicle locations.
+        We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. We do not track
+        your phone's location. If you tap "Use my location" on our website or in the app, your browser asks your permission first; your phone's
+        position is then sent to Google Maps to find the street address and area near you, which we use only to fill in the form or check your
+        area. We do not save that position. The only location we record is the optional GPS position of the <b>driver's</b> phone at arrival and
+        at delivery, with the driver's consent (section 2). We do not show live vehicle locations.
       </p>
     ),
   },
@@ -407,6 +409,8 @@ const PRIVACY: Section[] = [
             'Termii, our SMS provider, receives your phone number and the text of each message we send you.',
             "Hostinger (HOSTINGER Global S.à r.l., Luxembourg), our hosting provider, runs the server and stores the service's data and backups in its data centre in Paris, France.",
             'Backblaze (Backblaze, Inc., United States) stores an off-site copy of our backups in its data centre in Amsterdam, the Netherlands.',
+            'Google (Google LLC, United States), only when you tap "Use my location", receives your phone\'s position to find the address near you through Google Maps (section 5).',
+            'Google (Google LLC, United States), only if you accept analytics cookies on our website, receives the website pages you visit and the buttons you use there, your device and browser type and your approximate location (city or country) through Google Analytics. See section 13.',
           ]}
         />
         <p>
@@ -553,10 +557,19 @@ const PRIVACY: Section[] = [
     headingId: 'cookies',
     title: '13. Cookies and sessions',
     body: (
-      <p>
-        We use one necessary cookie to keep you signed in. It cannot be read by scripts on the page and lasts up to 7 days, or until you sign out. We
-        do not use analytics or advertising cookies, and the app does not store your personal details in your browser.
+      <>
+        <p>
+        We use one necessary cookie to keep you signed in. It cannot be read by scripts on the page and lasts up to 7 days, or until you sign out. Your
+        browser also remembers your cookie choice, so we do not ask on every visit.
       </p>
+      <p>
+        With your permission, our public website (the home page, FAQ, Terms and this notice) also uses Google Analytics cookies to count visits, see
+        which pages and buttons help people order, and see roughly where visitors are from (city or country). We ask first, analytics stays off unless
+        you choose "Accept analytics", and you can change your choice at any time from "Cookie settings" at the bottom of the website. We do not use
+        analytics inside the signed-in apps, we never send your name, phone number or address to Google Analytics, and we do not use advertising
+        cookies. The app does not store your personal details in your browser.
+        </p>
+      </>
     ),
   },
   {

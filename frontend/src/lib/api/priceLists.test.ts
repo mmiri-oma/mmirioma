@@ -58,7 +58,7 @@ describe('GET /admin/price-lists/current (#173)', () => {
   })
 
   it('passes other errors through', async () => {
-    const { client } = setup({ error: { code: 'forbidden', message: 'Only MmiriOma staff can do this', details: null } }, 403)
+    const { client } = setup({ error: { code: 'forbidden', message: 'Only Waterline staff can do this', details: null } }, 403)
     expect((await rejection(currentOrNull(client))).code).toBe('forbidden')
   })
 

@@ -23,7 +23,7 @@ const hasEarnings = (r: AdminReport) => r.by_rider.some((x) => x.earned_minor_un
 function toCsv(r: AdminReport): string {
   const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
   const rows: (string | number)[][] = [
-    ['MmiriOma report', RANGES.find((x) => x.value === r.range)?.label ?? r.range, ...(r.is_sample ? ['SAMPLE DATA'] : [])],
+    ['Waterline report', RANGES.find((x) => x.value === r.range)?.label ?? r.range, ...(r.is_sample ? ['SAMPLE DATA'] : [])],
     [],
     ['Orders', r.orders],
     ['Delivered', r.delivered],

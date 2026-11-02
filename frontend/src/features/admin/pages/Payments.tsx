@@ -30,7 +30,7 @@ const FILTERS: { value: api.PaymentFilter; label: string }[] = [
 /**
  * Payments (added; a-pricing "Payouts and payments" tab). Staff confirm
  * payments here (pay on delivery, transfers they checked: FR-040, BR-07), and
- * pay refunds as MmiriOma points (Terms §7: no cash refunds). `?customer=`
+ * pay refunds as Waterline points (Terms §7: no cash refunds). `?customer=`
  * shows one customer's records (from Customers → Payment records).
  */
 export function Payments() {
@@ -139,7 +139,7 @@ function RefundForm({ reference, onDone }: { reference: string; onDone: () => vo
   return (
     <Card className="flex max-w-[640px] flex-col gap-3 p-4">
       <h3 className="m-0 text-[16px] font-extrabold">Refund {reference.slice(0, 7)} as points</h3>
-      <p className="m-0 text-caption text-mute">We do not give cash refunds (Terms §7). The amount becomes MmiriOma points at the current rule (SAMPLE: 1 point = ₦1 off).</p>
+      <p className="m-0 text-caption text-mute">We do not give cash refunds (Terms §7). The amount becomes Waterline points at the current rule (SAMPLE: 1 point = ₦1 off).</p>
       <TextField label="Reason (saved in the audit log)" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Order cancelled after a bank transfer" />
       {refund.isError && <Notice tone="error">{errorMessage(refund.error)}</Notice>}
       <div className="flex gap-2">

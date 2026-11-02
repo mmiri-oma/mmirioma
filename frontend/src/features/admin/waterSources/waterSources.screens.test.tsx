@@ -240,7 +240,7 @@ describe('activating, renewing, suspending and revoking', () => {
     await user.click(borehole.getByRole('button', { name: 'Activate' }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByText('Activate for Potable Water')).toBeInTheDocument()
-    expect(within(dialog).getByText('MmiriOma records the report reference. The app does not check the laboratory report.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Waterline records the report reference. The app does not check the laboratory report.')).toBeInTheDocument()
     expect(within(dialog).queryByRole('checkbox')).toBeNull()
   }, SLOW)
 

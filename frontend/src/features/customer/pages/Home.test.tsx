@@ -31,10 +31,20 @@ beforeEach(async () => {
 })
 
 describe('Home (mock mode)', () => {
-  it('greets a customer with no orders as "Welcome,", not "Welcome back," (#271)', async () => {
+  it('greets a customer with no orders by name, never as "Welcome back" (#271)', async () => {
     renderHome()
-    expect(await screen.findByText('Sample!')).toBeInTheDocument()
-    expect(screen.getByText('Welcome,')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sample.' })).toBeInTheDocument()
+    expect(screen.getByText(/^Good (morning|afternoon|evening)$/)).toBeInTheDocument()
     expect(screen.queryByText(/Welcome back/)).not.toBeInTheDocument()
+  })
+
+  it('starts a new order from what the customer is filling, with no live order card yet', async () => {
+    renderHome()
+    expect(await screen.findByRole('heading', { level: 2, name: 'What are you filling?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Drums & jerrycans/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /A water tank/ })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Your order on its way' })).not.toBeInTheDocument()
+    // No price on home: prices come from the server once there is an address (FR-022, FR-023).
+    expect(screen.queryByText(/₦/)).not.toBeInTheDocument()
   })
 })

@@ -1,7 +1,7 @@
 {
   "id": "/app",
-  "name": "MmiriOma",
-  "short_name": "MmiriOma",
+  "name": "Waterline",
+  "short_name": "Waterline",
   "description": "Order water in Enugu and have it poured into your tank.",
   "start_url": "/app",
   "scope": "/",

@@ -410,7 +410,7 @@ describe('hold review (#166)', () => {
       await transitionOrder(UNSAFE, cancel({ note: 'Road closed for the day.' }))
       const order = await getAdminOrder(UNSAFE)
       expect([order.status, order.hold]).toEqual(['cancelled', null])
-      expect(order.timeline.at(-1)).toMatchObject({ label: 'Cancelled', detail: 'Chidimma M. · MmiriOma is unable to deliver · "Road closed for the day."' })
+      expect(order.timeline.at(-1)).toMatchObject({ label: 'Cancelled', detail: 'Chidimma M. · Waterline is unable to deliver · "Road closed for the day."' })
       expect(read().partners[DANIEL_ID].notifications).toHaveLength(notifications)
     })
 

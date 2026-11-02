@@ -104,7 +104,7 @@ const END_REASON_LABEL: Partial<Record<string, string>> = {
   customer_unreachable: 'Customer unreachable',
   vehicle_failure: 'Vehicle failure',
   other: 'Other',
-  mmirioma_unable: 'MmiriOma is unable to deliver',
+  mmirioma_unable: 'Waterline is unable to deliver',
   customer_request: 'Customer asked to cancel',
 }
 

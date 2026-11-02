@@ -256,7 +256,7 @@ export function AdminAccount() {
             </Button>
             <ConfirmDialog
               open={leaving}
-              title="Log out of MmiriOma admin?"
+              title="Log out of Waterline admin?"
               confirmLabel="Log out"
               loading={logout.isPending}
               onCancel={() => setLeaving(false)}

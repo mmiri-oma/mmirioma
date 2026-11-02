@@ -47,7 +47,7 @@ export function DeliveryType() {
             illustration={
               <Illustration
                 name="tanker"
-                alt="MmiriOma water tanker truck"
+                alt="Waterline water tanker truck"
                 className="animate-drive mx-auto mt-1.5 block h-auto w-[240px] [animation-delay:.5s]"
               />
             }

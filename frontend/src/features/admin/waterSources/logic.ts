@@ -20,7 +20,7 @@ export const STATUS_LABEL: Record<ActivationRead['status'], string> = { activate
 export const STATUS_TONE: Record<ActivationRead['status'], ChipTone> = { activated: 'green', suspended: 'amber', revoked: 'red' }
 
 /** The line that keeps the screen from reading as the approval itself (decision 2 on #309; FR-012). */
-export const NOT_VERIFIED_LINE = 'MmiriOma records the report reference. The app does not check the laboratory report.'
+export const NOT_VERIFIED_LINE = 'Waterline records the report reference. The app does not check the laboratory report.'
 
 /** What the screen says after a change (docs/design/admin-water-sources.md, "Dialogs"). */
 export const TOAST = {

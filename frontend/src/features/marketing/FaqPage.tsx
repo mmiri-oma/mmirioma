@@ -19,7 +19,7 @@ const CARD_BUTTON =
  * open (native `<details>`).
  */
 export function FaqPage() {
-  useMarketingPage('FAQs | MmiriOma', 'Answers about ordering water, delivery, your delivery code, payments and driving with MmiriOma in Enugu.')
+  useMarketingPage('FAQs | Waterline', 'Answers about ordering water, delivery, your delivery code, payments and driving with Waterline in Enugu.')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<FaqFilter>('All')
   const { list, counts } = filterFaqs(search, category)

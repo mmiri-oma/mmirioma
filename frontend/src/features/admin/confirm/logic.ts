@@ -224,7 +224,7 @@ function fieldErrors(error: ApiError): Partial<Record<ConfirmField, string>> {
 export function confirmProblem(error: unknown): ConfirmProblem | null {
   if (!(error instanceof ApiError)) return null
   if (error.kind === 'network') {
-    return { tone: 'error', title: "We couldn't reach MmiriOma.", lines: ["Check your connection and try again. Trying again won't confirm it twice."], next: 'retry' }
+    return { tone: 'error', title: "We couldn't reach Waterline.", lines: ["Check your connection and try again. Trying again won't confirm it twice."], next: 'retry' }
   }
   switch (error.code) {
     case 'transition_requirements_unmet': {

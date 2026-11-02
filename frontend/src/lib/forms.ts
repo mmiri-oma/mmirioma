@@ -9,18 +9,36 @@ import { normalizeNigerianPhone } from './format/phone'
 /** Message the auth design uses for a bad phone number (docs/api/auth.md). */
 export const PHONE_MESSAGE = 'Enter a Nigerian mobile number, for example 0803 123 4567.'
 
-/** A Nigerian mobile number in any accepted input form. */
+/**
+ * A Nigerian mobile number in any accepted input form, including the bare 10
+ * digits typed after the "+234" country picker. The submitted value is the
+ * `+234` (E.164) form, which the server accepts (docs/api/auth.md).
+ */
 export const phoneField = z
   .string()
   .trim()
   .min(1, 'Enter your phone number.')
   .refine((v) => normalizeNigerianPhone(v) !== null, PHONE_MESSAGE)
+  .transform((v) => normalizeNigerianPhone(v) ?? v)
 
 /** New password rule from the auth contract: 8 to 128 characters, no composition rules. */
 export const newPasswordField = z
   .string()
   .min(8, 'Use at least 8 characters.')
   .max(128, 'Use 128 characters or fewer.')
+
+/** Shown under "Type your password again" when the two passwords differ. */
+export const PASSWORD_MISMATCH = 'The two passwords do not match.'
+
+/**
+ * The form values without the repeated password: the confirmation is checked
+ * in the browser only, and the API takes one password (docs/api/auth.md).
+ */
+export function withoutConfirm<T extends { confirm: string }>(values: T): Omit<T, 'confirm'> {
+  const copy: Partial<T> = { ...values }
+  delete copy.confirm
+  return copy as Omit<T, 'confirm'>
+}
 
 /** Something@something.something with no spaces: the email check shared by forms and mocks. */
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

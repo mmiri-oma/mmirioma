@@ -96,7 +96,7 @@ export function priceProblem(error: unknown): PriceProblem | null {
   if (error.kind === 'network') {
     return {
       tone: 'error',
-      title: "We couldn't reach MmiriOma.",
+      title: "We couldn't reach Waterline.",
       // Never "Nothing was ordered": the app cannot know whether it arrived (FR-026).
       body: "Check your connection and try again. Trying again won't place a second order.",
       next: 'retry',

@@ -257,7 +257,7 @@ export function AccountSettings() {
           </Button>
           <ConfirmDialog
             open={leaving}
-            title="Log out of MmiriOma?"
+            title="Log out of Waterline?"
             confirmLabel="Log out"
             loading={logout.isPending}
             onCancel={() => setLeaving(false)}

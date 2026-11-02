@@ -72,7 +72,7 @@ import { clone, delay, mockError, newDeliveryCode, newId, newReference } from '.
 function requireAdmin(s: MockState = read()): string {
   const id = requireUserId()
   const user = s.users.find((u) => u.id === id)
-  if (user?.role !== 'admin') throw mockError(403, 'forbidden', 'Only MmiriOma staff can do this')
+  if (user?.role !== 'admin') throw mockError(403, 'forbidden', 'Only Waterline staff can do this')
   return id
 }
 
@@ -734,7 +734,7 @@ export async function transitionOrder(reference: string, request: AdminTransitio
     const now = new Date().toISOString()
     const found = findCustomerOrder(s, reference)
     if (request.to === 'cancelled') {
-      cancelJob(s, reference, note || (request.reason_code === 'customer_request' ? 'The customer asked to cancel' : 'MmiriOma is unable to deliver'), false)
+      cancelJob(s, reference, note || (request.reason_code === 'customer_request' ? 'The customer asked to cancel' : 'Waterline is unable to deliver'), false)
     } else {
       job.stage = 'failed'
       if (found) found.order.timeline.push({ label: 'Delivery failed', at: now })
@@ -1314,7 +1314,7 @@ export async function confirmPayment(reference: string, method: PaymentMethod | 
 }
 
 /**
- * Refund as MmiriOma points (Terms §7: no cash refunds). Sample rule: the
+ * Refund as Waterline points (Terms §7: no cash refunds). Sample rule: the
  * price list's "1 point = ₦N off", so ₦5,900 at ₦1 a point is 5,900 points.
  */
 export async function refundAsPoints(reference: string, reason: string): Promise<AdminPayment[]> {

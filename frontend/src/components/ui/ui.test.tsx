@@ -167,7 +167,7 @@ describe('ConfirmDialog', () => {
         <button type="button" onClick={() => setOpen(true)}>
           Log out
         </button>
-        <ConfirmDialog open={open} title="Log out of MmiriOma?" confirmLabel="Log out" onCancel={() => setOpen(false)} onConfirm={onConfirm}>
+        <ConfirmDialog open={open} title="Log out of Waterline?" confirmLabel="Log out" onCancel={() => setOpen(false)} onConfirm={onConfirm}>
           You will need your password to sign in again.
         </ConfirmDialog>
       </>
@@ -181,7 +181,7 @@ describe('ConfirmDialog', () => {
     const opener = screen.getByRole('button', { name: 'Log out' })
     await user.click(opener)
 
-    const dialog = screen.getByRole('alertdialog', { name: 'Log out of MmiriOma?' })
+    const dialog = screen.getByRole('alertdialog', { name: 'Log out of Waterline?' })
     expect(dialog).toHaveAccessibleDescription('You will need your password to sign in again.')
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
     expect(document.body.style.overflow).toBe('hidden')

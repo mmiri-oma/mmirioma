@@ -66,9 +66,11 @@ describe('MarketingHeader', () => {
   it('opens the mobile menu and closes it with Escape or a link', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/']}>
-        <MarketingHeader current="home" />
-      </MemoryRouter>,
+      <AppProviders>
+        <MemoryRouter initialEntries={['/']}>
+          <MarketingHeader current="home" />
+        </MemoryRouter>
+      </AppProviders>,
     )
     const button = screen.getByRole('button', { name: 'Open menu' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
@@ -82,6 +84,23 @@ describe('MarketingHeader', () => {
     await user.click(screen.getByRole('button', { name: 'Open menu' }))
     await user.click(within(screen.getByRole('navigation', { name: 'Mobile' })).getByRole('link', { name: 'FAQs' }))
     expect(screen.queryByRole('navigation', { name: 'Mobile' })).not.toBeInTheDocument()
+  })
+})
+
+describe('Check your area', () => {
+  it('opens from the header and answers without scrolling the page', async () => {
+    const user = userEvent.setup()
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/']}>
+          <MarketingHeader current="home" />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Check your area' }))
+    const dialog = screen.getByRole('dialog', { name: 'Do we deliver to you?' })
+    await user.type(within(dialog).getByRole('searchbox'), 'trans ekulu')
+    expect(within(dialog).getByText('Yes, Trans-Ekulu is on our list.')).toBeInTheDocument()
   })
 })
 
@@ -109,25 +128,33 @@ describe('routes', () => {
     for (const link of apply) expect(link).toHaveAttribute('href', '/partner/signup')
   }, 20_000)
 
-  it('puts benefits before features, and the worries with the closing button last, with no newsletter (#8)', async () => {
+  it('tells the story before the details, answers worries before the closing button, with no newsletter (#8)', async () => {
     resetMockDb()
     renderAt('/')
-    const benefits = await screen.findByRole('heading', { level: 2, name: 'Your water, sorted from your phone' }, { timeout: 10_000 })
-    const how = screen.getByRole('heading', { level: 2, name: /How MmiriOma works/ })
-    const worries = screen.getByRole('heading', { level: 2, name: /Worried about something/ })
+    const why = await screen.findByRole('heading', { level: 2, name: /Water, without the wahala/ }, { timeout: 10_000 })
+    const how = screen.getByRole('heading', { level: 2, name: /Four steps from order to a full tank/ })
+    const worries = screen.getByRole('heading', { level: 3, name: /Worried about something/ })
+    const closing = screen.getByRole('heading', { level: 2, name: /Drums running low/ })
     const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(follows(benefits, how)).toBe(true)
+    expect(follows(why, how)).toBe(true)
     expect(follows(how, worries)).toBe(true)
+    expect(follows(worries, closing)).toBe(true)
     expect(screen.queryByRole('heading', { name: 'Hear first when we reach your area' })).not.toBeInTheDocument()
-    for (const o of OBJECTIONS) expect(screen.getByRole('heading', { level: 3, name: o.q })).toBeInTheDocument()
-    const closing = within(worries.closest('section')!).getByRole('link', { name: /Order Water/ })
-    expect(closing).toHaveAttribute('href', '/order')
+    for (const o of OBJECTIONS) expect(screen.getByRole('heading', { level: 4, name: o.q })).toBeInTheDocument()
+    expect(within(closing.closest('section')!).getByRole('link', { name: /Order Water/ })).toHaveAttribute('href', '/order')
+  }, 20_000)
+
+  it('shows a 6-digit sample delivery code and no prices (FR-035, FR-022)', async () => {
+    resetMockDb()
+    renderAt('/')
+    expect(await screen.findByRole('img', { name: 'Sample delivery code 4 8 1 7 3 5' }, { timeout: 10_000 })).toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/₦/)
   }, 20_000)
 
   it('has a floating WhatsApp chat button on the support number from the server (FR-055)', async () => {
     resetMockDb()
     renderAt('/')
-    const chat = await screen.findByRole('link', { name: /Chat with MmiriOma on WhatsApp/ }, { timeout: 10_000 })
+    const chat = await screen.findByRole('link', { name: /Chat with Waterline on WhatsApp/ }, { timeout: 10_000 })
     expect(chat).toHaveAttribute('href', expect.stringMatching(/^https:\/\/wa\.me\/2348133774902\?text=/))
     expect(chat).toHaveAttribute('target', '_blank')
     expect(chat).toHaveAttribute('rel', 'noopener noreferrer')

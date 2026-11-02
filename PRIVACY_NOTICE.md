@@ -3,8 +3,8 @@
 <!-- The website's Privacy page (/privacy, frontend/src/features/marketing/LegalPages.tsx)
 mirrors this notice section by section. Change both together. -->
 
-**Version:** 3.0  
-**Last updated:** 1 November 2026  
+**Version:** 3.1  
+**Last updated:** 2 November 2026  
 **Service area:** Enugu State, Nigeria
 
 At **MmiriOma**, we respect your privacy. This notice explains what personal information we collect when you create an account, request water, receive a delivery, pay, contact us or deliver for us as a rider or driver; why we use it; who receives it; how long we keep it; and how you can exercise your rights. We aim to handle personal data in accordance with the **Nigeria Data Protection Act 2023** and other applicable laws.
@@ -54,7 +54,7 @@ You must verify your mobile number before your first order. We send a 6-digit co
 
 ## 5. Addresses and location data
 
-We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. The app does not ask for your phone's location. The only location we record is the optional GPS position of the **driver's** phone at arrival and at delivery, with the driver's consent (section 2). We do not track you or show live vehicle locations.
+We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. We do not track your phone's location. If you tap "Use my location" on our website or in the app, your browser asks your permission first; your phone's position is then sent to Google Maps to find the street address and area near you, which we use only to fill in the form or check your area. We do not save that position. The only location we record is the optional GPS position of the **driver's** phone at arrival and at delivery, with the driver's consent (section 2). We do not show live vehicle locations.
 
 ## 6. Payments, refunds and delivery evidence
 
@@ -73,6 +73,8 @@ We share only what is needed to run the service:
 - **Termii**, our SMS provider, receives your phone number and the text of each message we send you.
 - **Hostinger** (HOSTINGER Global S.à r.l., Luxembourg), our hosting provider, runs the server and stores the service's data and backups in its data centre in Paris, France.
 - **Backblaze** (Backblaze, Inc., United States) stores an off-site copy of our backups in its data centre in Amsterdam, the Netherlands.
+- **Google** (Google LLC, United States), only when you tap "Use my location", receives your phone's position to find the address near you through Google Maps (section 5).
+- **Google** (Google LLC, United States), only if you accept analytics cookies on our website, receives the website pages you visit and the buttons you use there, your device and browser type and your approximate location (city or country) through Google Analytics. See section 13.
 
 The app does not give your details to water suppliers or advertisers. We may disclose data when required by law. Because our hosting provider stores the service's data in France and our backup provider stores copies of it in the Netherlands, your personal information is processed outside Nigeria; we assess and apply the safeguards required by Nigerian data-protection law for such transfers, and do the same for any other provider that processes personal data outside Nigeria.
 
@@ -126,7 +128,9 @@ Subject to the Nigeria Data Protection Act 2023 and lawful exceptions, you may h
 
 ## 13. Cookies and sessions
 
-We use one necessary cookie to keep you signed in. It cannot be read by scripts on the page and lasts up to 7 days, or until you sign out. We do not use analytics or advertising cookies, and the app does not store your personal details in your browser.
+We use one necessary cookie to keep you signed in. It cannot be read by scripts on the page and lasts up to 7 days, or until you sign out. Your browser also remembers your cookie choice, so we do not ask on every visit.
+
+With your permission, our public website (the home page, FAQ, Terms and this notice) also uses Google Analytics cookies to count visits, see which pages and buttons help people order, and see roughly where visitors are from (city or country). We ask first, analytics stays off unless you choose "Accept analytics", and you can change your choice at any time from "Cookie settings" at the bottom of the website. We do not use analytics inside the signed-in apps, we never send your name, phone number or address to Google Analytics, and we do not use advertising cookies. The app does not store your personal details in your browser.
 
 ## 14. Children's privacy
 

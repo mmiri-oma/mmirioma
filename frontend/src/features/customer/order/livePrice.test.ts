@@ -40,7 +40,7 @@ describe('priceProblem', () => {
 
   it('never says "Nothing was ordered" after a lost connection: the retry is safe (FR-026)', () => {
     const problem = priceProblem(new ApiError({ kind: 'network', status: null, code: 'network_error', message: 'offline' }))
-    expect(problem).toMatchObject({ title: "We couldn't reach MmiriOma.", next: 'retry' })
+    expect(problem).toMatchObject({ title: "We couldn't reach Waterline.", next: 'retry' })
     expect(problem?.body).toContain("Trying again won't place a second order.")
     expect(problem?.body).not.toContain('Nothing was ordered')
   })

@@ -152,6 +152,18 @@ and their `/verify`) are documented in
   the CLI.
 - **One identifier: phone.** Numbers are normalized to E.164 before storage and
   comparison, so `0800...`, `234800...` and `+234800...` are the same account.
+- **Sign-in screens (Waterline redesign, `feat/waterline-redesign`).** Every
+  sign-in and sign-up screen (customer, rider/driver, staff) uses
+  `frontend/src/features/auth/AuthShell.tsx`: a side panel whose tank fills
+  as the form becomes valid (decoration only), a band on phones, and a dark
+  tone for staff. The phone field (`PhoneField` in
+  `components/ui/Field.tsx`) has a country picker listing
+  `PHONE_COUNTRIES` (Nigeria, +234 only, because FR-003 accepts Nigerian
+  numbers only); it also accepts the bare 10 digits typed after "+234", and
+  the form sends the E.164 form. Customer and rider/driver sign-up ask for
+  the password twice ("Type your password again"; "The two passwords do not
+  match."), checked in the browser only: there is no self-service reset, so
+  a typo would lock the person out. The API still takes one `password`.
 - **Deactivation is immediate (FR-002).** Session lookup requires
   `users.is_active`, and `deactivate` also revokes every open session.
 - **Contact verification (FR-003).** Customers start unverified

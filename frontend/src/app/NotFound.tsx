@@ -29,7 +29,7 @@ export function NotFound() {
 
   useEffect(() => {
     const before = document.title
-    document.title = 'Page not found | MmiriOma'
+    document.title = 'Page not found | Waterline'
     return () => {
       document.title = before
     }
@@ -38,7 +38,7 @@ export function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col bg-[linear-gradient(180deg,#F3F9FE_0%,#FFFFFF_60%)] text-ink">
       <header className="mx-auto flex w-full max-w-[1100px] items-center px-4 py-4 sm:px-6">
-        <Link to="/" aria-label="MmiriOma home" className="flex min-h-11 items-center">
+        <Link to="/" aria-label="Waterline home" className="flex min-h-11 items-center">
           <Logo height={34} alt="" />
         </Link>
       </header>

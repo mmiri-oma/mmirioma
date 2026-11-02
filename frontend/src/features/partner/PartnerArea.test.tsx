@@ -53,7 +53,7 @@ describe('the partner app shell when the profile cannot be refreshed', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
     })
     expect(screen.getByText('Rider home')).toBeInTheDocument()
-    expect(screen.queryByText(/We cannot reach MmiriOma/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/We cannot reach Waterline/)).not.toBeInTheDocument()
   }, 20_000)
 
   it('still shows the full-screen error when the profile never loaded', async () => {

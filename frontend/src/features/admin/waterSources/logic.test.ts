@@ -154,7 +154,7 @@ describe('saveFailure (what a dialog says when a save fails)', () => {
 
   it('keeps the shared no-connection wording', () => {
     const error = new ApiError({ kind: 'network', status: 0, code: 'network_error', message: 'x' })
-    expect(saveFailure(error).message).toMatch(/cannot reach MmiriOma/)
+    expect(saveFailure(error).message).toMatch(/cannot reach Waterline/)
     expect(saveFailure(error).refresh).toBe(false)
   })
 

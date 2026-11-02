@@ -1,11 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Logo } from '../../components/brand/Logo'
+import { measurementId, openCookieSettings, track } from '../../lib/analytics'
 import { cx } from '../../lib/cx'
+import { formatPhone } from '../../lib/format/phone'
 import { InstallHowToSheet } from '../pwa/InstallParts'
 import { appFor, type AppKind } from '../pwa/manifest'
 import { useInstallAction } from '../pwa/useInstallAction'
 import { CONTACT, NAV_LINKS, ORDER_CTA } from './content'
-import { MailIcon, MenuBarsIcon, PhoneIcon, PinIcon } from './icons'
+import { CookieConsent } from './CookieConsent'
+import { PhoneIcon } from './landing/Art'
+import { AreaCheckButton } from './landing/AreaCheckDialog'
+import { useSupportContact } from './queries'
+import './waterline.css'
 
 /**
  * A marketing image: WebP with the PNG or JPG fallback, fixed size to stop
@@ -49,58 +56,46 @@ export function Pic({
   )
 }
 
-/** The app's horizontal logo (public/brand), light or dark. */
+/** The Waterline logo for the public pages, light or dark. */
 export function BrandLogo({ dark = false, className }: { dark?: boolean; className?: string }) {
-  const base = `/brand/logo-horizontal${dark ? '-dark' : ''}`
-  return (
-    <picture className="contents">
-      <source srcSet={`${base}@1x.webp 1x, ${base}@2x.webp 2x, ${base}@3x.webp 3x`} type="image/webp" className="hidden" />
-      <img src={`${base}@2x.png`} alt="MmiriOma" width={207} height={48} className={cx('block w-auto', className)} />
-    </picture>
-  )
+  return <Logo variant={dark ? 'horizontal-dark' : 'horizontal'} height={36} className={cx('block w-auto', className)} />
 }
 
-/** Uppercase eyebrow label above a section title; `navy` for the dark drivers banner. */
+/** Uppercase eyebrow label above a section title; `navy` for dark backgrounds. */
 export function Kicker({ children, navy = false, className }: { children: ReactNode; navy?: boolean; className?: string }) {
   return (
     <p className={cx('m-0 text-[13px] font-bold tracking-[2px] uppercase', navy ? 'text-mk-kicker-navy' : 'text-mk-kicker', className)}>{children}</p>
   )
 }
 
-/** Centred kicker, h2 and lead line used at the top of most sections. */
-export function SectionHead({ kicker, title, lead, className }: { kicker: string; title: ReactNode; lead?: ReactNode; className?: string }) {
-  return (
-    <div className={cx('flex flex-col items-center gap-2.5 text-center', className)}>
-      <Kicker>{kicker}</Kicker>
-      <h2 className="m-0 font-display text-[clamp(30px,3.8vw,44px)] leading-[1.15] font-extrabold tracking-[-1px] text-ink">{title}</h2>
-      {lead && <p className="m-0 max-w-[620px] text-[17px] leading-[1.6] text-slate">{lead}</p>}
-    </div>
-  )
-}
+/** Header links: the area check has its own button, so "Areas" is not a link here (the footer keeps it). */
+const HEADER_LINKS = NAV_LINKS.filter((l) => l.to !== '/#areas')
 
-/** Teal "Oma" inside headings like "How MmiriOma Works". */
-export function Oma() {
+function PinIcon() {
   return (
-    <>
-      Mmiri<span className="text-mk-teal">Oma</span>
-    </>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
   )
 }
 
 /**
- * Site header (landing and FAQ). It stays stuck to the top while the page
- * scrolls, so the order button is always one tap away. Below 960 px the
- * links move into a menu panel under the header; below 600 px the order
- * button moves into it too. The panel closes on a link tap, on Escape and on
- * any navigation, and the page behind it does not scroll while it is open
- * (README "Behaviour").
+ * Site header for the public pages (Waterline design). It stays at the top
+ * while the page scrolls, gains a hairline once scrolled, and keeps "Order
+ * Water" one tap away. Below 960 px the links, phone and sign-in move into a
+ * menu panel; below 600 px the order button does too (the landing page then
+ * shows its order bar). The panel closes on a link tap, on Escape and on any
+ * navigation, and the page behind it does not scroll while it is open.
  */
 export function MarketingHeader({ current }: { current: 'home' | 'faq' }) {
   const location = useLocation()
+  const contact = useSupportContact()
   // The menu belongs to the location it was opened on, so any navigation
   // (a link, Back) closes it without an effect.
   const [openOn, setOpenOn] = useState<string | null>(null)
   const open = openOn === location.key
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -114,76 +109,84 @@ export function MarketingHeader({ current }: { current: 'home' | 'faq' }) {
     }
   }, [open])
 
-  const isCurrent = (to: string) => (current === 'faq' ? to === '/faq' : to === '/')
+  // The hairline under the header appears once the page has scrolled.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const isCurrent = (to: string) => current === 'faq' && to === '/faq'
+  const phoneLabel = formatPhone(contact.phone)
+  const close = () => setOpenOn(null)
 
   return (
-    <header className="sticky top-0 z-30 border-0 border-b border-solid border-[#E6EEF7] bg-white/95 backdrop-blur-sm">
-      <div className="mk-wrap flex min-h-[76px] items-center justify-between gap-6">
-        <Link to="/" aria-label="MmiriOma home" className="flex shrink-0 items-center">
-          <BrandLogo className="h-11" />
+    <header className={cx('wl-nav', (scrolled || open) && 'wl-scrolled')}>
+      <div className="wl-wrap wl-nav-inner">
+        <Link to="/" aria-label="Waterline home" className="wl-nav-brand">
+          <Logo height={34} alt="" />
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-[30px] text-[15px] font-medium max-[960.98px]:hidden">
-          {NAV_LINKS.map((l) => (
-            <Link
-              key={l.label}
-              to={l.to}
-              aria-current={isCurrent(l.to) ? 'page' : undefined}
-              className={cx(
-                'inline-flex min-h-11 items-center no-underline',
-                isCurrent(l.to) ? 'font-bold text-primary hover:text-primary' : 'text-slate hover:text-ink',
-              )}
-            >
+        <nav aria-label="Main" className="wl-nav-links">
+          {HEADER_LINKS.map((l) => (
+            <Link key={l.label} to={l.to} aria-current={isCurrent(l.to) ? 'page' : undefined}>
               {l.label}
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2.5">
-          <Link
-            to="/order"
-            className="inline-flex min-h-[46px] items-center justify-center rounded-[10px] bg-primary px-6 text-center text-[15px] font-semibold whitespace-nowrap text-white no-underline transition-colors duration-150 hover:bg-primary-dark hover:text-white max-[600.98px]:hidden"
-          >
-            {ORDER_CTA}
+        <div className="wl-nav-cta">
+          <AreaCheckButton className="wl-nav-area" place="header" label="Check your area">
+            <PinIcon />
+            <span>Check your area</span>
+          </AreaCheckButton>
+          <a className="wl-nav-call" href={`tel:${contact.phone}`} aria-label={`Call ${phoneLabel}`}>
+            <PhoneIcon />
+            <span>{phoneLabel}</span>
+          </a>
+          <Link className="wl-nav-signin" to="/signin">
+            Sign in
+          </Link>
+          <Link to="/order" className="wl-btn wl-btn-primary wl-btn-sm" onClick={() => track('order_cta_click', { location: 'header' })}>
+            <span>{ORDER_CTA}</span>
           </Link>
           <button
             type="button"
+            className="wl-menu-btn"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
-            aria-controls="mk-mobile-menu"
+            aria-controls="wl-mobile-menu"
             onClick={() => setOpenOn(open ? null : location.key)}
-            className="hidden size-[46px] cursor-pointer items-center justify-center rounded-[10px] border border-solid border-input-line bg-white text-ink transition-colors duration-150 hover:border-primary hover:bg-mk-panel max-[960.98px]:inline-flex"
           >
-            <MenuBarsIcon />
+            <i />
+            <i />
           </button>
         </div>
       </div>
       {open && (
-        <nav
-          id="mk-mobile-menu"
-          aria-label="Mobile"
-          className="max-h-[calc(100dvh-77px)] overflow-y-auto overscroll-contain border-0 border-t border-solid border-[#E6EEF7] bg-white"
-        >
-          <div className="mk-wrap flex flex-col pt-2 pb-4">
-            {NAV_LINKS.map((l, i) => (
+        <nav id="wl-mobile-menu" aria-label="Mobile" className="wl-sheet">
+          <div className="wl-wrap wl-sheet-inner">
+            {HEADER_LINKS.map((l, i) => (
               <Link
                 key={l.label}
                 to={l.to}
-                onClick={() => setOpenOn(null)}
+                onClick={close}
                 aria-current={isCurrent(l.to) ? 'page' : undefined}
-                className={cx(
-                  'flex min-h-12 items-center font-semibold text-ink no-underline hover:text-primary',
-                  i < NAV_LINKS.length - 1 && 'border-0 border-b border-solid border-[#EEF3F9]',
-                )}
+                style={{ animationDelay: `${i * 30}ms` }}
               >
                 {l.label}
               </Link>
             ))}
-            <Link
-              to="/order"
-              onClick={() => setOpenOn(null)}
-              className="mt-3 flex min-h-[50px] items-center justify-center rounded-[10px] bg-primary text-center font-bold text-white no-underline hover:bg-primary-dark hover:text-white"
-            >
-              {ORDER_CTA}
+            <Link to="/order" onClick={close} className="wl-btn wl-btn-primary">
+              <span>{ORDER_CTA}</span>
             </Link>
+            <AreaCheckButton className="wl-btn wl-btn-ghost" place="menu">
+              Check your area
+            </AreaCheckButton>
+            <Link to="/signin" onClick={close} className="wl-btn wl-btn-ghost">
+              Sign in
+            </Link>
+            <a href={`tel:${contact.phone}`} className="wl-btn wl-btn-ghost">
+              Call {phoneLabel}
+            </a>
           </div>
         </nav>
       )}
@@ -191,87 +194,75 @@ export function MarketingHeader({ current }: { current: 'home' | 'faq' }) {
   )
 }
 
-const FOOT_LINK = 'text-mk-foot-text no-underline hover:text-white'
-
-function FootColumn({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <nav aria-label={label} className="flex flex-col gap-3 text-[15px]">
-      <p className="m-0 mb-1 font-bold text-white">{label}</p>
-      {children}
-    </nav>
-  )
-}
-
 /**
- * Site footer. `full` is the landing page's (five columns, rises 36 px under
- * the rounded section above it); `short` is the FAQ page's. Social icons stay
- * hidden until the real profile links exist.
+ * Site footer (Waterline design): brand, links, account, contact, the legal
+ * links and "Cookie settings", which reopens the cookie banner. The banner
+ * itself is rendered here, so every public page with this footer asks for
+ * consent the same way. `short` (the FAQ page) leaves out the account links.
  */
 export function MarketingFooter({ variant }: { variant: 'full' | 'short' }) {
   const full = variant === 'full'
+  const contact = useSupportContact()
   return (
-    <footer className={cx('bg-mk-navy text-mk-foot-text', full && 'mt-[-36px] pt-9')}>
-      <div className="mk-wrap flex flex-col gap-12 pt-16 pb-7">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,160px),1fr))] gap-x-8 gap-y-10">
-          <div className="mk-foot-brand flex max-w-[360px] min-w-0 flex-col gap-[18px]">
-            <BrandLogo dark className="h-[46px] self-start" />
-            <p className="m-0 text-[15px] leading-[1.65]">Water delivery for homes, offices and businesses in Enugu. Poured into your drums or tank.</p>
+    <>
+      <footer className="wl-footer">
+        <div className="wl-wrap wl-footer-grid">
+          <div className="wl-footer-brand">
+            <Link to="/" aria-label="Waterline home" className="inline-flex">
+              <Logo variant="horizontal-dark" height={34} alt="" />
+            </Link>
+            <p>Water delivery for homes, offices and businesses in Enugu. Poured into your drums or tank.</p>
           </div>
-          <FootColumn label="Quick Links">
-            {(full ? NAV_LINKS : NAV_LINKS.filter((l) => l.to === '/' || l.to === '/faq')).map((l) => (
-              <Link key={l.label} to={l.to} className={FOOT_LINK}>
+          <nav aria-label="Quick Links">
+            <h4>Explore</h4>
+            {NAV_LINKS.map((l) => (
+              <Link key={l.label} to={l.to}>
                 {l.label}
               </Link>
             ))}
-          </FootColumn>
-          <FootColumn label="Legal">
-            <Link to="/terms" className={FOOT_LINK}>
-              Terms of Service
-            </Link>
-            <Link to="/privacy" className={FOOT_LINK}>
-              Privacy Notice
-            </Link>
-            {full && (
-              <Link to="/privacy#cookies" className={FOOT_LINK}>
-                Cookie Policy
-              </Link>
-            )}
-          </FootColumn>
-          {full && (
-            <FootColumn label="Account">
-              <Link to="/order" className={FOOT_LINK}>
-                {ORDER_CTA}
-              </Link>
-              <Link to="/partner/signup" className={FOOT_LINK}>
-                Become a Rider or Driver
-              </Link>
-              <Link to="/admin/login" className={FOOT_LINK}>
-                Staff Login
-              </Link>
-            </FootColumn>
+          </nav>
+          {full ? (
+            <nav aria-label="Account">
+              <h4>Account</h4>
+              <Link to="/order">{ORDER_CTA}</Link>
+              <Link to="/signin">Sign in</Link>
+              <Link to="/partner/signup">Become a Rider or Driver</Link>
+              <Link to="/admin/login">Staff Login</Link>
+            </nav>
+          ) : (
+            <span aria-hidden="true" />
           )}
-          <div className={cx('flex flex-col text-[15px]', full ? 'gap-3.5' : 'gap-3')}>
-            <p className="m-0 mb-1 font-bold text-white">Contact</p>
-            <span className="flex items-center gap-2.5">
-              {full && <PinIcon size={16} className="shrink-0 text-white" />}
-              {CONTACT.place}
-            </span>
-            <a href={`mailto:${CONTACT.email}`} className={cx(FOOT_LINK, 'flex items-center gap-2.5')}>
-              {full && <MailIcon className="shrink-0 text-white" />}
-              {CONTACT.email}
-            </a>
-            <a href={CONTACT.phoneHref} className={cx(FOOT_LINK, 'flex items-center gap-2.5')}>
-              {full && <PhoneIcon className="shrink-0 text-white" />}
-              {CONTACT.phoneLabel}
-            </a>
+          <div>
+            <h4>Contact</h4>
+            <span>{CONTACT.place}</span>
+            <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
+            <a href={`tel:${contact.phone}`}>{formatPhone(contact.phone)}</a>
           </div>
         </div>
-        <div className="flex flex-wrap justify-between gap-3 border-0 border-t border-solid border-mk-foot-rule pt-6 text-[14px] text-mk-foot-muted">
-          <span>© 2026 MmiriOma. All rights reserved.</span>
-          <span>Water at your gate.</span>
+        <div className="wl-wrap">
+          <div className="wl-footer-base">
+            <span>© 2026 Waterline. Water at your gate.</span>
+            <nav aria-label="Legal" className="flex flex-wrap gap-4">
+              <Link to="/terms" className="text-inherit no-underline hover:text-white">
+                Terms of Service
+              </Link>
+              <Link to="/privacy" className="text-inherit no-underline hover:text-white">
+                Privacy Notice
+              </Link>
+              <Link to="/privacy#cookies" className="text-inherit no-underline hover:text-white">
+                Cookie Policy
+              </Link>
+              {measurementId() && (
+                <button type="button" onClick={openCookieSettings} className="cursor-pointer border-0 bg-transparent p-0 text-inherit hover:text-white">
+                  Cookie settings
+                </button>
+              )}
+            </nav>
+          </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+      <CookieConsent />
+    </>
   )
 }
 

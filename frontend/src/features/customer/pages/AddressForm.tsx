@@ -14,9 +14,11 @@ import { Notice } from '../../../components/ui/Notice'
 import { errorMessage } from '../../../lib/api/errorMessage'
 import { applyServerFieldErrors } from '../../../lib/forms'
 import type { SavedAddress } from '../../../domain/orders'
+import { UseMyLocation } from '../../../components/ui/UseMyLocation'
 import { AreaPicker } from '../components/AreaPicker'
 import type { AreaChoice } from '../order/livePrice'
-import { useAddAddress, useAddresses, useUpdateAddress } from '../queries'
+import { areaForPlaces } from '../order/locationArea'
+import { useAddAddress, useAddresses, useServiceZones, useUpdateAddress } from '../queries'
 
 const schema = z.object({
   label: z.string().trim().min(1, 'Give the address a name, like Home.').max(40, 'Use 40 characters or fewer.'),
@@ -88,6 +90,7 @@ function AddressFormBody({ existing, isFirst }: { existing?: SavedAddress; isFir
   // An address is saved only with an area (FR-020). A no-longer-served area must be picked again.
   const [area, setArea] = useState<AreaChoice>(existing?.zone?.is_active ? { id: existing.zone.id, name: existing.zone.name } : null)
   const [areaError, setAreaError] = useState<string | undefined>()
+  const zones = useServiceZones()
 
   const onSubmit = handleSubmit((v) => {
     if (area === null || area === 'not_listed') {
@@ -123,6 +126,19 @@ function AddressFormBody({ existing, isFirst }: { existing?: SavedAddress; isFir
           placeholder="e.g. 12 Lakeview Street, GRA, Enugu"
           error={errors.address?.message}
           {...register('address')}
+        />
+        <UseMyLocation
+          place="address_form"
+          actionLabel="Use this address"
+          className="rise-2"
+          onFound={(location) => {
+            setValue('address', location.address, { shouldValidate: true, shouldDirty: true })
+            const found = areaForPlaces(zones.data ?? [], location.placeNames)
+            if (found) {
+              setArea(found)
+              setAreaError(undefined)
+            }
+          }}
         />
         <MapFrame height={132} className="rise-2">
           <DetailsMapArt />

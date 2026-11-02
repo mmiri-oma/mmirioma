@@ -297,8 +297,8 @@ describe('cancelNoteError (CANCEL: a note of up to 500, required once unloading 
 describe('the two cancel reasons (#174)', () => {
   it('are the two the contract accepts, in staff words, and have a history label', () => {
     expect(CANCEL_REASONS.map((r) => r.code)).toEqual(['customer_request', 'mmirioma_unable'])
-    expect(CANCEL_REASONS.map((r) => r.label)).toEqual(['The customer asked to cancel', 'MmiriOma is unable to deliver'])
+    expect(CANCEL_REASONS.map((r) => r.label)).toEqual(['The customer asked to cancel', 'Waterline is unable to deliver'])
     expect(endReasonLabel('customer_request')).toBe('Customer asked to cancel')
-    expect(endReasonLabel('mmirioma_unable')).toBe('MmiriOma is unable to deliver')
+    expect(endReasonLabel('mmirioma_unable')).toBe('Waterline is unable to deliver')
   })
 })

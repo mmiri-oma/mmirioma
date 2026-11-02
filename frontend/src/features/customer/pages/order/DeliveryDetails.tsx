@@ -13,7 +13,9 @@ import { Notice } from '../../../../components/ui/Notice'
 import { cx } from '../../../../lib/cx'
 import { formatPhone } from '../../../../lib/format/phone'
 import { phoneField } from '../../../../lib/forms'
+import { UseMyLocation } from '../../../../components/ui/UseMyLocation'
 import { AreaPicker } from '../../components/AreaPicker'
+import { areaForPlaces } from '../../order/locationArea'
 import { OrderStepHeading } from '../../components/OrderParts'
 import type { AreaChoice } from '../../order/livePrice'
 import { useOrderDraft } from '../../order/orderDraftContext'
@@ -184,6 +186,21 @@ export function DeliveryDetails() {
                 placeholder="e.g. 12 Lakeview Street, GRA, Enugu"
                 error={errors.address?.message}
                 {...register('address')}
+              />
+            )}
+            {isNew && (
+              <UseMyLocation
+                place="order_details"
+                actionLabel="Use this address"
+                className="mt-2.5"
+                onFound={(location) => {
+                  setValue('address', location.address, { shouldValidate: true, shouldDirty: true })
+                  const found = areaForPlaces(zones.data ?? [], location.placeNames)
+                  if (found) {
+                    setArea(found)
+                    setAreaError(undefined)
+                  }
+                }}
               />
             )}
           </div>

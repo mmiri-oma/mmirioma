@@ -23,14 +23,13 @@ export const CONTACT = {
 /** Label of every "order" button on the public pages (owner's choice, 2026-10-21). */
 export const ORDER_CTA = 'Order Water'
 
-/** Header and footer "Quick Links": sections of the landing page, plus the FAQ page. */
+/** Header and footer links: sections of the landing page, plus the FAQ page. */
 export const NAV_LINKS: { label: string; to: string }[] = [
-  { label: 'Home', to: '/' },
-  { label: 'How It Works', to: '/#how' },
-  { label: 'Our Services', to: '/#options' },
-  { label: 'For Drivers', to: '/#drivers' },
+  { label: 'How it works', to: '/#how' },
+  { label: 'Sizes', to: '/#sizes' },
+  { label: 'For drivers', to: '/#drivers' },
+  { label: 'Areas', to: '/#areas' },
   { label: 'FAQs', to: '/faq' },
-  { label: 'Service Areas', to: '/#areas' },
 ]
 
 /** Planned areas from the design. A sample until the pilot zone is confirmed (PRD §13.1, decision Q5). */
@@ -47,6 +46,9 @@ export const SERVICE_AREAS = [
   'Uwani',
   'and nearby areas',
 ]
+
+/** The named areas only: the list ends with "and nearby areas", which is not a place. */
+export const AREA_NAMES = SERVICE_AREAS.filter((a) => a !== 'and nearby areas')
 
 export const FAQ_CATEGORIES = ['Ordering', 'Delivery', 'Delivery code', 'Payments', 'Riders & drivers', 'Account & safety'] as const
 export type FaqCategory = (typeof FAQ_CATEGORIES)[number]
@@ -142,7 +144,7 @@ export const FAQS: Faq[] = [
   {
     cat: 'Account & safety',
     q: 'Do I need to download the app from an app store?',
-    a: 'No. MmiriOma is a web app. Open the link on your phone or computer and add it to your home screen with the Install button (on iPhone: Share, then Add to Home Screen).',
+    a: 'No. Waterline is a web app. Open the link on your phone or computer and add it to your home screen with the Install button (on iPhone: Share, then Add to Home Screen).',
   },
 ]
 

@@ -5,7 +5,7 @@ import { Button } from './Button'
 interface ConfirmDialogProps {
   /** Shows the dialog. Render it with `open={false}` (or not at all) to hide it. */
   open: boolean
-  /** Short question, e.g. "Log out of MmiriOma?". */
+  /** Short question, e.g. "Log out of Waterline?". */
   title: string
   /** One or two lines on what happens next. */
   children?: ReactNode

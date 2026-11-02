@@ -143,7 +143,7 @@ describe('confirmProblem', () => {
 
   it('never says a retry could confirm twice after a lost connection', () => {
     const problem = confirmProblem(new ApiError({ kind: 'network', status: null, code: 'network_error', message: 'offline' }))
-    expect(problem).toMatchObject({ title: "We couldn't reach MmiriOma.", next: 'retry' })
+    expect(problem).toMatchObject({ title: "We couldn't reach Waterline.", next: 'retry' })
     expect(problem?.lines[0]).toContain("Trying again won't confirm it twice.")
   })
 

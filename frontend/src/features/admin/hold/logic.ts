@@ -240,7 +240,7 @@ export function failErrors(form: FailForm): ProofErrors {
 /** CANCEL: the two reasons the contract accepts (deliveries.md, "Cancel because the customer asked"), in staff words. Neither is preset (design #174, decision 10). */
 export const CANCEL_REASONS = [
   { code: 'customer_request', label: 'The customer asked to cancel' },
-  { code: 'mmirioma_unable', label: 'MmiriOma is unable to deliver' },
+  { code: 'mmirioma_unable', label: 'Waterline is unable to deliver' },
 ] as const
 export type CancelReasonCode = (typeof CANCEL_REASONS)[number]['code']
 

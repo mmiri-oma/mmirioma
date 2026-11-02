@@ -201,7 +201,7 @@ export function DeleteAccount() {
           </Button>
           <ConfirmDialog
             open={asking}
-            title="Delete your MmiriOma account?"
+            title="Delete your Waterline account?"
             confirmLabel="Send request"
             cancelLabel="Keep my account"
             loading={request.isPending}

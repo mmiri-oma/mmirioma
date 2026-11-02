@@ -1,5 +1,6 @@
 import { useId, useState, type InputHTMLAttributes, type ReactNode, type Ref, type TextareaHTMLAttributes } from 'react'
 import { cx } from '../../lib/cx'
+import { PHONE_COUNTRIES } from '../../lib/format/phone'
 import { AlertCircleIcon, EyeIcon, EyeOffIcon } from '../icons/icons'
 
 /** Classes of the design's `.in` input. */
@@ -93,6 +94,61 @@ export function TextField({ label, optional, hint, error, className, id, ref, ty
       ) : (
         control
       )}
+      <FieldMessages id={fieldId} hint={hint} error={error} />
+    </div>
+  )
+}
+
+type PhoneFieldProps = FieldShellProps &
+  Omit<InputHTMLAttributes<HTMLInputElement>, 'className' | 'type'> & {
+    ref?: Ref<HTMLInputElement>
+    className?: string
+  }
+
+/**
+ * Labelled phone number input with a country picker in front of it. The
+ * picker lists `PHONE_COUNTRIES` (Nigeria, +234, for now); the number field
+ * takes the local number in any accepted form (`0803…`, `803…`, `+234…`), and
+ * the form schema (`phoneField`) turns it into the `+234` form. Works with
+ * React Hook Form's `register()` like `TextField`.
+ *
+ * The picker is a real `<select>` even with one country, so more countries
+ * can be switched on later without changing the screens.
+ */
+export function PhoneField({ label, optional, hint, error, className, id, ref, placeholder = '803 123 4567', ...input }: PhoneFieldProps) {
+  const autoId = useId()
+  const fieldId = id ?? autoId
+  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined
+  const [country, setCountry] = useState(PHONE_COUNTRIES[0].code)
+  return (
+    <div className={className}>
+      <Label htmlFor={fieldId} label={label} optional={optional} />
+      <div className="flex gap-2">
+        <select
+          aria-label="Country code"
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className={cx(INPUT, 'w-[118px] shrink-0 cursor-pointer pr-2', error && 'border-[#DC2626]')}
+        >
+          {PHONE_COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} {c.dial}
+            </option>
+          ))}
+        </select>
+        <input
+          ref={ref}
+          id={fieldId}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel-national"
+          placeholder={placeholder}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          className={cx(INPUT, 'min-w-0 flex-1', error && 'border-[#DC2626] bg-[#FEF2F2]')}
+          {...input}
+        />
+      </div>
       <FieldMessages id={fieldId} hint={hint} error={error} />
     </div>
   )

@@ -17,8 +17,18 @@ hidden for the pilot (see section 6).
 1. **Sign in / create account** (`/signin`, `/signup`): phone number and
    password only. New accounts go straight to home; the phone stays
    unverified until staff verify it manually (FR-003).
-2. **Home** (`/home`): delivery address, order by Keke or Tanker, quick
-   actions (Reorder, Addresses, My orders), latest order.
+2. **Home** (`/home`, Waterline redesign): a greeting and the delivery
+   address; the order on its way, if any, first (server stage label, a
+   four-step bar, the agreed window, never an ETA, the delivery-code
+   reminder, "Track this order"); otherwise "Same as last time?" with "Order
+   again" (the old total labelled "Last time", priced again on review);
+   then "What are you filling?": "Drums & jerrycans" (keke) or "A water tank"
+   (tanker), with a "Help me choose" sheet; a cash-on-delivery line; quick
+   actions (Addresses, My orders); latest order. No price on home (FR-022,
+   FR-023).
+   Address forms (`/addresses/new`, edit, and a new address on
+   `/order/details`) offer "Use my location" when Google Maps is set up: it
+   fills the address and suggests the area ([use-my-location.md](use-my-location.md)).
 3. **Order** (`/order` → `/order/keke` or `/order/tanker`):
    - Keke: jerrycan size (25 or 50 L) and count (12, 24, 30, 60). No water source.
    - Tanker: tank type (ground, overhead), size (500, 750, 1,000 gallons or

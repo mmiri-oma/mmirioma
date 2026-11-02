@@ -60,7 +60,7 @@ function sendCode(userId: string, purpose: MockPhoneCode['purpose'], phone: stri
     s.phoneCodes = { ...s.phoneCodes, [userId]: entry }
     s.phoneCodeSends = { ...s.phoneCodeSends, [phone]: [...sends, sentAt] }
   })
-  console.info(`[mock SMS] to ${phone}: your MmiriOma code is ${code}`)
+  console.info(`[mock SMS] to ${phone}: your Waterline code is ${code}`)
   return { phone, expires_at: entry.expires_at, resend_available_at: new Date(now + RESEND_COOLDOWN_MS).toISOString() }
 }
 

@@ -2,9 +2,28 @@
  * Nigerian mobile numbers, following docs/api/auth.md "Identifier and password
  * rules": inputs like `08031234567`, `2348031234567` or `+2348031234567`
  * (spaces and dashes ignored) are the same number, stored as `+234` plus 10
- * digits starting with 7, 8 or 9. The server normalizes too; the client does
- * it only to validate early and to display numbers the way people write them.
+ * digits starting with 7, 8 or 9. The server normalizes too; the client
+ * validates early, displays numbers the way people write them, and sends the
+ * `+234` form, so it can also accept the bare 10 digits people type after the
+ * "+234" country picker (`8031234567`).
  */
+
+/** A country the phone field's picker offers. */
+export interface PhoneCountry {
+  /** ISO 3166-1 alpha-2 code, e.g. `NG`. */
+  code: string
+  name: string
+  /** International dialling prefix, e.g. `+234`. */
+  dial: string
+}
+
+/**
+ * Countries in the phone field's picker. Nigeria only: accounts are verified
+ * by SMS to a Nigerian mobile number (SRS FR-003), and the server rejects any
+ * other number. Adding a country needs the backend, the SMS provider and a
+ * normalizer for that country first; then list it here.
+ */
+export const PHONE_COUNTRIES: readonly PhoneCountry[] = [{ code: 'NG', name: 'Nigeria', dial: '+234' }]
 
 /**
  * Normalize a typed Nigerian mobile number to E.164.
@@ -14,7 +33,8 @@
 export function normalizeNigerianPhone(input: string): string | null {
   const digits = input.replace(/[\s-]/g, '')
   let national: string
-  if (/^0\d{10}$/.test(digits)) national = digits.slice(1)
+  if (/^\d{10}$/.test(digits)) national = digits
+  else if (/^0\d{10}$/.test(digits)) national = digits.slice(1)
   else if (/^234\d{10}$/.test(digits)) national = digits.slice(3)
   else if (/^\+234\d{10}$/.test(digits)) national = digits.slice(4)
   else return null

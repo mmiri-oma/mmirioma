@@ -189,7 +189,7 @@ describe('a step that fails after the job has loaded', () => {
     await user.click(await screen.findByRole('button', { name: 'Start unloading' }, { timeout: WAIT }))
     expect(await screen.findByText('Not sent. Check your connection and try again. Nothing changed.', {}, { timeout: WAIT })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'You have arrived' })).toBeInTheDocument()
-    expect(screen.queryByText(/We cannot reach MmiriOma/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/We cannot reach Waterline/)).not.toBeInTheDocument()
   }, 20_000)
 
   it('keeps the screen and offers the way home when the job was reassigned', async () => {

@@ -2,6 +2,11 @@
 
 Status: built (2026-10-19) from `design/MmiriOma-landing-handoff`. Design
 record and differences: [docs/design/landing-v1.md](../design/landing-v1.md).
+**Redesigned on `feat/waterline-redesign` (2026-11-02):** the Waterline
+look (white theme, Fraunces headings with Inter text, flat SVG drawings
+instead of photos), a new landing page and header/footer, and the cookie
+banner ([website-analytics.md](website-analytics.md)). The FAQ and legal
+pages keep their layout and pick up the new header, footer and theme.
 
 ## 1. Overview and purpose
 
@@ -11,10 +16,23 @@ the legal pages. Anyone can open them, signed in or not.
 
 ## 2. Feature workflow
 
-- `/`: hero → benefits → how it works → Keke and Tanker options (sizes, no
-  prices) → for drivers (approval steps) → install the apps → service areas
-  and FAQs → "Before you order" (worries, closing buttons) → footer. Header links jump to sections; below 960 px they move into a menu.
-  The header stays stuck to the top while scrolling.
+- `/`: hero (a keke drives to a gate and pours into two drums while a
+  status card says "on the way", "pouring", "delivered"; starts when seen,
+  can be replayed) → a marquee of the sample areas → why Waterline → how it
+  works (a pipe fills as you scroll and lights each step) → "Pick the size
+  that fits" (keke cans or a tank filling to the chosen gallons; quantities
+  only, never a price) → "Your code. Your call." (the 6-digit delivery code
+  on a phone, and the worries) → for drivers (a tanker drives in; approval
+  steps) → install the apps → "Is your street on our route?" (search the
+  sample areas) → questions → "Drums running low?" closing band → footer.
+  "Check your area" in the header (and "Do you deliver to me?" in the hero,
+  and the phone menu) opens the area check in a pop-up, with "Use my
+  location" when Google Maps is set up ([use-my-location.md](use-my-location.md)).
+  Header links jump to sections; below 960 px they move into a menu, and
+  below 600 px a bottom "Order Water" bar appears once past the hero. Wide
+  screens show a small tank gauge of how far down the page you are.
+- Sections fade in as they scroll into view; every animation stops under
+  reduced motion.
 - "Order Water" → `/order` (sign-in first when signed out).
 - "Become a Rider or Driver" → `/partner/signup`.
 - Every public page has a floating "Chat on WhatsApp" button (bottom right;
@@ -30,7 +48,7 @@ the legal pages. Anyone can open them, signed in or not.
   the search; "Clear search" resets both.
 - `/terms`, `/privacy`: "On this page" links to each section; `/privacy#cookies`
   jumps to section 13. `/privacy` is the website copy of `PRIVACY_NOTICE.md`
-  (version 2.0, #93, #104), section by section; change both together.
+  (version 3.1, #93, #104), section by section; change both together.
 
 ## 3. Important files
 
@@ -38,7 +56,13 @@ the legal pages. Anyone can open them, signed in or not.
 | --- | --- |
 | `frontend/src/features/marketing/routes.tsx` | The four public routes |
 | `Landing.tsx`, `FaqPage.tsx`, `LegalPages.tsx` | The pages |
-| `MarketingParts.tsx` | Header with mobile menu, footer, install button, picture and heading helpers |
+| `landing/HeroScene.tsx` | The animated delivery picture and status card |
+| `landing/SizePicker.tsx` | "Pick the size that fits" (keke cans, tank fill) |
+| `landing/AreaCheck.tsx`, `landing/logic.ts` | Area search; pure helpers (`matchAreas`, `drumsLabel`) |
+| `landing/Art.tsx` | Flat SVG drawings (can, keke, tanker, drop) and small icons |
+| `waterline.css` | Styles for the header, footer, landing page and cookie banner (all `wl-` classes) |
+| `CookieConsent.tsx` | The cookie banner ([website-analytics.md](website-analytics.md)) |
+| `MarketingParts.tsx` | Header with mobile menu, footer (with the cookie banner), install button, picture and heading helpers |
 | `content.ts` | Copy shared by pages and tests: nav, areas, FAQs, worries (`OBJECTIONS`), `ORDER_CTA`, `filterFaqs` |
 | `SiteExtras.tsx` | Floating WhatsApp and Back to top buttons |
 | `queries.ts`, `publicApi.ts` | The support contact: `useSupportContact`, `useWhatsappNumber` (mock or `GET /public/contact`) |
@@ -47,9 +71,10 @@ the legal pages. Anyone can open them, signed in or not.
 | `frontend/src/mocks/publicMock.ts` | Mock of docs/api/public-site.md |
 | `icons.tsx` | The design's icons, path for path |
 | `marketing.css` | Breakpoint rules for the hero and drivers backgrounds and grids |
-| `useMarketingPage.ts` | Fonts, title and description, scrolling to `#section` |
+| `useMarketingPage.ts` | Fonts, title and description, GA4 page view, scrolling to `#section` |
 | `frontend/public/marketing/` | Images (WebP plus PNG/JPG) |
-| `frontend/src/styles/theme.css` | `mk-*` colours and the Outfit / DM Sans font tokens |
+| `frontend/src/styles/theme.css` | App colours (white canvas, teal primary `#11708C`), `mk-*` colours and the Fraunces / Inter font tokens |
+| `frontend/src/components/brand/Logo.tsx` | The Waterline logo, drawn as SVG |
 
 ## 4. Database models and relationships
 
@@ -69,7 +94,10 @@ on (`lib/whatsapp.ts`), so help is always reachable.
 ## 6. Important business rules
 
 - No prices on public pages (prices come from the server inside the app,
-  FR-022).
+  FR-022). The size picker shows quantities only.
+- The delivery code is shown as 6 digits and labelled "Sample" (FR-035); the
+  hero and the install section's phone screens are illustrations, not live
+  data (no live tracking, FR-037).
 - No water-quality claims, no invented numbers, no promises the app does not
   keep (live tracking, choosing a delivery time). Changed lines are listed in
   landing-v1.md.
@@ -111,9 +139,11 @@ npm test
 
 `src/features/marketing/marketing.test.tsx`: FAQ filter and counts, copy
 checks (FAQs and worries, including no Paystack, points or payouts), FAQ empty state and Clear search, mobile menu, `/`
-with its order and apply links, section order (benefits before how it
-works; worries last, no newsletter), the WhatsApp button link, the 404 page
-and its driver-app variant, `/app` still redirecting.
+with its order and apply links, section order (why before how it works;
+worries before the closing band, no newsletter), the 6-digit sample code and
+no naira amounts, the WhatsApp button link, the 404 page and its driver-app
+variant, `/app` still redirecting. `src/features/marketing/landing/logic.test.ts`:
+area matching and the drums label. `CookieConsent.test.tsx`: the banner.
 `src/features/marketing/termsPage.test.tsx`: none of the old Terms
 promises, the pilot rules, and the notice's contact.
 `src/features/marketing/supportContact.test.tsx`: WhatsApp hidden and the
@@ -133,3 +163,8 @@ and the mock contact. Manual: compare with
   link opens at once; every app page loads as its own chunk.
 - The Privacy page is a hand-made copy of `PRIVACY_NOTICE.md`
   (`LegalPages.tsx`), so both change together.
+- The Waterline name is used on screen; the Terms and the privacy notice
+  still name the operator as MmiriOma until the rename is agreed and the
+  legal texts are updated. `og:image` still points to the old hero photo.
+- The redesign skipped the design-approval gate (G2) at the product owner's
+  request; it needs a reviewer's approval on the PR.

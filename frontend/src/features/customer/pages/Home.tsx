@@ -1,22 +1,64 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Illustration } from '../../../components/brand/Illustration'
-import { ChevronDownIcon, ChevronRightIcon, DocumentLinesIcon, HistoryAltIcon, MapPinIcon, StarIcon } from '../../../components/icons/icons'
+import { ChevronDownIcon, ChevronRightIcon, DocumentLinesIcon, MapPinIcon, StarIcon } from '../../../components/icons/icons'
 import { MobileShell, ScrollArea } from '../../../components/layout/MobileShell'
 import { EmptyBlock, ErrorBlock, LoadingBlock } from '../../../components/layout/StateScreens'
 import { CardLink } from '../../../components/ui/Card'
 import { ActionTile, IconBadge, SectionHeader, TextLink } from '../../../components/ui/Content'
-import { HomeAppCard } from '../../pwa/PushParts'
 import { ButtonLink } from '../../../components/ui/Button'
-import { useSession } from '../../auth/useSession'
+import { isActiveStage, STAGE_LABEL, type CustomerOrder, type DeliveryStage } from '../../../domain/orders'
+import { cx } from '../../../lib/cx'
 import { POINTS_ENABLED } from '../../../lib/features'
+import { useSession } from '../../auth/useSession'
+import { ArtDefs, TankerArt } from '../../marketing/landing/Art'
+import { useSupportContact } from '../../marketing/queries'
+import '../../marketing/waterline.css'
+import { HomeAppCard } from '../../pwa/PushParts'
 import { CustomerTabs, CustomerTopBar } from '../components/CustomerChrome'
-import { RecentOrderCard } from '../components/OrderBits'
+import { RecentOrderCard, StageChip } from '../components/OrderBits'
 import { VerifyPhoneBanner } from '../components/VerifyPhoneBanner'
 import { useOrderDraft } from '../order/orderDraftContext'
 import { draftFromOrder } from '../order/reorder'
+import { deliveryWindowText, orderLink, orderPlaceLabel, orderPriceText, orderQuantityText } from '../orderHelpers'
 import { useAddresses, useOrders, usePoints, useProfile } from '../queries'
 
-/** Customer home (`c-home`). */
+type Vehicle = 'keke' | 'tanker'
+
+/** "Good morning" before noon, "Good afternoon" before 5 PM, else "Good evening" (the phone's local time). */
+function greeting(now = new Date()): string {
+  const h = now.getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
+
+/**
+ * Where an active order is on its way to the gate, as four steps for the bar
+ * on the live order card. The words on the card are always the server's stage
+ * label (STAGE_LABEL); the bar only shows how far along that is, and never
+ * claims a rider before one has accepted (FR-027, FR-032).
+ */
+const STAGE_STEP: Partial<Record<DeliveryStage, number>> = {
+  request_received: 0,
+  awaiting_confirmation: 0,
+  waiting_rider: 1,
+  rider_assigned: 2,
+  picked_up: 2,
+  on_the_way: 3,
+}
+const STEP_LABELS = ['Placed', 'Confirmed', 'Rider set', 'On the way'] as const
+
+/**
+ * Customer home (`c-home`), Waterline design. Built so a customer can see
+ * what is happening and order in as few taps as possible:
+ *
+ * 1. a live order, if there is one, is the first thing on the screen;
+ * 2. otherwise their last order is one tap away ("Order again"), priced again
+ *    on the review screen before they confirm;
+ * 3. new orders start from what they are filling (drums or a tank), with a
+ *    "Help me choose" sheet for anyone unsure, instead of a vehicle name.
+ *
+ * No price appears here: prices come from the server once there is an
+ * address (FR-022, FR-023). Payment is cash after unloading (FR-040, pilot).
+ */
 export function Home() {
   const navigate = useNavigate()
   const { reset } = useOrderDraft()
@@ -24,6 +66,7 @@ export function Home() {
   const addresses = useAddresses()
   const orders = useOrders()
   const points = usePoints()
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const session = useSession()
   // The name also comes with the session (`GET /auth/me`), so the greeting
@@ -31,8 +74,9 @@ export function Home() {
   const firstName = (profile.data?.name ?? session.data?.user.name ?? '').split(' ')[0]
   const defaultAddress = addresses.data?.find((a) => a.is_default) ?? addresses.data?.[0]
   const latest = orders.data?.[0]
+  const active = orders.data?.find((o) => isActiveStage(o.stage))
 
-  function startOrder(type: 'keke' | 'tanker') {
+  function startOrder(type: Vehicle) {
     reset({ delivery_type: type })
     navigate(type === 'keke' ? '/order/keke' : '/order/tanker')
   }
@@ -48,9 +92,16 @@ export function Home() {
 
   return (
     <MobileShell>
+      <ArtDefs />
       <CustomerTopBar />
-      <ScrollArea className="gap-3.5">
+      <ScrollArea className="gap-4">
         <VerifyPhoneBanner from="/home" />
+
+        <div className="rise-1">
+          <p className="m-0 text-[13px] font-semibold text-mute">{greeting()}</p>
+          <h1 className="m-0 font-display text-[30px] leading-[1.05] font-semibold tracking-[-0.02em]">{firstName ? `${firstName}.` : 'Welcome.'}</h1>
+        </div>
+
         {defaultAddress ? (
           <CardLink to="/order/details" className="rise-1 flex items-center gap-3 px-3.5 py-2.5">
             <IconBadge tone="blue" size={36} radius={11}>
@@ -77,43 +128,50 @@ export function Home() {
           )
         )}
 
-        <div className="rise-2 relative min-h-[172px] overflow-hidden rounded-[22px] bg-[#DCEBFB]">
-          <Illustration name="drop-hero" className="absolute top-0 right-[-36px] h-full w-auto max-w-none" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(234,243,254,.97)_0%,rgba(234,243,254,.88)_46%,rgba(234,243,254,0)_72%)]" />
-          <div className="relative max-w-[220px] px-[18px] py-5">
-            <div className="text-[22px] leading-[1.15] font-extrabold tracking-[-0.4px]">Welcome,</div>
-            <div className="text-[26px] leading-[1.15] font-extrabold tracking-[-0.5px] text-primary">{firstName ? `${firstName}!` : ' '}</div>
-            {/* Design said "Clean water poured...": quality claim removed (decision 15). */}
-            <p className="mt-2 mb-0 text-[13px] text-slate">Water poured straight into your tank. No lifting, no stress.</p>
+        {active ? <LiveOrderCard order={active} /> : latest && <OrderAgainCard order={latest} onReorder={reorder} />}
+
+        <section aria-labelledby="home-order-title" className="rise-2 flex flex-col gap-3">
+          <div className="flex items-end justify-between gap-3">
+            <h2 id="home-order-title" className="m-0 text-[17px] font-extrabold">
+              {active ? 'Need more water?' : 'What are you filling?'}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="hit-44 cursor-pointer border-0 bg-transparent p-0 text-[13.5px] font-bold text-primary underline decoration-[1.5px] underline-offset-[3px] hover:text-primary-dark"
+            >
+              Help me choose
+            </button>
           </div>
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            <NeedCard
+              onClick={() => startOrder('keke')}
+              title="Drums & jerrycans"
+              sub="By keke · 25 L or 50 L cans · 300 to 3,000 litres"
+              art={
+                <svg viewBox="0 0 196 124" className="h-auto w-[92%]" aria-hidden="true">
+                  <use href="#wl-keke" />
+                </svg>
+              }
+            />
+            <NeedCard
+              onClick={() => startOrder('tanker')}
+              title="A water tank"
+              sub="By tanker · 500 to 1,000 gallons (2,000 to 4,000 L) or custom"
+              art={
+                <div className="w-full">
+                  <TankerArt label="" />
+                </div>
+              }
+            />
+          </div>
+          <p className="m-0 flex items-center gap-2 text-caption text-mute">
+            <span aria-hidden="true" className="size-2 shrink-0 -rotate-45 rounded-[50%_0_50%_50%] bg-[#1D8BA6]" />
+            You see the full price before you confirm. Pay cash after your water is poured.
+          </p>
+        </section>
 
-        <div className="rise-3 grid grid-cols-2 gap-3">
-          <VehicleCard
-            onClick={() => startOrder('keke')}
-            title="Order with Keke"
-            sub="25 L or 50 L cans · 12 to 60 cans"
-            illustration="keke"
-            alt="Blue keke loaded with jerrycans"
-            gradient="bg-[linear-gradient(160deg,#E4F0FE_0%,#CFE3FB_100%)]"
-            accent="#1570D8"
-            subColor="text-primary-dark"
-          />
-          <VehicleCard
-            onClick={() => startOrder('tanker')}
-            title="Order with Tanker"
-            sub="500 to 1,000 gallons (2,000 to 4,000 litres) or custom"
-            illustration="tanker"
-            alt="MmiriOma water tanker truck"
-            gradient="bg-[linear-gradient(160deg,#E6F8EE_0%,#CDEFDC_100%)]"
-            accent="#15803D"
-            subColor="text-green"
-            imageClass="mt-3.5 [animation-delay:.6s]"
-          />
-        </div>
-
-        <div className={`rise-4 grid gap-2.5 ${POINTS_ENABLED ? 'grid-cols-4' : 'grid-cols-3'}`}>
-          <ActionTile onClick={reorder} icon={<IconBadge tone="blue"><HistoryAltIcon size={22} /></IconBadge>} label="Reorder" />
+        <div className={cx('rise-3 grid gap-2.5', POINTS_ENABLED ? 'grid-cols-3' : 'grid-cols-2')}>
           <ActionTile to="/addresses" icon={<IconBadge tone="green"><MapPinIcon size={22} /></IconBadge>} label="Addresses" />
           {POINTS_ENABLED && (
             <ActionTile
@@ -125,23 +183,7 @@ export function Home() {
           <ActionTile to="/orders" icon={<IconBadge tone="violet"><DocumentLinesIcon size={22} /></IconBadge>} label="My orders" />
         </div>
 
-        {POINTS_ENABLED && (
-          <div className="rise-5 relative box-border min-h-32 overflow-hidden rounded-card bg-[linear-gradient(120deg,#FFF7E2_0%,#FFE9B8_100%)] py-4 pr-4 pl-[18px]">
-            <Illustration name="gift" className="animate-float absolute top-1.5 right-[-6px] w-[150px]" />
-            <div className="relative max-w-[190px]">
-              <div className="text-[17px] leading-[1.2] font-extrabold">Earn points on every delivery</div>
-              <p className="mt-1.5 mb-2.5 text-caption text-[#5A4310]">Collect points and use them for money off your next order.</p>
-              <Link
-                to="/points"
-                className="hit-44 inline-flex h-9 items-center rounded-chip bg-ink px-4 text-[13px] font-bold text-white no-underline hover:text-white"
-              >
-                See my points
-              </Link>
-            </div>
-          </div>
-        )}
-
-        <HomeAppCard app="customer" className="rise-5" />
+        <HomeAppCard app="customer" className="rise-4" />
 
         <SectionHeader className="mt-0.5" title="Recent orders" action={<TextLink to="/orders" className="text-sub">View all</TextLink>} />
         {orders.isPending && <LoadingBlock lines={1} label="Loading your orders" />}
@@ -158,43 +200,160 @@ export function Home() {
           ))}
       </ScrollArea>
       <CustomerTabs current="/home" />
+      {helpOpen && (
+        <HelpMeChoose
+          onClose={() => setHelpOpen(false)}
+          onPick={(v) => {
+            setHelpOpen(false)
+            startOrder(v)
+          }}
+        />
+      )}
     </MobileShell>
   )
 }
 
-function VehicleCard({
-  onClick,
-  title,
-  sub,
-  illustration,
-  alt,
-  gradient,
-  accent,
-  subColor,
-  imageClass = 'mt-1',
-}: {
-  onClick: () => void
-  title: string
-  sub: string
-  illustration: 'keke' | 'tanker'
-  alt: string
-  gradient: string
-  accent: string
-  subColor: string
-  imageClass?: string
-}) {
+/** One of the two ways to order, named by what the customer fills rather than by vehicle. */
+function NeedCard({ onClick, title, sub, art }: { onClick: () => void; title: string; sub: string; art: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative box-border flex min-h-[214px] cursor-pointer flex-col overflow-hidden rounded-card border-0 px-3 pt-2.5 pb-3.5 text-left text-ink transition-transform duration-150 hover:-translate-y-0.5 ${gradient}`}
+      className="group relative flex min-h-[200px] cursor-pointer flex-col overflow-hidden rounded-card border border-solid border-card-line bg-[#E6F3F5] px-3 pt-4 pb-3.5 text-left text-ink transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-card"
     >
-      <Illustration name={illustration} alt={alt} className={`animate-float h-auto w-full ${imageClass}`} />
-      <span className="mt-auto text-[18px] leading-[1.15] font-extrabold">{title}</span>
-      <span className={`mt-1 text-chip font-semibold ${subColor}`}>{sub}</span>
-      <span className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-white shadow-[0_4px_10px_rgba(10,37,64,0.12)]">
-        <ChevronRightIcon size={16} strokeWidth={2.6} color={accent} roundJoin={false} />
+      <span className="flex h-[86px] items-center justify-center">{art}</span>
+      <span className="mt-auto text-[17px] leading-[1.15] font-extrabold">{title}</span>
+      <span className="mt-1 text-chip font-semibold text-primary-dark">{sub}</span>
+      <span className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-white shadow-[0_4px_10px_rgba(12,39,51,0.12)] transition-transform duration-200 group-hover:translate-x-0.5">
+        <ChevronRightIcon size={16} strokeWidth={2.6} color="#11708C" roundJoin={false} />
       </span>
     </button>
+  )
+}
+
+/**
+ * The order on its way, at the top of home. Shows the server's stage label,
+ * a four-step bar, the agreed delivery window when there is one (never an
+ * ETA), and the delivery-code reminder.
+ */
+function LiveOrderCard({ order }: { order: CustomerOrder }) {
+  const step = STAGE_STEP[order.stage] ?? 0
+  const deliveryWindow = deliveryWindowText(order)
+  return (
+    <section aria-label="Your order on its way" className="rise-2 rounded-card bg-ink p-4 text-white">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[12px] font-bold tracking-[0.12em] text-[#5CC6D4] uppercase">Your order</span>
+        <StageChip stage={order.stage} />
+      </div>
+      <p className="mt-2.5 mb-0 font-display text-[22px] leading-[1.15] font-semibold">{STAGE_LABEL[order.stage]}</p>
+      <p className="mt-1 mb-0 text-[13.5px] text-white/75">
+        {orderQuantityText(order, 'short')} · {orderPlaceLabel(order)}
+      </p>
+      <ol className="m-0 mt-3.5 grid list-none grid-cols-4 gap-1.5 p-0" aria-label={`Step ${step + 1} of 4`}>
+        {STEP_LABELS.map((label, i) => (
+          <li key={label} className="flex flex-col gap-1.5">
+            <span className={cx('h-1.5 rounded-full', i <= step ? 'bg-[#5CC6D4]' : 'bg-white/15')} />
+            <span className={cx('text-[11px] font-semibold', i <= step ? 'text-white' : 'text-white/50')}>{label}</span>
+          </li>
+        ))}
+      </ol>
+      {deliveryWindow && (
+        <p className="mt-3 mb-0 text-[13px] text-white/80">
+          Delivery window: <b className="text-white">{deliveryWindow.day}, {deliveryWindow.times}</b>
+        </p>
+      )}
+      <p className="mt-3 mb-0 rounded-[12px] bg-white/8 px-3 py-2.5 text-[13px] leading-[1.45] text-white/85">
+        When the water is in, we text you a 6-digit delivery code. Check your water first, then give the code to your rider.
+      </p>
+      <Link
+        to={orderLink(order)}
+        className="mt-3.5 flex min-h-12 items-center justify-center rounded-button bg-white text-[15px] font-bold text-ink no-underline hover:bg-[#E6F3F5] hover:text-ink"
+      >
+        Track this order
+      </Link>
+    </section>
+  )
+}
+
+/** The customer's last order, one tap from ordering again. The old total is labelled as last time's; review prices it again. */
+function OrderAgainCard({ order, onReorder }: { order: CustomerOrder; onReorder: () => void }) {
+  return (
+    <section aria-label="Order again" className="rise-2 flex items-center gap-3.5 rounded-card border border-solid border-card-line bg-white p-4 shadow-tile">
+      <span className="flex-1">
+        <span className="block text-[12px] font-bold tracking-[0.12em] text-primary-dark uppercase">Same as last time?</span>
+        <span className="mt-1 block text-[15.5px] font-extrabold">{orderQuantityText(order, 'short')}</span>
+        <span className="block text-[13px] text-mute">
+          {orderPlaceLabel(order)} · Last time {orderPriceText(order)}
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={onReorder}
+        className="min-h-12 shrink-0 cursor-pointer rounded-button border-0 bg-ink px-4 text-[14.5px] font-bold text-white hover:bg-primary-dark"
+      >
+        Order again
+      </button>
+    </section>
+  )
+}
+
+const HELP_CHOICES: { label: string; sub: string; pick: Vehicle | 'call' }[] = [
+  { label: 'Drums, buckets or a few containers', sub: 'A keke brings 25 L or 50 L cans and pours them in.', pick: 'keke' },
+  { label: 'A ground tank or an overhead tank', sub: 'A tanker pumps straight into your tank.', pick: 'tanker' },
+  { label: 'Not sure, or something bigger', sub: 'Call us and we will tell you what fits.', pick: 'call' },
+]
+
+/**
+ * "Help me choose": a small sheet that turns what the customer wants to fill
+ * into keke or tanker. A suggestion only; every order is checked by the team.
+ * A native modal `<dialog>` keeps focus inside and closes on Escape.
+ */
+function HelpMeChoose({ onClose, onPick }: { onClose: () => void; onPick: (v: Vehicle) => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  const support = useSupportContact()
+  // Open as a modal once mounted; closing (Escape, backdrop, buttons) unmounts it through `onClose`.
+  useEffect(() => {
+    const dialog = ref.current
+    if (!dialog || dialog.open) return
+    // Older browsers (and jsdom) without showModal still get the sheet, just not as a modal.
+    if (typeof dialog.showModal === 'function') dialog.showModal()
+    else dialog.setAttribute('open', '')
+  }, [])
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="help-choose-title"
+      onClose={onClose}
+      onClick={(e) => e.target === ref.current && onClose()}
+      className="m-0 mt-auto w-full max-w-none rounded-t-[28px] border-0 bg-white p-0 text-ink backdrop:bg-[rgba(12,39,51,0.45)] sm:m-auto sm:max-w-[420px] sm:rounded-[28px]"
+    >
+      <div className="animate-sheet flex flex-col gap-3 px-5 pt-3 pb-[max(20px,env(safe-area-inset-bottom))]">
+        <span aria-hidden="true" className="mx-auto mb-1 h-1 w-10 rounded-full bg-line" />
+        <h2 id="help-choose-title" className="m-0 font-display text-[24px] font-semibold">
+          What do you want to fill?
+        </h2>
+        {HELP_CHOICES.map((c) =>
+          c.pick === 'call' ? (
+            <a key={c.label} href={`tel:${support.phone}`} className="rounded-option border border-solid border-card-line p-3.5 text-ink no-underline hover:border-primary hover:text-ink">
+              <b className="block text-[15px]">{c.label}</b>
+              <span className="text-[13px] text-mute">{c.sub}</span>
+            </a>
+          ) : (
+            <button
+              key={c.label}
+              type="button"
+              onClick={() => onPick(c.pick as Vehicle)}
+              className="cursor-pointer rounded-option border border-solid border-card-line bg-white p-3.5 text-left text-ink hover:border-primary"
+            >
+              <b className="block text-[15px]">{c.label}</b>
+              <span className="text-[13px] text-mute">{c.sub}</span>
+            </button>
+          ),
+        )}
+        <button type="button" onClick={onClose} className="mt-1 min-h-11 cursor-pointer border-0 bg-transparent text-[14px] font-bold text-primary-dark">
+          Close
+        </button>
+      </div>
+    </dialog>
   )
 }

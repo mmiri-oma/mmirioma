@@ -70,7 +70,7 @@ export function Dashboard() {
             {greeting()}
             {first && `, ${first}`}
           </h1>
-          <p className="mt-1 mb-0 text-mute">Here is what is happening on MmiriOma today.</p>
+          <p className="mt-1 mb-0 text-mute">Here is what is happening on Waterline today.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Only when the numbers come from simulated records (`is_sample`); real orders are not sample data. */}

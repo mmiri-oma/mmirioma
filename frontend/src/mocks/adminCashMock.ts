@@ -158,7 +158,7 @@ export function seedCash(now = new Date()): CashMockData {
 function requireAdmin(s: MockState): { id: string; name: string } {
   const id = requireUserId()
   const user = s.users.find((u) => u.id === id)
-  if (user?.role !== 'admin') throw mockError(403, 'forbidden', 'Only MmiriOma staff can do this')
+  if (user?.role !== 'admin') throw mockError(403, 'forbidden', 'Only Waterline staff can do this')
   return { id, name: user.name }
 }
 

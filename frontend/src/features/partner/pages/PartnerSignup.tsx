@@ -11,16 +11,17 @@ import { ErrorBlock, LoadingScreen } from '../../../components/layout/StateScree
 import { Button } from '../../../components/ui/Button'
 import { OptionTile } from '../../../components/ui/Choice'
 import { ScreenHeading } from '../../../components/ui/Content'
-import { INPUT, TextField } from '../../../components/ui/Field'
+import { INPUT, PhoneField, TextField } from '../../../components/ui/Field'
 import { Notice } from '../../../components/ui/Notice'
 import type { SignupArea } from '../../../domain/partner'
 import { parseGallons, tankCapacityError } from '../../../domain/tankCapacity'
 import { ApiError } from '../../../lib/api/client'
 import { errorMessage } from '../../../lib/api/errorMessage'
-import { applyServerFieldErrors, newPasswordField, phoneField } from '../../../lib/forms'
+import { applyServerFieldErrors, newPasswordField, PASSWORD_MISMATCH, phoneField, withoutConfirm } from '../../../lib/forms'
+import { AuthShell } from '../../auth/AuthShell'
 import { HOME_PATH } from '../../auth/authPaths'
 import { SESSION_KEY, useLogout, useSession } from '../../auth/useSession'
-import { formatPhone } from '../../../lib/format/phone'
+import { formatPhone, normalizeNigerianPhone } from '../../../lib/format/phone'
 import { cx } from '../../../lib/cx'
 import { useSupportContact } from '../../marketing/queries'
 import { listSignupAreas, partnerSignup } from '../partnerApi'
@@ -30,6 +31,8 @@ const schema = z
     name: z.string().trim().min(1, 'Enter your full name.').max(100, 'Use 100 characters or fewer.'),
     phone: phoneField,
     password: newPasswordField,
+    /** The password again; checked here only, never sent (no self-service reset yet, so a typo would lock the driver out). */
+    confirm: z.string().min(1, 'Type your password again.'),
     vehicle_type: z.enum(['keke', 'tanker']),
     plate: z.string().trim().min(4, 'Enter the plate number, e.g. ENU 482 KK.').max(20, 'Use 20 characters or fewer.'),
     /** Typed capacity in gallons, tankers only; stored as litres × 4 by the server (FR-013, FR-021). */
@@ -38,6 +41,7 @@ const schema = z
     service_zone_id: z.string().min(1, 'Choose the area you work in.'),
   })
   .superRefine((v, ctx) => {
+    if (v.password !== v.confirm) ctx.addIssue({ code: 'custom', path: ['confirm'], message: PASSWORD_MISMATCH })
     if (v.vehicle_type !== 'tanker') return
     const message = tankCapacityError(parseGallons(v.tank_gallons))
     if (message) ctx.addIssue({ code: 'custom', path: ['tank_gallons'], message })
@@ -86,7 +90,7 @@ export function PartnerSignupPage() {
     <MobileShell background="white">
       <TopBar className="border-b-0" left={<BackLink to="/menu" />} />
       <ScrollArea className="gap-3.5 px-[22px] pt-2 pb-[22px]">
-        <ScreenHeading className="rise-1" title="Deliver with MmiriOma" sub="Ride a keke or drive a tanker, and earn on every delivery." />
+        <ScreenHeading className="rise-1" title="Deliver with Waterline" sub="Ride a keke or drive a tanker, and earn on every delivery." />
         <div className="rise-2 flex justify-center">
           <Illustration name="keke" className="animate-drive w-44" />
         </div>
@@ -132,12 +136,17 @@ export function PartnerSignup() {
     defaultValues: { vehicle_type: 'keke', tank_gallons: '', service_zone_id: '' },
   })
   const vehicle = useWatch({ control, name: 'vehicle_type' })
+  const [name, phone, plate, zone, password, confirm] = useWatch({ control, name: ['name', 'phone', 'plate', 'service_zone_id', 'password', 'confirm'] })
+  const progress =
+    [name?.trim(), normalizeNigerianPhone(phone ?? ''), (plate ?? '').trim().length >= 4, zone, (password ?? '').length >= 8, confirm && confirm === password].filter(Boolean)
+      .length / 6
   const areas = useQuery({ queryKey: ['partner', 'signup-areas'], queryFn: listSignupAreas, staleTime: 60_000 })
   const support = useSupportContact()
   const noAreas = areas.isSuccess && areas.data.length === 0
 
-  const onSubmit = handleSubmit((v) =>
-    signup.mutate(
+  const onSubmit = handleSubmit((values) => {
+    const v = withoutConfirm(values)
+    return signup.mutate(
       { ...v, tank_gallons: v.vehicle_type === 'tanker' ? parseGallons(v.tank_gallons) : null },
       {
         onError: (e) => {
@@ -145,8 +154,8 @@ export function PartnerSignup() {
           else applyServerFieldErrors(e, setError, SERVER_FIELDS)
         },
       },
-    ),
-  )
+    )
+  })
 
   // Field errors show under their fields; anything no field can show goes in the top notice.
   const unplaced = unplacedMessages(signup.error)
@@ -155,10 +164,22 @@ export function PartnerSignup() {
     (signup.error.code === 'phone_already_registered' || (signup.error.code === 'validation_error' && Array.isArray(signup.error.details) && unplaced.length === 0))
 
   return (
-    <MobileShell background="white">
-      <TopBar className="border-b-0" left={<BackLink to="/partner/login" />} />
-      <ScrollArea className="gap-3.5 px-[22px] pt-2 pb-[22px]">
-        <ScreenHeading className="rise-1" title="Deliver with MmiriOma" sub="Create your rider or driver account. We check your vehicle before you get orders." />
+    <AuthShell
+      progress={progress}
+      back={{ to: '/partner/login', label: 'Back' }}
+      title={
+        <>
+          Deliver water. <em>Get paid per trip.</em>
+        </>
+      }
+      points={['Use your own keke or tanker', 'Take orders near you', 'Go online when you choose']}
+    >
+        <ScreenHeading
+          className="rise-1"
+          titleClassName="font-display text-[clamp(2.2rem,4.6vw,3rem)] leading-[1.02] font-semibold tracking-[-0.028em]"
+          title="Deliver with Waterline"
+          sub="Create your rider or driver account. We check your vehicle before you get orders."
+        />
         <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3.5">
           {signup.isError && !fieldLevel && <Notice tone="error">{unplaced.length ? unplaced.join(' ') : errorMessage(signup.error)}</Notice>}
           <fieldset className="rise-2 m-0 border-0 p-0">
@@ -194,13 +215,10 @@ export function PartnerSignup() {
             />
           )}
           <TextField className="rise-3" label="Full name" autoComplete="name" placeholder="e.g. Chinedu Okafor" error={errors.name?.message} {...register('name')} />
-          <TextField
+          <PhoneField
             className="rise-3"
             label="Phone number"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="0803 000 0000"
+            autoComplete="username"
             hint="Customers and admin call you on this number."
             error={errors.phone?.message}
             {...register('phone')}
@@ -208,7 +226,7 @@ export function PartnerSignup() {
           <TextField className="rise-4" label="Plate number" placeholder={vehicle === 'keke' ? 'ENU 482 KK' : 'ENU 115 XA'} error={errors.plate?.message} {...register('plate')} />
           {noAreas ? (
             <Notice tone="error" className="rise-4">
-              Driver sign-up is not open right now because no delivery areas are set up yet. Please try again later, or contact MmiriOma support on{' '}
+              Driver sign-up is not open right now because no delivery areas are set up yet. Please try again later, or contact Waterline support on{' '}
               <a href={`tel:${support.phone}`} className="font-bold">
                 {formatPhone(support.phone)}
               </a>
@@ -234,6 +252,15 @@ export function PartnerSignup() {
             error={errors.password?.message}
             {...register('password')}
           />
+          <TextField
+            className="rise-4"
+            label="Type your password again"
+            type="password"
+            autoComplete="new-password"
+            placeholder="The same password"
+            error={errors.confirm?.message}
+            {...register('confirm')}
+          />
           <Button type="submit" className="rise-5" loading={signup.isPending} disabled={!areas.isSuccess || noAreas}>
             Create account
           </Button>
@@ -244,8 +271,7 @@ export function PartnerSignup() {
             Log in
           </Link>
         </p>
-      </ScrollArea>
-    </MobileShell>
+    </AuthShell>
   )
 }
 

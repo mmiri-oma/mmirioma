@@ -1,5 +1,5 @@
 /**
- * Centralized HTTP client for the MmiriOma API.
+ * Centralized HTTP client for the Waterline API.
  *
  * - Always sends credentials so cookie-based sessions work cross-origin.
  * - Sends the session's CSRF token on unsafe methods (see `setCsrfToken`).

@@ -300,7 +300,7 @@ export function AdminGallery() {
       unread={12}
     >
       <div className="rise-1 flex flex-wrap items-end justify-between gap-3">
-        <ScreenHeading title="Good morning, Chidimma" sub="Here is what is happening on MmiriOma today." titleClassName="text-admin-title" />
+        <ScreenHeading title="Good morning, Chidimma" sub="Here is what is happening on Waterline today." titleClassName="text-admin-title" />
         <div className="flex items-center gap-2.5">
           <SampleTag>SAMPLE DATA</SampleTag>
           <ButtonLink to="/dev/admin" size="sm" block={false}>+ Create order</ButtonLink>
