@@ -49,7 +49,7 @@ export function AddressPick() {
                   onClick={() => setPicked(a.id)}
                   className={cx(
                     'box-border flex w-full cursor-pointer items-center gap-3 rounded-stat border-2 px-3.5 py-3 text-ink transition-[background-color,border-color,box-shadow] duration-200',
-                    on ? 'border-primary bg-sky shadow-[0_8px_18px_rgba(21,112,216,0.14)]' : 'border-line bg-white',
+                    on ? 'border-primary bg-sky shadow-[0_8px_18px_rgba(17,112,140,0.14)]' : 'border-line bg-white',
                   )}
                 >
                   <AddressIcon label={a.label} />
@@ -77,7 +77,7 @@ export function AddressPick() {
         </Link>
         <MapFrame height={150} className="rise-4">
           <AddressMapArt />
-          <MapPin color="#1570D8" ringColor="rgba(21,112,216,.35)" width={32} height={40} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[88%]" />
+          <MapPin color="#11708C" ringColor="rgba(17,112,140,.35)" width={32} height={40} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[88%]" />
           {selected && (
             <MapBadge tone="light" className="bottom-2.5 left-2.5">
               {selected.label} · {selected.address.split(',')[0]}

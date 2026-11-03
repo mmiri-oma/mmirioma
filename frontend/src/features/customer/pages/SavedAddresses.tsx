@@ -40,7 +40,7 @@ export function SavedAddresses() {
             key={a.id}
             className={cx(
               'rise-2 p-3.5 transition-[border-color,box-shadow] duration-[250ms]',
-              a.is_default && 'border-2 border-primary shadow-[0_10px_22px_rgba(21,112,216,0.14)]',
+              a.is_default && 'border-2 border-primary shadow-[0_10px_22px_rgba(17,112,140,0.14)]',
             )}
           >
             <div className="flex items-start gap-3">

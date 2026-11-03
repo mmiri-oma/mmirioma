@@ -56,7 +56,7 @@ export function Support() {
             Your quote request is sent. Our team will call you with a price. Nothing is booked until you agree to it.
           </Notice>
         )}
-        <div className="rise-1 relative min-h-[120px] overflow-hidden rounded-[22px] bg-[#DCEBFB]">
+        <div className="rise-1 relative min-h-[120px] overflow-hidden rounded-[22px] bg-[#E6F3F5]">
           <Illustration name="drop-hero" className="absolute top-0 right-[-60px] h-full w-auto max-w-none" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(234,243,254,.97)_45%,rgba(234,243,254,0)_80%)]" />
           <div className="relative max-w-[210px] p-[18px]">

@@ -222,7 +222,7 @@ export function DeliveryDetails() {
           )}
           <MapFrame height={132} className="rise-3">
             <DetailsMapArt />
-            <MapPin color="#1570D8" ringColor="rgba(21,112,216,.35)" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[88%]" />
+            <MapPin color="#11708C" ringColor="rgba(17,112,140,.35)" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[88%]" />
             <button
               type="button"
               onClick={() => setPinNote((v) => !v)}

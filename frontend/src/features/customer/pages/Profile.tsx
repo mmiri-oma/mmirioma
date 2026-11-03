@@ -74,7 +74,7 @@ export function Profile() {
   return (
     <MobileShell>
       <ScrollArea className="gap-0 p-0">
-        <div className="relative overflow-hidden bg-[linear-gradient(160deg,#0B4FA8_0%,#1570D8_60%,#16A0B8_100%)] px-4 pt-3 pb-14 text-white">
+        <div className="relative overflow-hidden bg-[linear-gradient(160deg,#0E4A5A_0%,#11708C_60%,#16A0B8_100%)] px-4 pt-3 pb-14 text-white">
           <div className="relative z-[2] flex items-center justify-between">
             <Link to="/menu" aria-label="Back" className="mo-ib text-white hover:text-white">
               <ChevronLeftIcon size={22} strokeWidth={2.4} roundJoin={false} />
@@ -192,7 +192,7 @@ export function AccountSettings() {
     <MobileShell>
       <ScrollArea className="gap-0 p-0">
         {/* The same blue header and wave as My profile. */}
-        <div className="relative overflow-hidden bg-[linear-gradient(160deg,#0B4FA8_0%,#1570D8_60%,#16A0B8_100%)] px-4 pt-3 pb-14 text-white">
+        <div className="relative overflow-hidden bg-[linear-gradient(160deg,#0E4A5A_0%,#11708C_60%,#16A0B8_100%)] px-4 pt-3 pb-14 text-white">
           <div className="relative z-[2] flex items-center justify-between">
             <Link to="/menu" aria-label="Back" className="mo-ib text-white hover:text-white">
               <ChevronLeftIcon size={22} strokeWidth={2.4} roundJoin={false} />

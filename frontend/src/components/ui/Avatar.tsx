@@ -31,7 +31,7 @@ export function Avatar({ name, size = 42, fontSize, className, style, photoUrl, 
       aria-hidden="true"
       className={cx(
         'flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white font-extrabold',
-        tone === 'brand' && 'bg-[linear-gradient(135deg,#1570D8,#16A0B8)] text-white shadow-[0_0_0_2px_#CFE2FB]',
+        tone === 'brand' && 'bg-[linear-gradient(135deg,#11708C,#16A0B8)] text-white shadow-[0_0_0_2px_#CFE2FB]',
         tone === 'green' && 'bg-[linear-gradient(135deg,#15803D,#16A0B8)] text-white shadow-[0_0_0_2px_#CFE2FB]',
         tone === 'plain' && 'bg-line text-ink',
         className,

@@ -91,7 +91,7 @@ function TypeCard({
       className={cx(
         'relative block w-full cursor-pointer rounded-[22px] border-2 px-4 pt-3.5 pb-[18px] text-left text-ink',
         selected
-          ? 'border-primary bg-[linear-gradient(160deg,#EEF6FF_0%,#DCEBFD_100%)] shadow-[0_12px_26px_rgba(21,112,216,0.16)]'
+          ? 'border-primary bg-[linear-gradient(160deg,#EEF6FF_0%,#DCEBFD_100%)] shadow-[0_12px_26px_rgba(17,112,140,0.16)]'
           : 'border-line bg-white hover:border-[#93C5FD]',
         className,
       )}

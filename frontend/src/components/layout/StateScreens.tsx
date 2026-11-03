@@ -65,7 +65,7 @@ export function WaterLoader({ label = 'Loading' }: { label?: string }) {
   return (
     <div role="status" aria-live="polite" className="flex flex-col items-center gap-4">
       <span className="relative flex size-16 items-center justify-center" aria-hidden="true">
-        <span className="animate-ping absolute inset-2 rounded-full bg-[rgba(21,112,216,.25)] [animation-duration:1.6s]" />
+        <span className="animate-ping absolute inset-2 rounded-full bg-[rgba(17,112,140,.25)] [animation-duration:1.6s]" />
         <svg width="38" height="38" viewBox="0 0 24 24" className="animate-drop-bob relative text-primary">
           <path fill="currentColor" d="M12 2.5s-7 7.6-7 12.2a7 7 0 0 0 14 0C19 10.1 12 2.5 12 2.5Z" />
           <path fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" d="M9 15.5a3 3 0 0 0 3 3" opacity=".8" />

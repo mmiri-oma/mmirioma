@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { FlatJerrycan, FlatKeke, FlatTanker } from './FlatArt'
 
 /** Illustrations from the design handoff, in `public/illustrations/`. */
 export type IllustrationName = 'keke' | 'tanker' | 'gift' | 'jerrycan' | 'drop-hero'
@@ -40,8 +41,19 @@ const FILE: Record<IllustrationName, string> = {
   'drop-hero': 'drop-hero-plain',
 }
 
-/** A design illustration as `<picture>`: WebP first, PNG fallback where the handoff has one. */
+/** The Waterline flat drawings that replace the handoff's photo-style keke, tanker and jerrycan. */
+const FLAT = { keke: FlatKeke, tanker: FlatTanker, jerrycan: FlatJerrycan } as const
+
+/**
+ * A design illustration. The keke, tanker and jerrycan are the Waterline
+ * flat SVG drawings (`FlatArt.tsx`); the others are the handoff's WebP files
+ * as `<picture>`, with a PNG fallback where the handoff has one.
+ */
 export function Illustration({ name, alt = '', className, style, width, height }: IllustrationProps) {
+  if (name === 'keke' || name === 'tanker' || name === 'jerrycan') {
+    const Art = FLAT[name]
+    return <Art className={className} style={{ ...(width ? { width } : {}), ...(height ? { height } : {}), ...style }} label={alt} />
+  }
   const webp = `/illustrations/${FILE[name]}.webp`
   if (!PNG_FALLBACK[name]) {
     return <img src={webp} alt={alt} className={className} style={style} width={width} height={height} />

@@ -199,7 +199,7 @@ export function PartnerNotifications() {
         {items.map((n) => {
           const st = NOTE_STYLE[n.kind]
           return (
-            <CardLink key={n.id} to={target(n)} className={cx('rise-2 flex items-start gap-3 px-3.5 py-3', !n.read && 'border-[#CFE3FB] bg-[#F2F8FF]')}>
+            <CardLink key={n.id} to={target(n)} className={cx('rise-2 flex items-start gap-3 px-3.5 py-3', !n.read && 'border-[#D4ECEF] bg-[#F2F8FF]')}>
               <IconBadge tone={st.tone}>{st.icon}</IconBadge>
               <span className="flex flex-1 flex-col">
                 <span className="text-[14px] font-extrabold">{n.title}</span>
@@ -266,7 +266,7 @@ export function PartnerVehicle() {
         {profile.isError && <ErrorBlock error={profile.error} onRetry={() => profile.refetch()} />}
         {p && (
           <>
-            <div className="rise-1 relative overflow-hidden rounded-hero bg-[linear-gradient(160deg,#EEF6FF,#CFE3FB)] p-4 text-center">
+            <div className="rise-1 relative overflow-hidden rounded-hero bg-[linear-gradient(160deg,#EEF6FF,#D4ECEF)] p-4 text-center">
               {approvalChip}
               <Illustration name={vehicle} alt={vehicle === 'keke' ? 'Your keke' : 'Your tanker'} className="animate-drive mx-auto mt-4 w-[230px]" />
               <div className="mt-1.5 text-[20px] font-extrabold">

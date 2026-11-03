@@ -13,7 +13,9 @@ import { IconButton, IconLink } from '../ui/IconButton'
  * hide the footer) with a fixed header, one scrolling area and a fixed footer
  * or tab bar. From 360 px up it stretches to the screen width; on tablets and
  * desktops it is a centred column at most 430 px wide on the page background,
- * so the phone layout keeps its proportions.
+ * so the phone layout keeps its proportions. Inside the customer area
+ * (`.customer-app`), laptops get a desktop layout instead: see
+ * `styles/components.css`, "Customer app on desktop".
  */
 export function MobileShell({
   children,
@@ -26,10 +28,10 @@ export function MobileShell({
   className?: string
 }) {
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="mo-shell min-h-dvh bg-canvas">
       <div
         className={cx(
-          'relative mx-auto flex h-dvh max-w-phone flex-col overflow-hidden text-body text-ink',
+          'mo-shell-inner relative mx-auto flex h-dvh max-w-phone flex-col overflow-hidden text-body text-ink',
           'sm:border-x sm:border-line sm:shadow-card',
           background === 'white' ? 'bg-white' : background === 'ink' ? 'bg-ink' : 'bg-canvas',
           className,
@@ -63,7 +65,7 @@ export function TopBar({
       )}
     >
       {left ?? <TopBarSpacer />}
-      {center ?? <Logo height={30} />}
+      {center ?? <Logo height={30} className="mo-top-logo" />}
       {right ?? <TopBarSpacer />}
     </header>
   )

@@ -18,7 +18,7 @@ import { useJob, usePartnerProfile } from '../queries'
 const CONFETTI = [
   { left: 36, top: 0, color: '#22C55E', delay: 0 },
   { left: 120, top: 12, color: '#F2B33D', delay: 0.5 },
-  { left: 200, top: 0, color: '#1570D8', delay: 1 },
+  { left: 200, top: 0, color: '#11708C', delay: 1 },
   { left: 280, top: 8, color: '#22C55E', delay: 0.3 },
   { left: 345, top: 0, color: '#F2B33D', delay: 0.8 },
 ]

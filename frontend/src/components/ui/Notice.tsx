@@ -7,7 +7,7 @@ const TONE = {
   note: { box: 'bg-[#FFF7E2] text-[#5A4310]', icon: '#C27C00' },
   error: { box: 'bg-red-bg text-red', icon: '#B91C1C' },
   success: { box: 'bg-green-bg text-green', icon: '#15803D' },
-  info: { box: 'bg-sky text-primary-dark', icon: '#1570D8' },
+  info: { box: 'bg-sky text-primary-dark', icon: '#11708C' },
 } as const
 
 /**

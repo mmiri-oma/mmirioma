@@ -50,7 +50,7 @@ export function Notifications() {
       <CardLink
         key={n.id}
         to={target(n)}
-        className={cx('flex items-start gap-3 px-3.5 py-3', anim, !n.read && 'border-[#CFE3FB] bg-[#F2F8FF]')}
+        className={cx('flex items-start gap-3 px-3.5 py-3', anim, !n.read && 'border-[#D4ECEF] bg-[#F2F8FF]')}
       >
         <IconBadge tone={k.tone}>{k.icon}</IconBadge>
         <span className="flex flex-1 flex-col">

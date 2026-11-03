@@ -49,7 +49,7 @@ export function DriverEarnings() {
         {earnings.isError && <ErrorBlock error={earnings.error} onRetry={() => earnings.refetch()} />}
         {e && (
           <>
-            <div className="rise-1 relative overflow-hidden rounded-hero bg-[linear-gradient(135deg,#0A2540_0%,#14532D_60%,#15803D_100%)] p-[18px] text-white">
+            <div className="rise-1 relative overflow-hidden rounded-hero bg-[linear-gradient(135deg,#0C2733_0%,#14532D_60%,#15803D_100%)] p-[18px] text-white">
               <Illustration name="tanker" className="absolute right-[-40px] bottom-[-6px] w-[190px] opacity-25" />
               <div className="relative flex items-center justify-between">
                 <span className="text-[13px] font-bold text-[#BBF7D0]">Wallet balance</span>

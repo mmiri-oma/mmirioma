@@ -169,7 +169,10 @@ element.
 - `src/mocks/`: the mock backend. `db.ts` holds one state object saved in
   localStorage (survives closing the tab or the installed app, like the real
   7-day session; other tabs pick up changes through the `storage` event); `seed.ts` has the design's
-  sample people and orders and the mock-only demo sign-in; `pricing.ts`
+  sample people and orders and the mock-only demo sign-in (every mock account
+  uses `DEMO_PASSWORD`; `TEST_CUSTOMER_PHONE`, "Test Customer", is a
+  customer whose phone is already verified, with no addresses or orders, for
+  testing a first order without the SMS code step); `pricing.ts`
   computes sample quotes so screens never add up prices. Mock handlers
   enforce the same rules as the server: session, ownership 404s,
   idempotency, validation errors in the API envelope.
@@ -211,6 +214,21 @@ switches) use `hit-44` for an invisible 44 × 44 touch area.
   fills the screen, on tablets and desktops it is a centred column at most
   430 px wide. Footer and tab bar pad above the phone's home bar
   (`env(safe-area-inset-bottom)`).
+- **Customer app on desktop** (Waterline redesign): from 1024 px,
+  `CustomerArea` wraps every customer screen in `.customer-app` and renders
+  `CustomerDesktopHeader` (logo, Home, Order water, My orders, Addresses,
+  Profile, notifications, avatar; only on wide screens, through
+  `lib/useMediaQuery.ts`, so phones and tests have one navigation). Unlayered
+  rules at the end of `styles/components.css` turn the phone frame into a
+  page there: the screen's own top bar becomes a slim row (logo hidden), the
+  phone top bar of home screens (`.mo-top-home`) and the bottom tabs
+  (`.mo-tabs`) are hidden, the page scrolls normally, content sits in a
+  760 px column (`.app-wide` screens such as home: 1,120 px, two columns), and
+  the footer button stays at the bottom of the window. The driver app keeps
+  the phone frame.
+- `components/brand/FlatArt.tsx`: the Waterline flat keke, tanker and
+  jerrycan; `Illustration` draws these names with them instead of the
+  handoff's photo-style WebP files.
 - `components/layout/BottomTabBar.tsx`: `.tabs`, current tab `aria-current`.
 - `components/layout/DrawerMenu.tsx`: slide-in menu screens (`c-menu`, `r-menu`,
   `t-menu`); closes on backdrop, close button or Escape. `tone="green"` gives

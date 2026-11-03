@@ -29,6 +29,10 @@ hidden for the pilot (see section 6).
    Address forms (`/addresses/new`, edit, and a new address on
    `/order/details`) offer "Use my location" when Google Maps is set up: it
    fills the address and suggests the area ([use-my-location.md](use-my-location.md)).
+   On a laptop every customer screen uses the desktop layout: a header with
+   the main sections instead of the bottom tabs, a readable centred column
+   (home in two columns), and the main button pinned at the bottom of the
+   window (docs/architecture/frontend.md, "Customer app on desktop").
 3. **Order** (`/order` → `/order/keke` or `/order/tanker`):
    - Keke: jerrycan size (25 or 50 L) and count (12, 24, 30, 60). No water source.
    - Tanker: tank type (ground, overhead), size (500, 750, 1,000 gallons or

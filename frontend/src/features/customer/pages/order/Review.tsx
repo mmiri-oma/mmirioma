@@ -233,7 +233,7 @@ export function Review() {
           <SectionHeader title="Delivery address" action={<TextLink to="/order/details" className="text-label">Edit</TextLink>} />
           {address && (
             <div className="mt-2 flex gap-2.5">
-              <MapPinIcon size={20} color="#1570D8" className="mt-0.5 shrink-0" />
+              <MapPinIcon size={20} color="#11708C" className="mt-0.5 shrink-0" />
               <div>
                 <div className="font-bold">{address.address}</div>
                 {address.landmark && <div className="text-caption text-mute">Landmark: {address.landmark}</div>}
@@ -259,7 +259,7 @@ export function Review() {
             className={
               expired
                 ? 'rise-4 flex flex-col gap-1 rounded-card bg-[#56677D] p-4 text-white'
-                : 'rise-4 relative flex flex-col gap-1 overflow-hidden rounded-card bg-[linear-gradient(135deg,#0B4FA8_0%,#1570D8_60%,#16A0B8_100%)] p-4 text-white'
+                : 'rise-4 relative flex flex-col gap-1 overflow-hidden rounded-card bg-[linear-gradient(135deg,#0E4A5A_0%,#11708C_60%,#16A0B8_100%)] p-4 text-white'
             }
           >
             <div className="flex items-center justify-between">
@@ -295,7 +295,7 @@ export function Review() {
               </span>
             </span>
             <span className="flex items-start gap-2.5">
-              <PhoneIcon size={18} color="#1570D8" className="mt-px shrink-0" />
+              <PhoneIcon size={18} color="#11708C" className="mt-px shrink-0" />
               <span>We'll call you to agree the delivery time. Nothing is booked until then.</span>
             </span>
             <span className="flex items-start gap-2.5">

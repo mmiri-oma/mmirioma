@@ -18,7 +18,7 @@ import { useJob, usePartnerProfile } from '../queries'
 const CONFETTI = [
   { left: 36, top: 0, color: '#22C55E', delay: 0 },
   { left: 110, top: 12, color: '#F2B33D', delay: 0.5 },
-  { left: 190, top: 0, color: '#1570D8', delay: 1 },
+  { left: 190, top: 0, color: '#11708C', delay: 1 },
   { left: 270, top: 8, color: '#22C55E', delay: 0.3 },
   { left: 340, top: 0, color: '#F2B33D', delay: 0.8 },
 ]
@@ -56,8 +56,8 @@ export function RiderDone() {
             <p className="rise-2 m-0 text-sub text-mute">Code verified. Great job{profile.data ? `, ${profile.data.name.split(' ')[0]}` : ''}.</p>
             {/* Partner pay is out of the MVP (partners.md, decision 7): no card without an amount. */}
             {j.earning_minor_units !== null && (
-              <div className="rise-3 relative box-border w-full overflow-hidden rounded-[22px] bg-[linear-gradient(120deg,#0B4FA8,#1570D8)] p-[18px] text-left text-white">
-                <div className="text-[13px] font-bold text-[#CFE3FB]">YOU EARNED</div>
+              <div className="rise-3 relative box-border w-full overflow-hidden rounded-[22px] bg-[linear-gradient(120deg,#0E4A5A,#11708C)] p-[18px] text-left text-white">
+                <div className="text-[13px] font-bold text-[#D4ECEF]">YOU EARNED</div>
                 <div className="animate-pop text-[38px] font-extrabold tracking-[-1px] [animation-delay:.3s]">{formatNaira(j.earning_minor_units)}</div>
                 <div className="text-caption text-[#DCEBFD]">Added to your wallet · sample amount</div>
                 <Wave fill="#FFFFFF" variant="low" height={34} className="bottom-[-10px] opacity-20" />

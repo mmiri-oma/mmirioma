@@ -47,7 +47,7 @@ export function DrawerMenu({ closeTo, label, header, children, footer, tone = 'b
         tabIndex={-1}
         className={cx(
           'absolute inset-0 opacity-55',
-          tone === 'green' ? 'bg-[linear-gradient(160deg,#15803D,#16A0B8)]' : 'bg-[linear-gradient(160deg,#1570D8,#16A0B8)]',
+          tone === 'green' ? 'bg-[linear-gradient(160deg,#15803D,#16A0B8)]' : 'bg-[linear-gradient(160deg,#11708C,#16A0B8)]',
         )}
       />
       <nav

@@ -121,11 +121,11 @@ export function RiderHome() {
             {inProgress && (
               <Link
                 to={jobStepPath(base, inProgress)}
-                className="rise-4 relative flex items-center gap-3 overflow-hidden rounded-stat bg-[linear-gradient(120deg,#0B4FA8,#1570D8)] px-3.5 py-3 text-white no-underline hover:text-white"
+                className="rise-4 relative flex items-center gap-3 overflow-hidden rounded-stat bg-[linear-gradient(120deg,#0E4A5A,#11708C)] px-3.5 py-3 text-white no-underline hover:text-white"
               >
                 <Illustration name="keke" className="animate-drive w-[70px]" />
                 <span className="flex flex-1 flex-col">
-                  <span className="text-chip font-bold text-[#CFE3FB]">ACTIVE DELIVERY</span>
+                  <span className="text-chip font-bold text-[#D4ECEF]">ACTIVE DELIVERY</span>
                   <span className="font-extrabold">
                     {inProgress.reference} · {jobQuantity(inProgress, 'short')}
                   </span>

@@ -20,7 +20,7 @@ import { useAddresses, useOrder, usePoints, useSubmitFeedback } from '../../quer
 
 const CONFETTI = [
   { left: 30, top: 0, color: '#F2B33D', delay: 0 },
-  { left: 90, top: 14, color: '#1570D8', delay: 0.5 },
+  { left: 90, top: 14, color: '#11708C', delay: 0.5 },
   { left: 170, top: 0, color: '#22C55E', delay: 1 },
   { left: 250, top: 10, color: '#F2B33D', delay: 0.3 },
   { left: 330, top: 4, color: '#16A0B8', delay: 0.8 },
@@ -58,7 +58,7 @@ export function Delivered() {
   }
 
   return (
-    <MobileShell className="bg-[linear-gradient(180deg,#E4F0FE_0%,#F4F7FB_40%)]">
+    <MobileShell className="bg-[linear-gradient(180deg,#E6F3F5_0%,#F4F7FB_40%)]">
       <Confetti pieces={CONFETTI} height={240} />
       <ScrollArea className="items-center gap-3 pt-[34px] text-center">
         {order.isPending && <LoadingBlock label="Loading your order" />}
@@ -66,8 +66,8 @@ export function Delivered() {
         {o && (
           <>
             <div className="relative flex size-28 shrink-0 items-center justify-center" aria-hidden="true">
-              <span className="animate-ping absolute size-[76px] rounded-full bg-[rgba(21,112,216,.3)]" />
-              <span className="animate-pop flex size-[92px] items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(21,112,216,0.25)]">
+              <span className="animate-ping absolute size-[76px] rounded-full bg-[rgba(17,112,140,.3)]" />
+              <span className="animate-pop flex size-[92px] items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(17,112,140,0.25)]">
                 <Logo variant="mark" height={75} alt="" />
               </span>
             </div>

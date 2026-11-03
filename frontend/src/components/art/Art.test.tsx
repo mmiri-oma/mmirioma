@@ -20,6 +20,6 @@ describe('customer map illustrations', () => {
   it('TrackMapArt draws a still route', () => {
     const { container } = render(<TrackMapArt />)
     expect(container.querySelector('.route-flow')).toBeNull()
-    expect(container.querySelectorAll('path[stroke="#1570D8"]')).toHaveLength(1)
+    expect(container.querySelectorAll('path[stroke="#11708C"]')).toHaveLength(1)
   })
 })

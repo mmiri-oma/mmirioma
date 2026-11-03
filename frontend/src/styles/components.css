@@ -280,14 +280,14 @@
    */
   @media (hover: hover) {
     .mo-btn-primary:hover { background: var(--color-primary-dark); }
-    .mo-btn-alt:hover { background: #d3e6fb; }
+    .mo-btn-alt:hover { background: #D4ECEF; }
     .mo-btn-line:hover { background: var(--color-sky); border-color: var(--color-primary); }
     .mo-btn-danger:hover { background: #b91c1c; }
     .mo-btn-line-danger:hover { background: var(--color-red-bg); border-color: #fca5a5; }
     .mo-ib-plain:hover { background: var(--color-sky); }
-    .mo-ib-soft:hover { background: #d3e6fb; }
+    .mo-ib-soft:hover { background: #D4ECEF; }
     .mo-mini-primary:hover { background: var(--color-primary-dark); color: #fff; }
-    .mo-mini-alt:hover { background: #d3e6fb; color: var(--color-primary-dark); }
+    .mo-mini-alt:hover { background: #D4ECEF; color: var(--color-primary-dark); }
     .mo-mini-danger:hover { background: #b91c1c; color: #fff; }
     .mo-mini-danger-soft:hover { background: #fecaca; color: var(--color-red); }
     a.mo-tile:hover, button.mo-tile:hover { border-color: #bfdbfe; box-shadow: var(--shadow-card); }
@@ -309,4 +309,67 @@
   .mo-chip-violet { background: var(--color-violet-bg); color: var(--color-violet); }
   .mo-chip-gray { background: var(--color-gray-bg); color: var(--color-gray); }
   .mo-chip-gold { background: var(--color-gold-tint); color: var(--color-gold-ink); }
+}
+
+/*
+ * Customer app on desktop (from 1024 px, inside `.customer-app`, see
+ * features/customer/CustomerArea.tsx). The phone frame becomes a page: the
+ * desktop header (CustomerDesktopHeader) replaces the top bar and bottom
+ * tabs, the page scrolls normally, content sits in a readable column
+ * (`--app-content`, 760 px; `.app-wide` screens use 1120 px), and a screen's
+ * main button stays at the bottom of the window, lined up with the column.
+ * Phones and tablets keep the phone frame.
+ *
+ * Not in `@layer components` on purpose: these rules must beat the phone
+ * frame's own utilities (`h-dvh`, `max-w-phone`, a screen's `px-[22px]`), and
+ * unlayered CSS wins over every layer.
+ */
+@media (min-width: 1024px) {
+  .customer-app {
+    --app-content: 760px;
+    min-height: 100dvh;
+    background: #f3f8f9;
+  }
+  .customer-app .mo-shell {
+    min-height: 0;
+    background: transparent;
+  }
+  .customer-app .mo-shell-inner {
+    max-width: none;
+    height: auto;
+    min-height: calc(100dvh - 73px);
+    overflow: visible;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .customer-app .mo-top-home,
+  .customer-app .mo-tabs {
+    display: none;
+  }
+  /* A screen's own bar (back arrow, title) becomes a slim row above its content. */
+  .customer-app .mo-top {
+    padding: 20px max(24px, calc((100% - var(--app-content)) / 2)) 0;
+    background: transparent;
+    border-bottom: 0;
+  }
+  .customer-app .mo-top-logo {
+    visibility: hidden;
+  }
+  .customer-app .mo-scroll {
+    overflow: visible;
+    padding: 24px max(24px, calc((100% - var(--app-content)) / 2)) 48px;
+    gap: 18px;
+  }
+  .customer-app .mo-scroll.app-wide {
+    --app-content: 1120px;
+  }
+  .customer-app .mo-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 14px max(24px, calc((100% - var(--app-content)) / 2)) 18px;
+    background: rgba(243, 248, 249, 0.92);
+    backdrop-filter: blur(8px);
+  }
 }

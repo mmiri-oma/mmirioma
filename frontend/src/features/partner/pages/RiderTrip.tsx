@@ -77,14 +77,14 @@ export function RefillStep() {
             <MapFrame height={400} className="rise-3">
               <RefillMapArt />
               <div className="absolute top-[86.5%] left-[18.6%]" aria-hidden="true">
-                <span className="animate-ping absolute inset-0 rounded-full bg-[rgba(21,112,216,.4)]" />
+                <span className="animate-ping absolute inset-0 rounded-full bg-[rgba(17,112,140,.4)]" />
                 <span className="relative flex size-7 items-center justify-center rounded-full bg-white shadow-[0_4px_10px_rgba(10,37,64,0.3)]">
                   <span className="size-4 rounded-full bg-primary" />
                 </span>
               </div>
               <div
                 aria-hidden="true"
-                className="animate-float absolute top-[10%] left-[64.4%] flex size-[42px] items-center justify-center rounded-icon bg-primary text-white shadow-[0_8px_16px_rgba(21,112,216,0.4)]"
+                className="animate-float absolute top-[10%] left-[64.4%] flex size-[42px] items-center justify-center rounded-icon bg-primary text-white shadow-[0_8px_16px_rgba(17,112,140,0.4)]"
               >
                 <StationDoorIcon size={22} />
               </div>
@@ -204,7 +204,7 @@ function PickupForm({ job: j, base }: { job: PartnerJob; base: string }) {
           </span>
           <div className="grid grid-cols-2 gap-2.5">
             {photo ? (
-              <div className="relative flex h-[120px] items-center justify-center overflow-hidden rounded-option bg-[linear-gradient(160deg,#CFE3FB,#9CC2F2)]">
+              <div className="relative flex h-[120px] items-center justify-center overflow-hidden rounded-option bg-[linear-gradient(160deg,#D4ECEF,#8CCBD8)]">
                 <img src={photo} alt="Photo of the loaded keke" className="size-full object-cover" />
                 <Chip tone="green" className="absolute bottom-2 left-2">
                   Added

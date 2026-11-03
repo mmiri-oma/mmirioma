@@ -113,7 +113,7 @@ export function SaveAddress() {
                     onClick={() => setMode(o.value)}
                     className={cx(
                       'box-border flex w-full cursor-pointer items-center gap-3 rounded-option border-2 p-3.5 text-ink transition-[background-color,border-color,box-shadow] duration-200',
-                      on ? 'border-primary bg-sky shadow-[0_8px_18px_rgba(21,112,216,0.14)]' : 'border-line bg-white',
+                      on ? 'border-primary bg-sky shadow-[0_8px_18px_rgba(17,112,140,0.14)]' : 'border-line bg-white',
                     )}
                   >
                     <RadioDot on={on} />

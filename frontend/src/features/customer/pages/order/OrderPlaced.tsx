@@ -18,12 +18,12 @@ import { StageChip } from '../../components/OrderBits'
 import { useOrder } from '../../queries'
 
 const CONFETTI = [
-  { left: 40, top: 10, color: '#1570D8', delay: 0 },
+  { left: 40, top: 10, color: '#11708C', delay: 0 },
   { left: 96, top: 0, color: '#F2B33D', delay: 0.4 },
   { left: 150, top: 20, color: '#22C55E', delay: 0.9 },
   { left: 236, top: 4, color: '#16A0B8', delay: 0.2 },
   { left: 300, top: 16, color: '#F2B33D', delay: 1.2 },
-  { left: 340, top: 0, color: '#1570D8', delay: 0.7 },
+  { left: 340, top: 0, color: '#11708C', delay: 0.7 },
 ]
 
 /**

@@ -143,7 +143,7 @@ export function AdminShell({ searchPlaceholder, onSearch, user, counts = {}, unr
               type="button"
               aria-label="Close menu"
               tabIndex={-1}
-              className="absolute inset-0 cursor-default border-0 bg-[linear-gradient(160deg,#1570D8,#16A0B8)] opacity-55"
+              className="absolute inset-0 cursor-default border-0 bg-[linear-gradient(160deg,#11708C,#16A0B8)] opacity-55"
               onClick={() => setOpen(false)}
             />
             <div className="animate-slide-in relative flex h-full flex-col overflow-y-auto bg-white shadow-[16px_0_40px_rgba(0,0,0,0.25)]">

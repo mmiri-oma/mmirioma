@@ -134,9 +134,9 @@ export function TrackMapArt() {
       <path d="M-10 150 C 60 128 120 176 190 150 S 300 112 370 126" fill="none" stroke="#BFDDF7" strokeWidth="18" />
       <path d="M0 82 H354 M232 0 V268 M110 0 V268 M0 176 H354" stroke="#FFFFFF" strokeWidth="10" />
       <path d="M0 236 L 354 30" stroke="#FBE7A1" strokeWidth="12" />
-      <path d={route} fill="none" opacity=".25" stroke="#0B4FA8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="7" />
-      <path d={route} fill="none" stroke="#1570D8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
-      <circle cx="58" cy="236" fill="#fff" r="7" stroke="#1570D8" strokeWidth="4" />
+      <path d={route} fill="none" opacity=".25" stroke="#0E4A5A" strokeLinecap="round" strokeLinejoin="round" strokeWidth="7" />
+      <path d={route} fill="none" stroke="#11708C" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
+      <circle cx="58" cy="236" fill="#fff" r="7" stroke="#11708C" strokeWidth="4" />
     </svg>
   )
 }
@@ -145,7 +145,7 @@ export function TrackMapArt() {
 export function PlacedRouteArt() {
   return (
     <svg aria-hidden="true" viewBox="0 0 354 92" preserveAspectRatio="none" className="absolute inset-0 size-full">
-      <path className="route-flow" d="M20 70 C 90 30 160 90 230 50 S 320 30 330 40" fill="none" stroke="#1570D8" strokeLinecap="round" strokeWidth="3" />
+      <path className="route-flow" d="M20 70 C 90 30 160 90 230 50 S 320 30 330 40" fill="none" stroke="#11708C" strokeLinecap="round" strokeWidth="3" />
     </svg>
   )
 }
@@ -195,7 +195,7 @@ export function GroundTankArt() {
       <ellipse cx="32" cy="12" fill="#47566A" rx="22" ry="6" />
       <rect fill="#47566A" height="3" width="44" x="10" y="22" />
       <rect fill="#47566A" height="3" width="44" x="10" y="34" />
-      <rect fill="#1570D8" height="6" rx="2" width="12" x="26" y="4" />
+      <rect fill="#11708C" height="6" rx="2" width="12" x="26" y="4" />
     </svg>
   )
 }
@@ -241,8 +241,8 @@ export function RefillMapArt() {
       <path d="M0 120 H354 M160 0 V400 M0 246 H354 M0 380 H354" stroke="#FFFFFF" strokeWidth="12" />
       <path d="M0 330 L 354 70" stroke="#FBE7A1" strokeWidth="14" />
       {/* No place names: they would read as where the job is (#157). The screen names the real place. */}
-      <path d={route} fill="none" opacity=".22" stroke="#0B4FA8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="9" />
-      <path d={route} className="route-flow" fill="none" stroke="#1570D8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" />
+      <path d={route} fill="none" opacity=".22" stroke="#0E4A5A" strokeLinecap="round" strokeLinejoin="round" strokeWidth="9" />
+      <path d={route} className="route-flow" fill="none" stroke="#11708C" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" />
     </svg>
   )
 }
@@ -260,8 +260,8 @@ export function CustomerMapArt() {
       <path d="M0 150 H354 M160 0 V330" stroke="#FFFFFF" strokeWidth="14" />
       <path d="M0 110 L 354 260" stroke="#FBE7A1" strokeWidth="12" />
       <path d="M-10 186 C 60 170 120 200 200 180 S 300 160 370 170" fill="none" stroke="#BFDDF7" strokeWidth="16" />
-      <path d={route} fill="none" opacity=".22" stroke="#0B4FA8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="9" />
-      <path d={route} className="route-flow" fill="none" stroke="#1570D8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" />
+      <path d={route} fill="none" opacity=".22" stroke="#0E4A5A" strokeLinecap="round" strokeLinejoin="round" strokeWidth="9" />
+      <path d={route} className="route-flow" fill="none" stroke="#11708C" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" />
     </svg>
   )
 }
@@ -317,7 +317,7 @@ export function TankGauge({ fraction, target, targetLabel }: { fraction: number;
         className="absolute inset-0 transition-transform duration-[600ms] ease-[cubic-bezier(.2,.8,.2,1)]"
         style={{ transform: `translateY(${(1 - level) * 100}%)` }}
       >
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#26C0C1,#1570D8)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,#26C0C1,#11708C)]" />
         <svg width="220" height="14" viewBox="0 0 220 14" className="animate-wave absolute top-[-12px] left-0 max-w-none">
           <path d="M0 8 Q 13.75 0 27.5 8 T 55 8 T 82.5 8 T 110 8 T 137.5 8 T 165 8 T 192.5 8 T 220 8 V14 H0 Z" fill="#26C0C1" />
         </svg>

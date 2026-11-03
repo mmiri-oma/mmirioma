@@ -192,6 +192,15 @@ export interface MockPhoneCode {
 
 export const DEMO_CUSTOMER_ID = 'user-adaeze'
 
+/**
+ * A fresh customer for testing a first order: phone already verified (so the
+ * SMS code step is skipped), no addresses, no orders. Signs in with
+ * `DEMO_PASSWORD`. Mock mode only, like every account here.
+ */
+export const TEST_CUSTOMER_ID = 'user-test-customer'
+/** The test customer's phone number, as people type it. */
+export const TEST_CUSTOMER_PHONE = '0809 000 0101'
+
 const CHINEDU = { name: 'Chinedu Okafor', vehicle: 'keke' as const, plate: 'ENU 482 KK', rating: 4.8, phone: '+2348000000101' }
 const EMEKA = { name: 'Emeka David', vehicle: 'tanker' as const, plate: 'ENU 115 XA', rating: 4.7, phone: '+2348000000102' }
 
@@ -350,12 +359,14 @@ export function seedState(now = new Date()): MockState {
         phone_verified: true,
         password: DEMO_PASSWORD,
       },
+      { id: TEST_CUSTOMER_ID, name: 'Test Customer', phone: '+2348090000101', role: 'customer', phone_verified: true, password: DEMO_PASSWORD },
     ],
     sessionUserId: null,
     sessionExpiresAt: null,
     pushSubscriptions: {},
     customers: {
       ...extra.customers,
+      [TEST_CUSTOMER_ID]: emptyCustomerData(now),
       [DEMO_CUSTOMER_ID]: {
         profile: {
           email: 'adaeze.n@example.com',

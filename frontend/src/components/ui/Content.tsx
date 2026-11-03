@@ -17,7 +17,7 @@ export function ScreenHeading({
 }) {
   return (
     <div className={className}>
-      <h1 className={cx('m-0 text-title font-extrabold', titleClassName)}>{title}</h1>
+      <h1 className={cx('m-0 font-display text-title font-semibold tracking-[-0.02em]', titleClassName)}>{title}</h1>
       {sub && <p className="mt-[3px] mb-0 text-sub text-mute">{sub}</p>}
     </div>
   )

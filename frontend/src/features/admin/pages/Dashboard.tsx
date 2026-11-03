@@ -56,7 +56,7 @@ export function Dashboard() {
   const segs = d
     ? [
         { label: 'Delivered', value: d.orders.delivered, color: '#22C55E' },
-        { label: 'In progress', value: d.orders.in_progress, color: '#1570D8' },
+        { label: 'In progress', value: d.orders.in_progress, color: '#11708C' },
         { label: 'Awaiting rider', value: d.orders.awaiting_rider, color: '#F59E0B' },
         { label: 'Cancelled', value: d.orders.cancelled, color: '#EF4444' },
       ]
@@ -146,7 +146,7 @@ export function Dashboard() {
                       </b>
                     </div>
                     <div className="mt-1.5 h-2.5 rounded-[6px] bg-[#EEF2F7]">
-                      <div className="h-full rounded-[6px] transition-[width] duration-700" style={{ width: `${pct}%`, background: t === 'keke' ? '#1570D8' : '#7C3AED' }} />
+                      <div className="h-full rounded-[6px] transition-[width] duration-700" style={{ width: `${pct}%`, background: t === 'keke' ? '#11708C' : '#7C3AED' }} />
                     </div>
                   </div>
                 )

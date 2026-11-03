@@ -94,9 +94,12 @@ export function Home() {
     <MobileShell>
       <ArtDefs />
       <CustomerTopBar />
-      <ScrollArea className="gap-4">
+      <ScrollArea className="app-wide gap-4">
         <VerifyPhoneBanner from="/home" />
 
+        {/* Phone: one column. Laptop: ordering on the left, shortcuts and recent orders on the right. */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-4">
         <div className="rise-1">
           <p className="m-0 text-[13px] font-semibold text-mute">{greeting()}</p>
           <h1 className="m-0 font-display text-[30px] leading-[1.05] font-semibold tracking-[-0.02em]">{firstName ? `${firstName}.` : 'Welcome.'}</h1>
@@ -170,7 +173,9 @@ export function Home() {
             You see the full price before you confirm. Pay cash after your water is poured.
           </p>
         </section>
+        </div>
 
+        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[96px]">
         <div className={cx('rise-3 grid gap-2.5', POINTS_ENABLED ? 'grid-cols-3' : 'grid-cols-2')}>
           <ActionTile to="/addresses" icon={<IconBadge tone="green"><MapPinIcon size={22} /></IconBadge>} label="Addresses" />
           {POINTS_ENABLED && (
@@ -198,6 +203,8 @@ export function Home() {
               action={<ButtonLink to="/order" variant="alt">Order water</ButtonLink>}
             />
           ))}
+        </div>
+        </div>
       </ScrollArea>
       <CustomerTabs current="/home" />
       {helpOpen && (
@@ -219,9 +226,9 @@ function NeedCard({ onClick, title, sub, art }: { onClick: () => void; title: st
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex min-h-[200px] cursor-pointer flex-col overflow-hidden rounded-card border border-solid border-card-line bg-[#E6F3F5] px-3 pt-4 pb-3.5 text-left text-ink transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-card"
+      className="group relative flex min-h-[200px] cursor-pointer flex-col lg:min-h-[260px] overflow-hidden rounded-card border border-solid border-card-line bg-[#E6F3F5] px-3 pt-4 pb-3.5 text-left text-ink transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-card"
     >
-      <span className="flex h-[86px] items-center justify-center">{art}</span>
+      <span className="flex h-[86px] items-center justify-center lg:h-[130px]">{art}</span>
       <span className="mt-auto text-[17px] leading-[1.15] font-extrabold">{title}</span>
       <span className="mt-1 text-chip font-semibold text-primary-dark">{sub}</span>
       <span className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-white shadow-[0_4px_10px_rgba(12,39,51,0.12)] transition-transform duration-200 group-hover:translate-x-0.5">

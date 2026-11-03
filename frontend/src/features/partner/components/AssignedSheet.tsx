@@ -41,7 +41,7 @@ export function AssignedSheet({ job }: { job: PartnerJob }) {
         <span aria-hidden="true" className="h-[5px] w-11 self-center rounded-[3px] bg-input-line" />
         <div className="flex items-center gap-2.5">
           <span className="relative size-11" aria-hidden="true">
-            <span className="animate-ping absolute inset-0 rounded-full bg-[rgba(21,112,216,.35)]" />
+            <span className="animate-ping absolute inset-0 rounded-full bg-[rgba(17,112,140,.35)]" />
             <span className="relative flex size-11 items-center justify-center rounded-full bg-primary text-white">
               <BellIcon size={22} />
             </span>

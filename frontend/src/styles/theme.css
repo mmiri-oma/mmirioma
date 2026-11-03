@@ -8,7 +8,7 @@
  * Tailwind's default colour palette is removed on purpose: every colour must be
  * one of these exact design values, never an approximation such as blue-600.
  * One-off values from the design HTML can still use arbitrary values
- * (e.g. `bg-[#DCEBFB]`) when they appear on a single screen.
+ * (e.g. `bg-[#E6F3F5]`) when they appear on a single screen.
  *
  * `static` makes Tailwind always emit every variable, not only the ones a
  * utility class uses, so inline styles and SVG fills can use var(--color-*).

@@ -31,7 +31,7 @@ export function AvailableJobCard({ job, to, className }: { job: PartnerJob; to: 
       <div className="mt-2 flex items-center gap-2.5">
         <div className="flex flex-1 flex-col gap-[5px] text-caption text-slate">
           <span className="flex items-center gap-1.5">
-            <PinOutlineIcon size={14} strokeWidth={2.4} color="#1570D8" />
+            <PinOutlineIcon size={14} strokeWidth={2.4} color="#11708C" />
             {job.station.name}
             {kmSuffix(job.station.distance_km)}
           </span>
@@ -68,7 +68,7 @@ export function RouteCard({ job, className }: { job: PartnerJob; className?: str
           <span
             className={cx(
               'min-h-10 w-0.5 flex-1',
-              keke ? 'bg-[repeating-linear-gradient(180deg,#9CC2F2_0_4px,transparent_4px_8px)]' : 'bg-[repeating-linear-gradient(180deg,#86EFAC_0_4px,transparent_4px_8px)]',
+              keke ? 'bg-[repeating-linear-gradient(180deg,#8CCBD8_0_4px,transparent_4px_8px)]' : 'bg-[repeating-linear-gradient(180deg,#86EFAC_0_4px,transparent_4px_8px)]',
             )}
           />
           <svg width="16" height="20" viewBox="0 0 24 30">

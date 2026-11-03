@@ -40,9 +40,9 @@ export function RiderEarnings() {
         {earnings.isError && <ErrorBlock error={earnings.error} onRetry={() => earnings.refetch()} />}
         {e && (
           <>
-            <div className="rise-2 relative overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#0A2540_0%,#0B4FA8_70%,#1570D8_100%)] p-[18px] text-white">
+            <div className="rise-2 relative overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#0C2733_0%,#0E4A5A_70%,#11708C_100%)] p-[18px] text-white">
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-bold text-[#CFE3FB]">Wallet balance</span>
+                <span className="text-[13px] font-bold text-[#D4ECEF]">Wallet balance</span>
                 {e.is_sample && <SampleTag />}
               </div>
               <div className="mt-1 flex items-center justify-between">
@@ -67,7 +67,7 @@ export function RiderEarnings() {
                         className={cx('animate-grow-y w-full rounded-sample', today ? 'bg-gold' : 'bg-white/35')}
                         style={{ height: Math.max(4, Math.round((w.amount_minor_units / max) * 56)), animationDelay: `${i * 0.06}s` }}
                       />
-                      <span className={cx('text-sample', today ? 'font-bold text-white' : 'text-[#CFE3FB]')}>{w.day}</span>
+                      <span className={cx('text-sample', today ? 'font-bold text-white' : 'text-[#D4ECEF]')}>{w.day}</span>
                     </div>
                   )
                 })}

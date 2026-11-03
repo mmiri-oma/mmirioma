@@ -24,12 +24,12 @@ function at(area: string | null, i: number) {
   return (area ? AREA_AT[area] : undefined) ?? { x: 20 + ((i * 17) % 60), y: 30 + ((i * 23) % 40) }
 }
 
-const VEHICLE_COLOR = { keke: '#1570D8', tanker: '#7C3AED' } as const
+const VEHICLE_COLOR = { keke: '#11708C', tanker: '#7C3AED' } as const
 /** A delivery whose order has no delivery type gets a neutral marker (admin-operations.md, live map). */
 const NEUTRAL_COLOR = '#64748B'
 const vehicleColor = (vehicle: 'keke' | 'tanker' | null) => (vehicle ? VEHICLE_COLOR[vehicle] : NEUTRAL_COLOR)
 const STATUS_WORD: Record<string, { text: string; color: string }> = {
-  assigned: { text: 'Assigned', color: '#1570D8' },
+  assigned: { text: 'Assigned', color: '#11708C' },
   loading: { text: 'Loading', color: '#6D28D9' },
   on_the_way: { text: 'En route', color: '#15803D' },
 }
@@ -127,7 +127,7 @@ export function AdminMap({ data, height = 330, fullMapLink = true }: { data: Liv
             </svg>
             <div className="absolute flex -translate-y-1/2 items-center gap-1.5" style={{ left: `calc(${rider.x}% - 16px)`, top: `${rider.y}%` }}>
               <span className="relative size-8">
-                {d.status !== 'assigned' && <span className="animate-ping absolute inset-0 rounded-full" style={{ background: d.vehicle === 'keke' ? 'rgba(21,112,216,.4)' : d.vehicle === 'tanker' ? 'rgba(124,58,237,.4)' : 'rgba(100,116,139,.4)' }} />}
+                {d.status !== 'assigned' && <span className="animate-ping absolute inset-0 rounded-full" style={{ background: d.vehicle === 'keke' ? 'rgba(17,112,140,.4)' : d.vehicle === 'tanker' ? 'rgba(124,58,237,.4)' : 'rgba(100,116,139,.4)' }} />}
                 <span
                   className="relative box-border flex size-8 items-center justify-center rounded-full border-[3px] border-solid border-white text-[10px] font-extrabold text-white"
                   style={{ background: vehicleColor(d.vehicle) }}
@@ -169,7 +169,7 @@ export function MapLegend() {
   )
   return (
     <div className="flex flex-wrap gap-3 text-[12px] font-semibold text-slate">
-      {item('#1570D8', 'Keke')}
+      {item('#11708C', 'Keke')}
       {item('#7C3AED', 'Tanker')}
       {item('#0E7C8F', 'Station', true)}
       {item('#DC2626', 'Customer')}

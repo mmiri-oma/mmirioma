@@ -27,7 +27,7 @@ export function RouteProgress() {
 
   if (!loading || !visible) return null
   return (
-    <div role="progressbar" aria-label="Loading page" className="fixed inset-x-0 top-0 z-[80] h-[3px] overflow-hidden bg-[rgba(21,112,216,.15)]">
+    <div role="progressbar" aria-label="Loading page" className="fixed inset-x-0 top-0 z-[80] h-[3px] overflow-hidden bg-[rgba(17,112,140,.15)]">
       <div className="animate-progress h-full w-2/5 rounded-r-[3px] bg-primary" />
     </div>
   )
