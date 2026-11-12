@@ -38,7 +38,9 @@ PRODUCT HONESTY RULES (every screen)
   taps "Confirm my location", after a short explanation. Never on page load,
   never at sign-up.
 - Saying no keeps them online. Say plainly what it costs: they will not be
-  offered jobs automatically, but staff can still give them one.
+  offered jobs automatically, but staff can still give them one. Show that
+  only after the server confirms the location was deleted.
+- Let them turn location sharing off at any time while online.
 - No tracking language. Never "live", "tracking", "we can see you", or a map
   of their position. The location is used to offer nearby jobs and is deleted
   when they go offline.
@@ -83,7 +85,9 @@ D2. ONLINE CARD STATES (on r-home and t-home, under "You are online")
 D3. "CONFIRM YOUR LOCATION" MESSAGE
   The in-app notification "Confirm your location": "An order is waiting.
   Open MmiriOma and confirm where you are to be offered it." Tapping it opens
-  r-home or t-home and starts D1b. It names no customer, address or order.
+  r-home or t-home. If they already agreed to share this session, it starts
+  D1b; otherwise it shows D1a's explanation first. It never asks the phone
+  directly, names no customer, address or order, and never promises an offer.
 
 D4. ERRORS FROM THE SERVER (keep them online, keep the card)
   409 driver_offline        they went offline elsewhere: show offline (D2e)

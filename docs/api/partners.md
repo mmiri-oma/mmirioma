@@ -497,7 +497,7 @@ earlier one.
 | Field | Rule |
 | --- | --- |
 | `location.latitude`, `location.longitude` | As the [location object](delivery-location.md#location-object): WGS 84 degrees, stored to 6 decimal places, and inside the [delivery bounds](delivery-location.md#delivery-bounds). There is no `source` field: the point always comes from the phone |
-| `accuracy_metres` | Required. The radius the phone reports, in metres, greater than 0 and at most 100,000; stored rounded to a whole metre. It is shown to the driver and kept for #411; it does not make a point fresh or stale ([open question 410-4](#open-questions-410)) |
+| `accuracy_metres` | Required. The radius the phone reports, in metres: a number greater than 0 and at most 100,000. It is stored as a whole metre rounded **up** (`ceil`), so any accepted value stores as at least 1 (0.4 m stores as 1, 25.0 as 25, 25.1 as 26). It is shown to the driver and kept for #411; it does not make a point fresh or stale ([decision 410-4](#open-questions-410)) |
 
 **200** `DriverLocationRead`, the same object as `location` on the profile below.
 
@@ -512,6 +512,25 @@ earlier one.
 
 Sending a point again within the same second is not an error; the later one
 wins. There is no endpoint to read another driver's point.
+
+**Atomic with every clearing path.** The eligibility check (active account,
+`approved`, `is_available`) and the write happen in one transaction that first
+locks the driver's profile row (`SELECT ... FOR UPDATE`). Every path that
+clears the point (below) takes the same lock before it changes the profile and
+deletes the point. So a location request and an "offline" can never interleave:
+either the request runs first and its point is then deleted, or the offline
+runs first and the request sees `is_available = false` and answers 409
+`driver_offline` without writing. A point can never survive, or be restored
+after, a clearing path.
+
+### `DELETE /driver/location`
+
+Driver session and CSRF. Withdraws sharing: deletes the driver's point now,
+under the same lock, and leaves them online. **204**, also when there was no
+point. The app calls it when the driver refuses or cancels sharing, or turns
+it off, so the server stops treating an earlier point as fresh at once
+(otherwise a point confirmed four minutes ago would stay eligible for one more
+minute). Errors: 401 `not_authenticated`, 403 `forbidden`, 403 `csrf_failed`.
 
 ### `PartnerProfileRead` gains `location`
 
@@ -541,7 +560,12 @@ The point is deleted, not kept, whenever the driver stops being available:
 - an admin moving the partner to `pending` or `suspended`, which already sets
   `is_available = false` ([Approval status](#approval-status));
 - deactivating the account (FR-002);
-- `anonymize-partner --apply`, which also counts it in its audit row.
+- `anonymize-partner --apply`, which also counts it in its audit row;
+- `DELETE /driver/location` (withdrawn sharing).
+
+Each path takes the driver-profile lock described under
+[`PUT /driver/location`](#put-driverlocation) before it deletes, in the same
+transaction as the change that triggers it.
 
 A point is never written to a log, an audit row or a notification. No history
 table exists, so an overwritten or cleared point is gone.
@@ -550,11 +574,15 @@ table exists, so an overwritten or cleared point is gone.
 
 A new notification `kind`, `confirm_location`: title "Confirm your location",
 body "An order is waiting. Open MmiriOma and confirm where you are to be
-offered it." It names no customer, address or order reference. It is created by
-the #411 dispatch tick when an order is eligible for automatic dispatch and no
-online, otherwise-eligible driver is fresh, for each online driver who is not
-fresh; a driver has at most one unread `confirm_location` at a time. Until #411
-is built nothing creates it. Push and sound are #412.
+offered it." It names no customer, address or order reference, and it does not
+promise an offer: confirming makes the driver eligible to be considered, not
+chosen. It is created by the #411 dispatch tick when an order is eligible for
+automatic dispatch and no online, otherwise-eligible driver is fresh. It goes
+only to drivers who are **online and pass every #411 eligibility check for that
+order except freshness** (approval, delivery type, zone, payload and trips,
+transfer method, not busy, not already offered this order). Each such driver
+has at most one unread `confirm_location` at a time. Until #411 is built
+nothing creates it. Push and sound are #412.
 
 ### Keke capacity (open question 410-3)
 
@@ -591,21 +619,26 @@ screens for driver location, and ranking (#411).
 
 | # | Question | Recommendation |
 | --- | --- | --- |
-| 410-3 | What range of declared capacity can a Keke rider enter, and in what unit? | Litres, a whole number. The bounds need the business's answer; the screen and the contract wait for it |
-| 410-4 | Should a point with poor accuracy count as fresh? | Yes for the MVP: freshness is about time only. The screen asks the driver to try again outside when accuracy is over 100 m, as the customer location design does |
+| 410-3 | What range of declared capacity can a Keke rider enter, and in what unit? | **Deferred, out of this amendment.** The reviewer has asked the owner for the unit and bounds (2026-11-12). Nothing in this amendment or its build changes Keke sign-up; it is added by its own amendment once the owner answers |
+| 410-4 | Should a point with poor accuracy count as fresh? | **Proposed, for the reviewer to decide with this contract:** yes. Freshness is about time only; accuracy is stored and shown. The screen asks the driver to try again in the open when accuracy is over 100 m, as the customer location design does |
 
 ### Tests the build must include
 
 Validation and the bounds 422; roles, CSRF and `partner_not_approved`; 409
 `driver_offline`; the freshness boundary at exactly the threshold with an
-injected clock; overwrite, not insert; clearing on each path above; the privacy
-tool's count; no coordinates in any response, log or audit row; migration
-upgrade, downgrade, upgrade and `alembic check`.
+injected clock; accuracy at the sub-metre boundary (0.4 stores as 1, and 0 and
+100,000.1 are refused); overwrite, not insert; clearing on each path above,
+`DELETE /driver/location` included; both interleavings of a location write with
+going offline, on the database (offline first: 409 and nothing stored; write
+first: the point is deleted by the offline); the privacy tool's count; no
+coordinates in any response, log or audit row; migration upgrade, downgrade,
+upgrade and `alembic check`.
 
 ## Changes
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-12 | Revised after review (PR #423): `DELETE /driver/location` for withdrawn sharing; location writes and every clearing path serialized on the driver-profile lock; accuracy stored rounded up so it is never zero; `confirm_location` limited to otherwise-eligible drivers and promises no offer; 410-3 deferred to its own amendment; 410-4 proposed for decision | not yet agreed |
 | 2026-11-12 | Proposed (#410): `PUT /driver/location`, the freshness rule and setting, `location` on the profile with no coordinates, clearing rules, the `confirm_location` message kind, the `driver_locations` table; D6 recorded; Keke capacity and accuracy left as open questions 410-3 and 410-4 ([amendment](#amendment-410-driver-location-for-automatic-dispatch)) | not yet agreed |
 | 2026-10-27 | Mapping only, the contract is unchanged: `PartnerProfile.email` and `preferences.offers_and_news` left the design type, so their two rows are gone (#85) | @chidimmamogbo (decision on #85) |
 | 2026-10-26 | Agreed (G3): open questions 4 (admin sets transfer methods at approval, `ground` and `overhead`) and 8 (`vehicle_profile_id` nullable) decided; the `auth.md` amendment agreed with it | @nnamdi-security (technical lead, #36) |

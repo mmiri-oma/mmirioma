@@ -9,6 +9,11 @@ Requirements: FR-031, FR-035, SRS §1 · Prompt:
 (proposed) · Designer: @DevBonavee + Claude Code (written design; no visual
 mockup yet) · Status: proposed (G2), not yet approved
 
+**Two approvals.** Approving this record approves the written design: the
+flow, the states and the wording. The visual mockup is a separate approval:
+it is generated from the prompt, attached under "Design link" and approved by
+a reviewer before the screen is built.
+
 This is a written design: the flow, every state and the exact wording. It
 becomes `Status: approved` when one reviewer who is not the author checks it
 against the SRS, the issue and decision D6. The visual mockup is made from the
@@ -46,13 +51,26 @@ yet in this session.
 > delete it when you go offline. Customers never see it.
 
 Buttons: **Share location and go online** (primary) and **Go online without
-it** (line). The second sets the partner online and shows D2c's wording
-without asking the phone.
+it** (line). The second sets the partner online, calls
+`DELETE /driver/location` so no earlier point stays usable, and shows D2c's
+wording without asking the phone.
 
 After **Share location and go online**: the app goes online
 (`PUT /driver/availability`), then shows "Finding your location…" with
 **Cancel** while the phone's own prompt is up (15 seconds at most). Cancel
-leaves them online without a location (D2c).
+leaves them online and calls `DELETE /driver/location` (D2c).
+
+If going online fails, the sheet stays open with "We couldn't put you online.
+Check your connection." and **Try again**; the phone is not asked. If going
+online works but sending the location fails, the partner is online and the
+card shows the location error (D4), not an "online" failure.
+
+**Consent for this session.** Choosing **Share location and go online** is the
+driver's consent for this session. It is withdrawn by **Go online without
+it**, **Cancel**, a refused phone prompt, **Turn off location sharing** (D2) or
+going offline. While it is withdrawn the app asks the phone for nothing,
+automatic refresh is off, and any answer from a position request already in
+flight is thrown away, not sent.
 
 ### D2. The online card
 
@@ -60,26 +78,34 @@ Under "You are online" on `r-home` and `t-home`:
 
 | State | Line and action |
 | --- | --- |
-| Confirmed | "Location confirmed 2 min ago" ("just now" under a minute), then "about 20 m". Over 100 m: "Not very accurate. Try again in the open." Link **Confirm again** |
+| Confirmed | "Location confirmed 2 min ago" ("just now" under a minute), then "about 20 m". Over 100 m: "Not very accurate. Try again in the open." Links **Confirm again** and **Turn off location sharing** (withdraws consent: `DELETE /driver/location`, then Not shared) |
 | Out of date (`stale`) | Amber notice: "Your location is out of date. You won't be offered jobs automatically until you confirm it." Button **Confirm my location** |
-| Not shared (refused) | Notice: "Location is off for MmiriOma. You won't be offered jobs automatically, but staff can still give you one. To turn it on, allow location for this site in your browser settings." Button **Try again** |
+| Not shared (refused or withdrawn) | Shown only once `DELETE /driver/location` has succeeded, so the words are true. Notice: "Location is off for MmiriOma. You won't be offered jobs automatically, but staff can still give you one. To turn it on, allow location for this site in your browser settings." Button **Try again** (opens D1's explanation again). If the delete fails: "We couldn't turn off location sharing. Check your connection." with **Try again** |
 | Unavailable | Notice: "We couldn't find your location. Try again outside or near a window." Button **Try again**. When the phone or browser cannot share location at all: "This phone or browser can't share its location. Staff can still give you jobs." with no button |
-| Offline | The card as today, no location line. After going offline, once: "Location deleted." |
+| Offline | The card as today, no location line. "Location deleted." is shown once, only after the server confirms the partner is offline (the same transaction deletes the point). If going offline fails, the partner is still online: "We couldn't take you offline. Check your connection." with **Try again** |
 | Not approved | As today: the partner cannot go online, so there is no location step |
 | Advice (with Confirmed and Out of date) | "Waiting near an approved water source helps you get offers sooner." |
 
-While the app is open and visible and the partner is online, it confirms the
-location again by itself about a minute before `fresh_until`, without a new
-prompt (the browser keeps the permission). It stops when the app is hidden and
-starts again when it comes back. A failed automatic refresh changes nothing
-until the point goes stale; then the card shows Out of date.
+While the app is open and visible, the partner is online **and consent for
+this session is given**, the app confirms the location again by itself about a
+minute before `fresh_until`, without a new prompt (the browser keeps the
+permission). It stops when the app is hidden, when consent is withdrawn and
+when the partner goes offline, and starts again only when all three hold. A
+position that arrives after it stopped is discarded. A failed automatic refresh
+changes nothing until the point goes stale; then the card shows Out of date.
 
 ### D3. The message
 
 Notification kind `confirm_location`, title **Confirm your location**, body
 "An order is waiting. Open MmiriOma and confirm where you are to be offered
-it." Tapping it opens the home screen and starts "Finding your location…". It
-never names a customer, an address or an order.
+it." It never names a customer, an address or an order, and confirming does
+not guarantee an offer. Only partners who are online and otherwise eligible for
+the waiting order receive it.
+
+Tapping it opens the home screen. If consent for this session is already given,
+it starts "Finding your location…". Otherwise it opens D1's explanation first,
+with **Share my location** and **Not now**; the phone is asked only after
+**Share my location**. It never asks the phone directly.
 
 ### D4. Server errors
 
@@ -88,7 +114,7 @@ never names a customer, an address or an order.
 | 409 `driver_offline` | Shows the card as Offline: they went offline elsewhere |
 | 403 `partner_not_approved` | Shows the Not approved card |
 | 422 on `location` | "This location is outside the area we deliver in." with **Try again** |
-| No connection | "Check your connection." with **Try again**; the partner stays online |
+| No connection | "Check your connection." with **Try again**; the partner stays online. The card says which step failed: going online, sending the location, or turning sharing off |
 
 ## Screen-to-endpoint table
 
@@ -96,6 +122,7 @@ never names a customer, an address or an order.
 | --- | --- | --- | --- |
 | D1 | Go online | `PUT /driver/availability` | `is_available` |
 | D1, D2 | Share or confirm location | `PUT /driver/location` (amendment #410, proposed) | `location`, `accuracy_metres` |
+| D1, D2 | Go online without it, Cancel, refused, Turn off location sharing | `DELETE /driver/location` (amendment #410, proposed) | none |
 | D2 | Card state | `GET /driver/profile` | `location.state`, `confirmed_at`, `fresh_until`, `accuracy_metres` |
 | D3 | The message | `GET /driver/notifications` | `kind: confirm_location` (created by #411) |
 
@@ -110,7 +137,11 @@ never names a customer, an address or an order.
   was confirmed and how accurate it was, never a dot on a map, so nothing reads
   as tracking (SRS §1, FR-037).
 - **The explanation comes before the phone's prompt**, every session until the
-  phone has shared once (FR-035's "consent obtained beforehand").
+  driver consents, from every entry point, the message included (FR-035's
+  "consent obtained beforehand").
+- **Refusing or withdrawing deletes the point on the server** before the card
+  says automatic offers have stopped, so the words never get ahead of what the
+  server does.
 
 ## Honesty rules
 
@@ -123,8 +154,8 @@ never names a customer, an address or an order.
 
 ## Open questions
 
-- Keke declared capacity (contract question 410-3) has no screen until its
-  range is decided.
+- Keke declared capacity (contract question 410-3) is deferred to its own
+  amendment; the reviewer has asked the owner for the unit and bounds.
 
 ## Changes to the design system
 
