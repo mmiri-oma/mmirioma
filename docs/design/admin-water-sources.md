@@ -155,6 +155,108 @@ Water."
 - Deleting a source. Suspend and revoke keep the row, as the command line does.
 - Any role other than admin (decision 5).
 
+## Amendment #407: supplier details, order fit and cost edits
+
+**Status: approved** (G2, written amendment), @nnamdi-security (+ Codex),
+2026-11-12, PR #417. Originally proposed on 2026-11-12 for
+[#407](https://github.com/mmiri-oma/mmirioma/issues/407) by @DevBonavee
+(+ Claude Code), with the
+[contract amendment](../api/admin-water-sources.md#amendment-407-supplier-details-order-fit-and-cost-edits).
+The reviewer is not the author. Build #407 from this approved written
+design, like the rest of this record; it changes no existing wording above
+except where this section says so.
+
+The screen gains the fields automatic source selection needs, and a way to
+change a cost without re-entering the laboratory record. The page, the card
+layout and every existing state stay as they are.
+
+### On the card
+
+Under the name and location, one line of facts, each shown only when set:
+
+- **Contact:** "Sample Contact · +234 803 000 0000". "No contact" when both are empty.
+- **Pickup point:** "Pickup point set" or, in grey, "No pickup point: road-distance pricing unavailable". The coordinates are not shown on the card.
+- **Order size:** "600 to 10,000 litres per order", "From 600 litres", "Up to 10,000 litres", or "Any order size".
+- **Vehicles:** "Keke and Tanker", "Keke only" or "Tanker only".
+
+A chip next to the kind chip:
+
+| When | Chip |
+| --- | --- |
+| `is_available` is false | **Unavailable**, grey |
+| `source_reasons` has `kind_not_set` | The existing **Kind not set** chip turns amber |
+
+On a source with no kind, the category rows' **Activate** and **Renew**
+buttons are disabled, with the hint "Set the kind first." under them.
+
+### Notice above the cards
+
+When at least one source has `kind_not_set` among its `source_reasons`, an
+amber notice above the cards:
+
+> 2 sources have no kind set. They can't serve any order until you set one.
+
+"1 source has no kind set." for one. It names no source; the amber chips show
+which. No notice when every source has a kind.
+
+### Add a source and Edit a source
+
+The dialog keeps Name, Location (in words) and Kind, and adds, in this order:
+
+| Field | Control | Rule and message |
+| --- | --- | --- |
+| Contact name | Text, optional, up to 120 | none |
+| Contact phone | Phone, optional | "Enter a Nigerian mobile number, for example 0803 000 0000." |
+| Pickup point | Two number fields, Latitude and Longitude, optional, both or neither. Hint: "Copy them from a map pin at the collection point. Used to price by road distance." | "Enter both latitude and longitude, or neither." and, when the server refuses the point, the server's bounds-validation message (a sanity box, not a service-area decision) |
+| Smallest order (litres) | Whole number of at least 1, optional | "Enter a whole number of litres greater than zero." |
+| Largest order (litres) | Whole number of at least 1, optional | "Enter a whole number of litres greater than zero." or "The largest order can't be smaller than the smallest." |
+| Available for new orders | Switch, on by default | Under it: "Turn this off when the source is closed or out of water. It is not a safety status: use Suspend for that." |
+| Vehicles that can load here | Two checkboxes, Keke and Tanker, both ticked by default | "Choose at least one vehicle." |
+
+The Kind field on Add keeps "Not set yet", now with the hint "A source needs a
+kind before it can be activated."
+
+Edit's **Save changes** stays disabled until something differs. The success
+toasts are unchanged.
+
+### Change cost
+
+A new row action, **Change cost**, on any row that has an activation (Activated,
+Suspended or Revoked). It opens a small dialog titled "Change cost for Utility
+Water" with one field, Cost per litre in naira (the same rules and message as
+the Activate dialog), filled with the current cost. Text under the field:
+
+> New quotes use this cost. Quotes and orders already made keep their price.
+
+Buttons: Back, **Save cost**, disabled until the value differs. Success toast:
+"Cost updated for Utility Water." The row's status, date and reference do not
+change.
+
+### New states
+
+| State | What the screen shows |
+| --- | --- |
+| Activate on a source with no kind (409 `water_source_kind_required`) | In the dialog: "Set where this source collects water before activating it." with **Edit source**, which closes this dialog and opens Edit |
+| Activation gone during Change cost (404 `activation_not_found`) | The existing "This source has changed or been removed." with **Refresh** |
+
+### Loading, failure and accessibility
+
+Both dialogs keep entered values and show field errors on validation failure;
+a generic/network failure has an inline message and retry. Saving shows the
+existing button spinner and disables duplicate submits. Failed edits never
+show a success toast. Back/Escape, keyboard focus containment and restoration,
+visible labels, checkbox grouping, screen-reader error associations and the
+existing small-screen scrolling behavior remain required. A 409 after a stale
+Activate/Renew dialog offers Edit source; the activation is not claimed saved.
+Show only facts returned by the server; no pickup point does not promise a
+zone price because a zone may also lack a fee and require a manual quote.
+
+### Honesty rules for the amendment
+
+- "Unavailable" says the source is not taking work. It says nothing about the water.
+- The cost and the contact phone stay on this admin screen only.
+- No stock figure appears anywhere: the app does not know how much water a source has.
+
 ## Open questions
 
 None for the design. The contract's three open questions are decided

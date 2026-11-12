@@ -65,7 +65,7 @@ Each requirement has an identifier and testable condition. Priority **P0** block
 
 **FR-010 (P0) Service area.** Administrators SHALL configure service zones, each with a name, coordinates, an optional geographic polygon, an active/inactive flag and eligibility. Customers can place orders only within an **active** service zone; out-of-zone checkout SHALL show a request-assistance state rather than quote an unsupported instant delivery. Each zone carries admin-configured delivery-zone rates, used as the FR-022 fallback when road distance is unavailable.
 
-**FR-011 (P0) Source records.** Admin SHALL create supplier/source records with name, contact, approximate pickup location, supplied categories, **water cost per litre** (integer kobo, configured by admin for each supplier and water category), verified status per category, effective dates and documentary references. Supplier documents and laboratory evidence are stored privately (NFR-006).
+**FR-011 (P0) Source records.** Admin SHALL create supplier/source records with name, contact, approximate pickup location, supplied categories, **water cost per litre** (integer kobo, configured by admin for each supplier and water category), verified status per category, effective dates and documentary references. Supplier documents and laboratory evidence are stored privately (NFR-006). A source record also SHALL hold its kind (borehole or Ninth Mile), an optional pickup point (latitude/longitude), optional minimum and maximum litres per order, whether it is available for new work, and the vehicle kinds (Keke, Tanker) that can load there; a source without a kind SHALL NOT be activated or chosen for an order. The cost per litre MAY be changed on its own; a change applies to new quotes only (FR-024). Stock levels are not recorded (amended 12 November 2026, #407).
 
 **FR-012 (P0) Safety gate.** A supplier SHALL be activated for a water category only after appropriate **independent laboratory verification** for that category and verification of the applicable regulatory and operating requirements, recorded with its evidence. A source/category combination lacking required approved status, necessary current records or operational supervisor authorization SHALL NOT be available for confirmed real-order dispatch. Expired or revoked status blocks new assignments. Administrators SHALL **suspend** affected sources when a serious safety concern arises (BR-10). Collection, transportation and handling follow documented safe procedures. Specific compliance criteria are configured after qualified guidance; do not equate a database flag with legal compliance.
 
@@ -252,7 +252,7 @@ Minimum recommended entities and example fields (not an exhaustive physical sche
 | customers | id, user_id nullable, contact name/phone, verification status |
 | addresses | id, customer_id, zone_id, freeform address, landmark, latitude/longitude optional |
 | service_zones | id, name, active, coordinates, optional geographic polygon, delivery-zone rates (fallback), default pricing zone |
-| water_sources | id, supplier name, pickup details, categories with cost per litre (kobo) and activation state per category, laboratory evidence reference, valid_through, suspended flag and reason, document references |
+| water_sources | id, supplier name, supplier contact name/phone, pickup details, kind, pickup point (PostGIS point, SRID 4326, optional), minimum/maximum litres per order (optional), available flag, allowed vehicle kinds, categories with cost per litre (kobo) and activation state per category, laboratory evidence reference, valid_through, suspended flag and reason, document references |
 | water_categories | id, label (Potable Water, Utility Water), supported-uses description, active, evidence reference |
 | vehicle_profiles | id, type, verified safe payload per trip, availability, handling capabilities |
 | drivers | id, user_id, vehicle_profile_id, active, availability |
@@ -504,6 +504,8 @@ The team must resolve the open points before coding the features that depend on 
 **External dependencies** (not decisions): Termii Sender ID approval and DND route activation for production SMS (FR-003); water-source laboratory verification, regulatory checks and operational arrangements before the real-world delivery pilot (FR-012, #13); confirming WhatsApp is active on the support number (FR-055).
 
 ## 13. Change history
+
+**12 November 2026 (no version change, #407, agreed by @nnamdi-security (+ Codex) in PR #417; not implemented).** FR-011 and the §5 `water_sources` row gain the source fields automatic source selection needs: supplier contact, kind, pickup point, minimum and maximum litres per order, availability and allowed vehicle kinds. A source without a kind can no longer be activated or chosen. The cost per litre can be changed on its own and applies to new quotes only (FR-024, T-09). No stock levels.
 
 **12 November 2026 (#411, PR #416; agreed by @nnamdi-security with Codex).**
 Approved automatic confirmation and dispatch as target behavior, including

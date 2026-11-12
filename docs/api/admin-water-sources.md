@@ -229,6 +229,228 @@ the zone fee. A PATCH that sets or clears it is audited as
 `water_source_updated` with `details.fields` naming `location`, never the
 coordinates. In `PATCH`, `location: null` clears it and leaving the field out keeps it. The Water sources screen gets no new field in #385.
 
+## Amendment #407: supplier details, order fit and cost edits
+
+**Status: agreed** (G3), @nnamdi-security (+ Codex), 2026-11-12, PR #417.
+Originally proposed on 2026-11-12 for
+[#407](https://github.com/mmiri-oma/mmirioma/issues/407) by @DevBonavee
+(+ Claude Code). The reviewer is not the author. Documentation only; the
+implementation is the next #407 PR.
+
+Requirements: FR-011, FR-012, FR-013, FR-014, FR-024, BR-10 · Tests: T-04, T-09
+· Design: [amendment #407](../design/admin-water-sources.md#amendment-407-supplier-details-order-fit-and-cost-edits)
+· SRS: FR-011 and §5 `water_sources`, amended in the same PR.
+
+Automatic source selection (#408 road pricing, #411 dispatch) has to know more
+than "is this source activated today". It needs who to call at the source, the
+pickup point, the order sizes the supplier agreed to, whether the source is
+open for work, and which vehicles can load there. This amendment adds those
+fields, one shared check that says why each source fits an order or not, and a
+way to change the cost per litre without re-entering the laboratory record.
+Fields and the cost endpoint are additive, but eligibility changes behavior:
+legacy kind-less sources stop qualifying, activation gains a 409 and C1
+gains closed-enum values. Coordinate the backend and clients in one build PR.
+
+### Decisions
+
+| # | Question | Agreed answer |
+| --- | --- | --- |
+| D14 | What do "approved quantities" and "vehicle suitability" mean as data? | Minimum and maximum litres per order on the source, each optional, and a list of allowed vehicle kinds (`keke`, `tanker`) on the source, at least one. No stock levels: nothing in the MVP would keep a daily stock figure accurate. Agreed by the reviewer with this contract; bounds apply to the complete order |
+| 407-1 | What is the supplier contact? | An optional contact name and an optional Nigerian phone number. No email |
+| 407-2 | What happens to an activated source that has no kind? | It is excluded everywhere with the new reason `kind_not_set`, and the screen flags it. Activating a source with no kind is refused. Before this change such a source could serve a Keke order |
+| 407-3 | Which litres do the limits apply to? | The order's whole quantity, not one trip |
+
+### New fields on `WaterSourceRead`
+
+```json
+{
+  "contact_name": "Sample Contact",
+  "contact_phone": "+2348030000000",
+  "min_litres_per_order": 600,
+  "max_litres_per_order": 10000,
+  "is_available": true,
+  "vehicle_kinds": ["keke", "tanker"],
+  "source_reasons": []
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `contact_name` | Who to call at the source, 1 to 120 characters, or `null` (the default) |
+| `contact_phone` | Their number in E.164 (`+234...`), or `null` (the default). A request may send a local form such as `0803 000 0000`; the server normalizes it with the same rule as account phones (`app/shared/phone.py`) and refuses anything that is not a Nigerian mobile number with 422 `validation_error` |
+| `min_litres_per_order` | The smallest order, a strict integer of at least 1 whole litre, the supplier agreed to serve from this source, or `null` for no minimum |
+| `max_litres_per_order` | The largest order, a strict integer of at least 1 whole litre, or `null` for no maximum. When both are set, the minimum is not above the maximum, else 422 `validation_error` on `max_litres_per_order` |
+| `is_available` | Whether the source takes new work now. `true` by default. An admin sets it to `false` when the supplier is closed or out of water; this is not a safety status (that stays suspend and revoke, BR-10) |
+| `vehicle_kinds` | The vehicles that can load here: one or both of `keke` and `tanker`, no repeats, in that order. Both by default. An empty list is 422 `validation_error`: a source no vehicle can use is unavailable instead |
+| `source_reasons` | Reasons that exclude the source from every order today, whatever its category: `kind_not_set` and `unavailable`, in that order. `[]` when none applies. The screen shows them on the card |
+
+The contact name and phone are supplier contact details. They are returned
+only by these admin endpoints, never to a customer or a driver, and never
+written to an audit row or a log. A driver who needs the source's phone is a
+later decision, not part of this amendment.
+
+### Request changes
+
+`POST /admin/water-sources` accepts every field above except
+`source_reasons`, each optional with the default shown.
+
+`PATCH /admin/water-sources/{source_id}` accepts the same fields; send only
+the ones that change. `null` clears `contact_name`, `contact_phone`,
+`min_litres_per_order` and `max_litres_per_order`. `is_available` and
+`vehicle_kinds` cannot be `null`. The minimum-not-above-maximum rule is checked
+against the stored value of the field not sent. The audit row stays
+`water_source_updated` with `details.fields` naming the changed fields, never
+their values.
+
+### Activation needs a kind
+
+`PUT /admin/water-sources/{source_id}/activations/{category_id}` on a source
+whose `kind` is `null` is refused with **409 `water_source_kind_required`**,
+"Set where this source collects water before activating it." Nothing is
+written. The command line's `activate` refuses it the same way. Sources
+activated before this change keep their activations, and `kind_not_set`
+excludes them until an admin sets a kind.
+
+### Change the cost per litre
+
+| Method | Path | Request | Success | Errors |
+| --- | --- | --- | --- | --- |
+| PATCH | `/admin/water-sources/{source_id}/activations/{category_id}` | `ActivationCostWrite` | 200 `WaterSourceRead` | 401, 403, 404 `water_source_not_found`, 404 `water_category_not_found`, 404 `activation_not_found`, 422 |
+
+```json
+{ "cost_per_litre_minor_units": 180 }
+```
+
+`cost_per_litre_minor_units` is required, an integer `>= 0`, in kobo. It
+changes only the cost: the status, report reference, approval date and reason
+stay as they are, so a suspended activation can have its cost corrected and
+stays suspended. A cost equal to the stored one is 200 with nothing written.
+Otherwise one audit row is written, `water_source_cost_changed`, with
+`details` `{ "water_category_id" }`: never the old or new cost.
+
+**New quotes only (FR-024, T-09).** A quote stores its amounts when it is
+made, and an order keeps the snapshot of the quote it accepted. A cost change
+is read by the next quote and changes no existing quote or order.
+
+### The order-fit check
+
+One server function, `eligible_sources_for`, in
+`backend/app/modules/sources/eligibility.py`, answers "which sources can serve
+this order, and why not the others?" for #408 (road pricing) and #411
+(dispatch), and replaces `eligible_sources` in the quote. It is not an
+endpoint. Its inputs are the water category, the order's quantity in litres,
+its delivery type (`keke` or `tanker`), the Tanker customer's source preference
+(`borehole`, `ninth_mile`, or none) and today's date in Lagos. For every
+source it returns the source, its cost per litre and pickup point for the
+server's own use, and a list of reasons; `[]` means the source can serve the
+order.
+
+The reasons, always in this order:
+
+| Reason | When |
+| --- | --- |
+| `not_activated` | No activation for the category (unchanged) |
+| `suspended` | The activation is suspended (unchanged) |
+| `revoked` | The activation is revoked (unchanged) |
+| `approval_expired` | The approval ended before today in Lagos (unchanged, T-04) |
+| `kind_not_set` | The source has no kind (decision 407-2) |
+| `unavailable` | `is_available` is `false` |
+| `kind_mismatch` | A Tanker customer chose a source kind and this source is the other kind |
+| `below_minimum_litres` | The order's litres are below `min_litres_per_order` |
+| `above_maximum_litres` | The order's litres are above `max_litres_per_order` |
+| `vehicle_not_suitable` | The order's delivery type is not in `vehicle_kinds` |
+
+The first four are the FR-012 safety gate and keep their meaning. The R2
+source review (pickup already happened) still uses only those four, so its
+answers and messages do not change. `activations[].reasons` on this screen
+also keeps the four; the two source-wide reasons are in `source_reasons`.
+
+The order confirmation options (C1) gain the six new values in each source's
+`reasons`, worked out for the order being confirmed. That extends the closed enum in [deliveries.md](deliveries.md#source-eligibility-shared-with-r2),
+recorded there. The C1 screen shows a label for each:
+
+| Reason | C1 label |
+| --- | --- |
+| `kind_not_set` | Kind not set |
+| `unavailable` | Marked unavailable |
+| `kind_mismatch` | Not the customer's chosen source type |
+| `below_minimum_litres` | Order is below this source's minimum |
+| `above_maximum_litres` | Order is above this source's maximum |
+| `vehicle_not_suitable` | This vehicle cannot load here |
+
+### Enforcement and client compatibility
+
+The build must apply the shared order-fit check when creating a new quote,
+when accepting a quote into a new order, when returning C1 options, and again
+when committing confirmation against the selected source. Previously saved
+options are not authorization: an admin edit between loading and confirming
+must cause a clear refusal, not confirmation against an ineligible source.
+Preserve existing quote/order amounts and existing API error envelopes; #408
+and #411 reuse this check at source selection and new offers. An accepted
+quote is never silently repriced when costs or source availability change.
+
+The existing `SOURCE_REASONS` in
+`frontend/src/lib/api/confirmationTypes.ts` is shared with hold review and
+order details. Do not widen it globally: create a C1-specific reason list and
+parser in `adminConfirmation.ts`, with labels for all six new values. R2 and
+`AdminOrderDetail.source.reasons` retain the original four-value contract.
+Ship these client changes, mocks, schemas and parsing tests with the backend.
+Unknown reasons must continue to fail safely rather than imply eligibility.
+
+Activation with a missing kind is refused atomically for both create and
+renew. The cost-only PATCH is admin-only with CSRF, a non-null strict integer
+cost in kobo, and no changes to approval or status. Preserve not-found order:
+unknown source, unknown category, then missing activation. Concurrent cost
+and activation updates must not overwrite unrelated fields or restore a
+suspended/revoked status. Test these interleavings on the database.
+
+All added reads and writes inherit the admin role and CSRF rules above.
+Contact names, phones, coordinates and costs never appear as values in audit
+details or logs. Field names may be audited. Keep source eligibility and cost
+logic in the backend and keep R2's post-pickup safety review unchanged.
+
+### Pickup point bounds
+
+The screen now sends `location` (#385 already accepts it). A latitude or
+longitude outside `DELIVERY_LOCATION_BOUNDS` is refused with 422
+`validation_error` on `location`, as today.
+
+### Database
+
+One additive, reversible migration on `water_sources`: `contact_name`
+(varchar 120, null), `contact_phone` (varchar 16, null),
+`min_litres_per_order` and `max_litres_per_order` (integer, null, each
+`>= 1`, and a CHECK that the minimum is not above the maximum when both are
+set), `is_available` (boolean, default true), the allowed vehicle kinds
+(stored as two booleans, `serves_keke` and `serves_tanker`, default true, with
+a CHECK that at least one is true), and a GiST index on `location`. Existing
+rows stay valid: every new column is nullable or has a default. The GiST
+index uses the existing geography point. Downgrade drops the new fields and
+therefore loses supplier details; document and back up that loss before any
+rollback. No migration or database operation runs in this documentation PR.
+
+### Error codes added by #407
+
+| Status | Code | When |
+| --- | --- | --- |
+| 409 | `water_source_kind_required` | Activating a source whose kind is not set |
+
+### Out of scope
+
+Stock levels, a supplier login, storing laboratory documents, and showing
+the supplier's phone to a driver.
+
+### Tests the build must include
+
+Every reason above, alone and together, with the litre limits at their
+boundaries (equal to the minimum and the maximum is allowed); a cost edit that
+leaves an earlier quote's amounts unchanged (T-09); an expired, suspended,
+revoked, unavailable, wrong-kind, wrong-size or unsuitable source never
+returned as eligible (T-04); the cost and the contact phone absent from audit
+rows and from every customer and driver response; roles and CSRF on the new
+PATCH; atomic confirmation and concurrent updates; C1 accepts each new
+reason while R2 keeps its four; upgrade/downgrade/upgrade and `alembic check`.
+
 ## Error codes added
 
 | Status | Code | When |
@@ -266,4 +488,5 @@ All three were decided by the technical lead on 2026-11-01 (G3).
 | --- | --- | --- |
 | 2026-11-01 | Proposed (#309), from the technical lead's decisions on the issue | not yet agreed |
 | 2026-11-01 | Agreed, with the three open questions decided; the 401 code is `not_authenticated`, as in the README | @nnamdi-security |
-| 2026-11-03 | Additive (#385): an optional `location` on a water source, set by an administrator and never sent to a customer or a driver ([amendment](#proposed-amendment-385-a-source-location), with the road-distance rules in order-details-and-price.md) | @nnamdi-security (G3, 2026-11-03) |
+| 2026-11-03 | Additive (#385): an optional `location` on a water source, set by an administrator and never sent to a customer or a driver ([amendment](#amendment-385-a-source-location-built-in-385), with the road-distance rules in order-details-and-price.md) | @nnamdi-security (G3, 2026-11-03) |
+| 2026-11-12 | Agreed, not implemented (#407): supplier contact, litre limits, availability and vehicle kinds on a source; a kind required to activate; a cost-only PATCH; the order-fit check and its six new reasons ([amendment](#amendment-407-supplier-details-order-fit-and-cost-edits)) | @nnamdi-security (+ Codex), G3, PR #417 |

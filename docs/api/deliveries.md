@@ -1777,6 +1777,15 @@ a category it returns a list of reasons; an empty list means eligible.
 | `revoked` | The activation is revoked | Activation revoked |
 | `approval_expired` | `approved_until` is before today in Africa/Lagos (T-04) | Laboratory approval expired |
 
+**Agreed amendment (#407, 2026-11-12, @nnamdi-security + Codex,
+PR #417; not implemented).** The confirmation
+options (C1) gain six more reasons after these four, worked out for the order
+being confirmed: `kind_not_set`, `unavailable`, `kind_mismatch`,
+`below_minimum_litres`, `above_maximum_litres` and `vehicle_not_suitable`.
+Their rules and C1 labels are in
+[admin-water-sources.md](admin-water-sources.md#the-order-fit-check). R2 and
+`AdminOrderDetail.source.reasons` keep the four reasons in this table.
+
 A source can have several reasons (for example `approval_expired` and
 `suspended`). R2 keeps its agreed shape (`answer`, `message`): no reasons is
 `eligible`; otherwise `not_eligible`, with these messages added (additive):
