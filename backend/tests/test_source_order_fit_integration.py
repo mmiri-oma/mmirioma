@@ -27,6 +27,7 @@ from app.modules.orders import service as orders
 from app.modules.orders.models import Order, OrderStatus
 from app.modules.pricing.models import AgreementMethod, Quote
 from app.modules.pricing.quotes import ManualReason
+from app.modules.reporting import service as reporting
 from app.modules.sources import admin as sources_admin
 from app.modules.sources import service as sources
 from app.modules.sources.eligibility import (
@@ -602,5 +603,80 @@ def test_a_legacy_activated_source_with_no_kind_serves_nothing(
             )
         [mine] = [c for c in potable if c.source_id == w.borehole_id]
         assert mine.reasons == [EligibilityReason.NOT_ACTIVATED, OrderFitReason.KIND_NOT_SET]
+
+    run(scenario)
+
+
+def test_dashboard_and_live_map_close_unavailable_and_kind_less_sources(
+    created: Created, rows: Rows
+) -> None:
+    """Regression (review on PR #420): both used to count such sources as usable."""
+
+    async def scenario(sessions: Sessions) -> None:
+        w = await world(sessions, created, rows)
+        expired = await add_source(sessions, created, WaterSourceKind.BOREHOLE, utility=w.utility)
+        async with sessions() as session:
+            await session.execute(
+                update(WaterSourceCategory)
+                .where(WaterSourceCategory.source_id == expired)
+                .values(approved_until=lagos_today() - timedelta(days=1))
+            )
+            await session.commit()
+        suspended = await add_source(
+            sessions,
+            created,
+            WaterSourceKind.BOREHOLE,
+            utility=w.utility,
+            status=ActivationStatus.SUSPENDED,
+        )
+        revoked = await add_source(
+            sessions,
+            created,
+            WaterSourceKind.NINTH_MILE,
+            utility=w.utility,
+            status=ActivationStatus.REVOKED,
+        )
+        unavailable = await add_source(
+            sessions, created, WaterSourceKind.NINTH_MILE, utility=w.utility
+        )
+        await edit(sessions, w, unavailable, is_available=False)
+        kind_less = await add_source(sessions, created, WaterSourceKind.BOREHOLE, utility=w.utility)
+        async with sessions() as session:
+            await session.execute(
+                update(WaterSource).where(WaterSource.id == kind_less).values(kind=None)
+            )
+            await session.commit()
+
+        async with sessions() as session:
+            live = await reporting.live_map(session)
+            board = await reporting.dashboard(session, day=lagos_today(), simulated=False)
+        flags = {source.id: usable for source, usable in live.sources}
+        assert {
+            name: flags[source_id]
+            for name, source_id in {
+                "eligible": w.borehole_id,
+                "expired": expired,
+                "suspended": suspended,
+                "revoked": revoked,
+                "unavailable": unavailable,
+                "kind_less": kind_less,
+            }.items()
+        } == {
+            "eligible": True,
+            "expired": False,
+            "suspended": False,
+            "revoked": False,
+            "unavailable": False,
+            "kind_less": False,
+        }
+        # The dashboard counts the same answer as the live map.
+        assert board.sources_usable == sum(1 for usable in flags.values() if usable)
+        assert board.sources_not_usable == sum(1 for usable in flags.values() if not usable)
+
+        # Available again: the source opens on both.
+        await edit(sessions, w, unavailable, is_available=True)
+        async with sessions() as session:
+            live = await reporting.live_map(session)
+        assert {source.id: usable for source, usable in live.sources}[unavailable] is True
 
     run(scenario)

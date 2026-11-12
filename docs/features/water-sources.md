@@ -215,6 +215,10 @@ longer fits is 409 `transition_requirements_unmet` with `source_eligible`.
 - **Cost changes** (#407, T-09): changing the cost alone keeps the status,
   report reference and date, and only new quotes read it. The activation row is
   read fresh under its lock, so a stale copy never undoes a suspension.
+- **Usable on the dashboard and live map** (`is_source_usable`): a kind set,
+  available, and at least one activation passing the safety check. Order fit
+  (litres, vehicles, preferred kind) is not part of it, since it depends on an
+  order.
 - **Supplier contact** is admin-only, like the cost: never in a customer or
   driver response, an audit row or a log.
 - **Simulated sources** may serve a real order for now (contract decision

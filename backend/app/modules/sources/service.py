@@ -40,7 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.audit import service as audit_service
 from app.modules.auth import service as auth_service
 from app.modules.auth.models import User, UserRole
-from app.modules.sources.eligibility import eligibility_reasons
+from app.modules.sources.eligibility import eligibility_reasons, source_wide_reasons
 from app.modules.sources.locations import SourceLocation, source_locations
 from app.modules.sources.models import (
     ActivationStatus,
@@ -575,13 +575,39 @@ def _audit(
     )
 
 
-async def source_usability(session: AsyncSession, *, today: date) -> list[tuple[WaterSource, bool]]:
-    """Every water source, by name, and whether it is usable for dispatch today (FR-012).
+def is_source_usable(
+    source: WaterSource, activations: Iterable[WaterSourceCategory], *, today: date
+) -> bool:
+    """Whether a source is open for new work today, for the dashboard and live map.
 
-    A source is usable when at least one of its category activations passes
-    :func:`app.modules.sources.eligibility.eligibility_reasons` (active,
-    approval not expired in Lagos today). The dashboard counts them; the
-    live map lists them.
+    A source is usable when nothing excludes it from every order
+    (:func:`app.modules.sources.eligibility.source_wide_reasons`: it has a kind
+    and is available, #407) **and** at least one of its category activations
+    passes the FR-012 safety check
+    (:func:`app.modules.sources.eligibility.eligibility_reasons`: activated,
+    approval not expired in Lagos today). Order-specific fit (litres, vehicle,
+    preferred kind) is not part of it: that depends on an order.
+
+    Args:
+        source: The source.
+        activations: Its activations, one per category.
+        today: Today's date in Africa/Lagos.
+
+    Returns:
+        True when the source can serve some order today.
+    """
+    if source_wide_reasons(source):
+        return False
+    return any(not eligibility_reasons(activation, today=today) for activation in activations)
+
+
+async def source_usability(session: AsyncSession, *, today: date) -> list[tuple[WaterSource, bool]]:
+    """Every water source, by name, and whether it is usable today (FR-012, #407).
+
+    Usable is :func:`is_source_usable`: no source-wide exclusion (a kind is
+    set and the source is available) and at least one activation passing the
+    safety check. The dashboard counts them; the live map lists them as open
+    or closed.
 
     Args:
         session: Database session.
@@ -593,9 +619,8 @@ async def source_usability(session: AsyncSession, *, today: date) -> list[tuple[
     return [
         (
             item.source,
-            any(
-                not eligibility_reasons(activation, today=today)
-                for activation, _ in item.activations
+            is_source_usable(
+                item.source, (activation for activation, _ in item.activations), today=today
             ),
         )
         for item in await list_sources(session)

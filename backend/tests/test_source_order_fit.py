@@ -25,6 +25,7 @@ from app.modules.sources.models import (
     WaterSourceCategory,
     WaterSourceKind,
 )
+from app.modules.sources.service import is_source_usable
 
 TODAY = date(2026, 11, 12)
 KEKE_600 = OrderFit(litres=600, delivery_type="keke", preferred_kind=None)
@@ -164,3 +165,29 @@ def test_the_safety_reasons_keep_their_four_values() -> None:
         "revoked",
         "approval_expired",
     ]
+
+
+# --- Usability for the dashboard and live map (#407 review on PR #420) --------------
+
+
+@pytest.mark.parametrize(
+    ("overrides", "activations", "usable"),
+    [
+        ({}, [{}], True),
+        ({"is_available": False}, [{}], False),
+        ({"kind": None}, [{}], False),
+        ({}, [{"approved_until": TODAY - timedelta(days=1)}], False),
+        ({}, [{"status": ActivationStatus.SUSPENDED, "status_reason": "Pump repair."}], False),
+        ({}, [{"status": ActivationStatus.REVOKED, "status_reason": "Withdrawn."}], False),
+        ({}, [], False),
+        # One category still passing is enough.
+        ({}, [{"status": ActivationStatus.REVOKED, "status_reason": "Withdrawn."}, {}], True),
+        # Order fit is not part of it: limits and vehicles depend on an order.
+        ({"max_litres_per_order": 1, "serves_keke": False}, [{}], True),
+    ],
+)
+def test_a_source_is_usable_only_with_no_source_wide_exclusion_and_a_passing_activation(
+    overrides: dict[str, Any], activations: list[dict[str, Any]], usable: bool
+) -> None:
+    rows = [activation(**changes) for changes in activations]
+    assert is_source_usable(source(**overrides), rows, today=TODAY) is usable
