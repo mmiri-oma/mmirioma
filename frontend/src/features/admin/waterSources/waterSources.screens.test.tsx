@@ -399,9 +399,17 @@ describe('supplier details, order fit and cost edits (#407)', () => {
     expect(borehole.getByRole('button', { name: 'Activate' })).toBeEnabled()
   }, SLOW)
 
-  it('offers Edit source when the server says the kind is needed (409)', async () => {
+  it('offers Edit source when the server says the kind is needed (409), and opens Edit from a fresh read', async () => {
     const user = userEvent.setup()
-    serve({ 'PUT /admin/water-sources/s1/activations/c-potable': { status: 409, body: envelope('water_source_kind_required') } })
+    // Another admin cleared the kind after the page loaded: the second read has no kind.
+    let reads = 0
+    serve({
+      'PUT /admin/water-sources/s1/activations/c-potable': { status: 409, body: envelope('water_source_kind_required') },
+      'GET /admin/water-sources': () => {
+        reads += 1
+        return { body: reads === 1 ? LIST : { ...LIST, items: [{ ...BOREHOLE, kind: null, source_reasons: ['kind_not_set'] }, SUSPENDED] } }
+      },
+    })
     renderPage()
     const borehole = await card('Sample Borehole A')
     await user.click(borehole.getByRole('button', { name: 'Activate' }))
@@ -414,6 +422,8 @@ describe('supplier details, order fit and cost edits (#407)', () => {
     expect(screen.queryByText(/^Activated for /)).toBeNull()
     await user.click(within(dialog).getByRole('button', { name: 'Edit source' }))
     expect(await screen.findByText('Edit this source', {}, { timeout: WAIT })).toBeInTheDocument()
+    // Regression (click-through on #407): from the stale copy Kind read "Borehole" and Save stayed off.
+    expect(screen.getByLabelText('Kind')).toHaveValue('')
   }, SLOW)
 
   it('changes the cost alone, says new quotes use it, and keeps Save off until it differs', async () => {

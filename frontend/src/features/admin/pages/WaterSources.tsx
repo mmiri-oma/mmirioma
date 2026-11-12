@@ -10,6 +10,7 @@ import { ApiError } from '../../../lib/api/client'
 import type { ActivationRead, WaterCategoryRead, WaterSourceRead } from '../../../lib/api/adminWaterSources'
 import { formatCalendarDate } from '../../../lib/format/datetime'
 import { formatNaira } from '../../../lib/format/money'
+import * as api from '../adminApi'
 import { WATER_SOURCES_ARE_SAMPLE } from '../adminApi'
 import { AdminFrame, PageHead } from '../AdminParts'
 import { adminKeys, useWaterSources } from '../queries'
@@ -63,6 +64,23 @@ export function WaterSources() {
     setDone(null)
     void qc.invalidateQueries({ queryKey: adminKeys.waterSources })
   }
+  /**
+   * After a 409 `water_source_kind_required` the page's copy of the source is
+   * out of date (another admin cleared the kind, or it was never set), so Edit
+   * opens from a fresh read: from the stale copy it would show the old kind
+   * and keep Save off. If the read fails or the source is gone, the list
+   * reloads instead.
+   */
+  const editFresh = async (sourceId: string) => {
+    try {
+      const fresh = await qc.fetchQuery({ queryKey: adminKeys.waterSources, queryFn: api.listWaterSources, staleTime: 0 })
+      const source = fresh.items.find((s) => s.id === sourceId)
+      if (source) setOpen({ dialog: 'edit', source })
+      else refresh()
+    } catch {
+      refresh()
+    }
+  }
 
   return (
     <AdminFrame searchPlaceholder="Search orders, customers, riders">
@@ -101,7 +119,7 @@ export function WaterSources() {
           onClose={close}
           onDone={finish}
           onRefresh={refresh}
-          onEditSource={() => setOpen({ dialog: 'edit', source: open.source })}
+          onEditSource={() => void editFresh(open.source.id)}
         />
       )}
       {open?.dialog === 'status' && <StatusDialog source={open.source} category={open.category} status={open.status} onClose={close} onDone={finish} onRefresh={refresh} />}
