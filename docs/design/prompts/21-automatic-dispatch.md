@@ -34,7 +34,7 @@ A confirmed order is offered to one rider at a time by the system. A system
 offer has a deadline. If the rider declines or does not answer, the order
 goes back to waiting and the next rider is offered it. After several offers
 that were not taken, the system stops and the order waits for a dispatcher.
-A dispatcher can assign or withdraw at any time; after that, the system makes
+A dispatcher can assign or withdraw within the existing permitted states; after that, the system makes
 no more offers for that order. A dispatcher's own offer has no deadline.
 
 PRODUCT HONESTY RULES (every screen)
@@ -42,7 +42,7 @@ PRODUCT HONESTY RULES (every screen)
   accept. An offer is an offer: "Offered to <rider>", "Waiting for them to
   start".
 - Never say a rider was found when none was. "Awaiting assignment" means no
-  one has been offered the order.
+  live assignment currently exists, even if earlier offers were not taken.
 - No live tracking, no map, no arrival time, no distance to the rider.
 - No reason is invented for why an offer was not taken: say "declined" only
   when the rider declined, and "expired" only when the time ran out.
@@ -56,9 +56,10 @@ PRODUCT HONESTY RULES (every screen)
 ADMIN SCREENS AND STATES
 
 A1. ORDER PANEL, "AWAITING ASSIGNMENT"
-  A confirmed order that no one has been offered. Under the status chip, a
-  dispatch chip "Awaiting assignment" and one line: "No rider has been
-  offered this order yet. The system keeps looking." When earlier offers were
+  A confirmed order without a current live assignment. Under the status chip, a
+  dispatch chip "Awaiting assignment" and one line: "No rider is currently
+  assigned. Automatic offers depend on operating hours, source eligibility
+  and rider availability." When earlier offers were
   not taken, a second line: "1 offer not taken" or "2 offers not taken". The
   rider list ("Assign a rider") stays, with a note above its button: "If you
   assign a rider yourself, automatic offers stop for this order."
@@ -83,27 +84,30 @@ A4. ORDER PANEL, ESCALATED
 A5. ORDER PANEL, "AWAITING DISPATCHER ASSIGNMENT"
   A confirmed order with automatic offers stopped by a dispatcher's assign or
   withdraw, and not escalated. Dispatch chip "Awaiting dispatcher
-  assignment" and the line: "Automatic offers are off for this order because
-  a dispatcher assigned or withdrew it. Assign a rider yourself." The rider
+  assignment" and the line: "Automatic offers are off for this order.
+  Assign a rider yourself." The rider
   list below it.
 
 A6. ORDERS TABLE ROW
   The Rider column for a confirmed order with no live offer shows the
   dispatch chip in place of "None yet": "Awaiting assignment", "Escalated"
   or "Awaiting dispatcher assignment". An offered order keeps the rider's
-  name. Words always, never colour alone.
+  name. Preserve existing returned rider names for ended jobs; do not replace
+  historical values with "None yet". Words always, never colour alone.
 
 A7. TIMELINE LINES
   New lines beside the existing ones: "Offered to <rider> automatically",
   "Offer to <rider> expired". The existing "Declined by <rider>", "Offered to
   <rider>" and "Offer to <rider> withdrawn" stay. A line with no person is
-  attributed to "System".
+  attributed to "System". Also merge the persisted detail
+  dispatch.escalated_at into the timeline as one "Escalated for dispatcher
+  assignment" line. Do not invent a status event or duplicate it on refresh.
 
 A8. RIDER CANNOT TAKE THE ORDER (after an assign is refused)
   Four reasons in the existing error notice, one line each: "This rider does
   not serve the order's area.", "This rider's vehicle cannot fill this tank
-  type.", "This rider's vehicle type does not match the order.", "This order
-  needs more trips than the customer was quoted for this rider's vehicle."
+  type.", "This rider's vehicle type does not match the order.", "This rider's
+  vehicle cannot carry this order within its permitted trip plan."
 
 A9. ADMIN NOTIFICATIONS
   Two rows in the bell list: "Offer expired" with "<reference>: <rider> did
@@ -118,23 +122,30 @@ RIDER SCREENS AND STATES
 P1. "NEW ORDER FOR YOU" SHEET, SYSTEM OFFER
   The existing sheet. The line under the title reads "Offered to you" and a
   countdown sits beside it: "Answer in 4:32". From 1:00 down the countdown
-  turns amber and adds the word "Hurry"; never colour alone. The two actions
+  turns amber with "One minute left" at 1:00 and "Less than one minute left"
+  below it; never colour alone, no pressure wording or prompt to act while driving. The two actions
   stay: "Start: go to refill station" and "I cannot take this order".
 
 P2. SHEET, TIME RAN OUT
-  At 0:00 both actions are removed and the sheet reads "This offer has ended.
-  You did not answer in time." with one button, "Close".
+  Device 0:00 shows "Checking offer status" while refetching; it is not
+  proof of server expiry. Preserve an in-flight response and honor server
+  success even if it arrives after device zero. On refresh/network failure
+  show "We could not check this offer. Connect and try again." with Try again
+  and Close. Only confirmed expiry shows "This offer has expired." with
+  Close. A missing/404 job says "This offer is no longer available." without
+  inventing a cause. If still offered, allow server-checked retry with a
+  device-clock warning; never extend or restart the deadline.
 
 P3. SHEET, DISPATCHER'S OFFER
   As today: "Assigned by admin", no countdown.
 
 P4. ANSWER REFUSED
   The rider tapped Start or sent a decline after the deadline. In the sheet,
-  or on the decline screen: "This offer has ended. You did not answer in
-  time." with "Close". Nothing says the order went to someone else.
+  or on the decline screen: "This offer has expired." with "Close". Nothing says the order went to someone else.
 
 P5. RIDER NOTIFICATION
-  One row: "Offer ended" with "<reference>: you did not answer in time."
+  One row: "Offer expired" with "<reference>: this offer expired before a
+  response was recorded."
 
 STATES (every screen)
   Loading; error loading with "Try again"; no connection (the countdown keeps
@@ -145,6 +156,9 @@ STATES (every screen)
 ACCESSIBILITY
   Touch targets at least 44px. The countdown is text, readable by a screen
   reader, and announces at each whole minute and at 0:00, not every second.
+  Never move focus on a timer tick; keep a reachable state/Close target when
+  actions end. Recompute approximate time on visibility/resume. Cover both
+  Keke and tanker variants, slow/fast device clocks and offline-at-zero.
   Amber and red are never the only signal. Respect reduced motion: no pulsing
   ring when it is set.
 
@@ -157,6 +171,9 @@ OUT OF SCOPE
   showing the timeout and attempt limit (#413). Push, sound and
   acknowledgement (#412). The customer's screens: a customer is told nothing
   about a rider before the rider accepts, as today. A way to turn automatic
-  offers back on for an order. Waiting-for-opening-hours and lost-source
-  states (they need fields from #408 and #407).
+  offers back on for an order. Specific waiting-for-opening-hours and lost-source
+  reasons need fields from #408 and #407; use neutral A1 copy in the meantime.
+  Show existing server holds/reviews ahead of dispatch decoration. The owner
+  confirmed daily 08:00–18:00 Africa/Lagos, with 18:00 last dispatch and
+  24/7 ordering; do not promise an ETA from those hours alone.
 ```
