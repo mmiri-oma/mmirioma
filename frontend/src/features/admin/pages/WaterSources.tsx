@@ -102,8 +102,13 @@ function LoadFailure({ error, onRetry }: { error: unknown; onRetry: () => void }
   )
 }
 
-/** Columns from 1024 px; below that each category is a stacked block with labelled values. */
-const GRID = 'lg:grid-cols-[minmax(120px,1fr)_minmax(110px,.9fr)_minmax(150px,1.2fr)_minmax(120px,1fr)_minmax(90px,.7fr)_auto] lg:items-start lg:gap-3'
+/**
+ * Columns from 1024 px; below that each category is a stacked block with labelled values.
+ * Every track is a fixed minimum plus `fr`, never `auto`: the header and each row are
+ * separate grids, so a track sized to its content (the row's buttons) would give each row
+ * its own column widths and misalign them (#421).
+ */
+const GRID = 'lg:grid-cols-[minmax(120px,1fr)_minmax(110px,.9fr)_minmax(150px,1.2fr)_minmax(120px,1fr)_minmax(90px,.7fr)_minmax(150px,1.4fr)] lg:items-start lg:gap-3'
 
 function SourceCard({ source, categories, setOpen }: { source: WaterSourceRead; categories: WaterCategoryRead[]; setOpen: (open: Open) => void }) {
   return (
