@@ -506,7 +506,7 @@ The team must resolve the open points before coding the features that depend on 
 
 ## 13. Change history
 
-**12 November 2026 (no version change, #410, proposed with the partner contract amendment).** The §5 data model gains `driver_locations`: the one current point an online driver confirms, used to decide whether their location is fresh for automatic offers (FR-031). It is overwritten, deleted when the driver goes offline, never kept as history and never shown to customers, so it is not GPS telemetry (§1).
+**12 November 2026 (no version change, #410, agreed with the partner contract amendment by @nnamdi-security in PR #423; not built).** The §5 data model gains `driver_locations`: the one current point an online driver confirms, used to decide whether their location is fresh for automatic offers (FR-031). It is overwritten, deleted when the driver goes offline, never kept as history and never shown to customers, so it is not GPS telemetry (§1).
 
 **12 November 2026 (no version change, #407, agreed by @nnamdi-security (+ Codex) in PR #417; not implemented).** FR-011 and the §5 `water_sources` row gain the source fields automatic source selection needs: supplier contact, kind, pickup point, minimum and maximum litres per order, availability and allowed vehicle kinds. A source without a kind can no longer be activated or chosen. The cost per litre can be changed on its own and applies to new quotes only (FR-024, T-09). No stock levels.
 

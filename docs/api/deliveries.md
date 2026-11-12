@@ -2345,7 +2345,7 @@ a dispatcher can see what the system cannot:
 
 - the driver's location is fresh
   ([#410](https://github.com/mmiri-oma/mmirioma/issues/410) defines "fresh":
-  [partners.md, the freshness rule](partners.md#the-freshness-rule), proposed);
+  [partners.md, the freshness rule](partners.md#the-freshness-rule), agreed 2026-11-12, not built);
 - the driver has not already been offered this order.
 
 These exclude a driver from ranking. They are not `reasons`, and a dispatcher

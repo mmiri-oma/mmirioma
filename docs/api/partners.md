@@ -1,7 +1,7 @@
 # Partner account contract
 
 Requirements: FR-001, FR-002, FR-003, FR-013, FR-031, FR-032, FR-050, NFR-002, NFR-004 ·
-Issues: #14, #47, #410 ([amendment](#amendment-410-driver-location-for-automatic-dispatch), proposed) · Built in: not yet
+Issues: #14, #47, #410 ([amendment](#amendment-410-driver-location-for-automatic-dispatch), agreed 2026-11-12) · Built in: not yet
 
 **Status: agreed** (G3) on 2026-10-26 by @nnamdi-security, technical lead,
 sole approver under #36. Proposed by @Bonvee120 (+ Claude Code) in #14,
@@ -448,13 +448,14 @@ decided and when. Recommendations are proposals, not decisions.
 
 ## Amendment #410: driver location for automatic dispatch
 
-**Status: proposed** (G3) on 2026-11-12 for
+**Status: agreed** (G3), @nnamdi-security (+ Codex), 2026-11-12, PR #423. Proposed the same day for
 [#410](https://github.com/mmiri-oma/mmirioma/issues/410) by @DevBonavee
-(+ Claude Code). Not yet agreed. It needs one reviewer who is not the author.
+(+ Claude Code); the reviewer is not the author. Not built: #410 stays open for
+the build, and 410-3 (Keke capacity) is deferred to its own amendment.
 
 Requirements: FR-013, FR-031, FR-035 (consent before location), SRS §1 (no GPS
 telemetry), BR-03 · Design:
-[driver-location.md](../design/driver-location.md) (G2, proposed) · Used by:
+[driver-location.md](../design/driver-location.md) (G2: written design approved; visual mockup still to approve) · Used by:
 [#411](deliveries.md#automatic-dispatch-and-reassignment-411), which needs "the
 driver's location is fresh" before it makes an automatic offer.
 
@@ -467,9 +468,9 @@ and no customer ever sees it.
 
 ### Decisions
 
-| # | Question | Answer |
+| # | Question | Agreed answer (@nnamdi-security (+ Codex), 2026-11-12, PR #423) |
 | --- | --- | --- |
-| D6 | The point must be fresh within five minutes, but a browser cannot send a location while the app is closed | Chosen by the assignee on 2026-11-12, from the issue's recommendation, for a reviewer to agree here. While the app is open and visible and the driver is online, the app refreshes the point by itself before it goes stale. When an order is waiting for automatic dispatch and no otherwise-eligible driver is fresh, online drivers get a "confirm your location" message. A driver who closes the app goes stale and may miss automatic offers; a dispatcher can still assign them by hand (#411) |
+| D6 | The point must be fresh within five minutes, but a browser cannot send a location while the app is closed | Proposed by the assignee from the issue's recommendation; agreed by the reviewer. While the app is open and visible and the driver is online, the app refreshes the point by itself before it goes stale. When an order is waiting for automatic dispatch and no otherwise-eligible driver is fresh, online drivers get a "confirm your location" message. A driver who closes the app goes stale and may miss automatic offers; a dispatcher can still assign them by hand (#411) |
 | 410-1 | Who may send a point, and when? | Only the signed-in driver, for themselves, while online (`is_available = true`) and approved. Never anyone else's, and never while offline |
 | 410-2 | Are coordinates returned to clients? | No. The driver's own profile returns only the state (`fresh`, `stale`, `none`), when it was confirmed, the accuracy and when it goes stale. Customers, and admin screens until a later amendment, get nothing |
 
@@ -670,7 +671,7 @@ screens for driver location, and ranking (#411).
 | # | Question | Recommendation |
 | --- | --- | --- |
 | 410-3 | What range of declared capacity can a Keke rider enter, and in what unit? | **Deferred, out of this amendment.** The reviewer has asked the owner for the unit and bounds (2026-11-12). Nothing in this amendment or its build changes Keke sign-up; it is added by its own amendment once the owner answers |
-| 410-4 | Should a point with poor accuracy count as fresh? | **Proposed, for the reviewer to decide with this contract:** yes. Freshness is about time only; accuracy is stored and shown. The screen asks the driver to try again in the open when accuracy is over 100 m, as the customer location design does |
+| 410-4 | Should a point with poor accuracy count as fresh? | **Decided** (@nnamdi-security (+ Codex), 2026-11-12, PR #423): yes. Freshness measures age only; accuracy is stored and shown. The screen asks the driver to try again in the open when accuracy is over 100 m, as the customer location design does |
 
 ### Tests the build must include
 
@@ -691,6 +692,7 @@ upgrade and `alembic check`.
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-12 | Agreed (G3): the location contract, D6, 410-1, 410-2 and 410-4 as documented; 410-3 deferred to its own amendment; not built. The build must include the concurrency tests, the migration checks and the privacy notice updates | @nnamdi-security (+ Codex), 2026-11-12, PR #423 |
 | 2026-11-12 | Second review (PR #423): sharing grants. `POST /driver/location/sharing` issues a grant; `PUT` must carry the current grant or gets 409 `location_sharing_withdrawn`; `DELETE` and every clearing path bump it under the profile lock, so no request sent before a withdrawal can restore a point; `location.sharing` on the profile; two profile columns; message wording made conditional | not yet agreed |
 | 2026-11-12 | Revised after review (PR #423): `DELETE /driver/location` for withdrawn sharing; location writes and every clearing path serialized on the driver-profile lock; accuracy stored rounded up so it is never zero; `confirm_location` limited to otherwise-eligible drivers and promises no offer; 410-3 deferred to its own amendment; 410-4 proposed for decision | not yet agreed |
 | 2026-11-12 | Proposed (#410): `PUT /driver/location`, the freshness rule and setting, `location` on the profile with no coordinates, clearing rules, the `confirm_location` message kind, the `driver_locations` table; D6 recorded; Keke capacity and accuracy left as open questions 410-3 and 410-4 ([amendment](#amendment-410-driver-location-for-automatic-dispatch)) | not yet agreed |

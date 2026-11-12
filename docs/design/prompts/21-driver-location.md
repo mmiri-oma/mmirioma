@@ -4,7 +4,7 @@ Issue: [#410](https://github.com/mmiri-oma/mmirioma/issues/410) ·
 Requirements: FR-031 (fresh driver location for automatic offers), FR-035
 (consent before location), SRS §1 (no GPS telemetry) · Contract:
 [partners.md, amendment #410](../../api/partners.md#amendment-410-driver-location-for-automatic-dispatch)
-(**proposed, not agreed**) · Record: [driver-location.md](../driver-location.md)
+(agreed 2026-11-12, PR #423) · Record: [driver-location.md](../driver-location.md)
 
 **Why this prompt:** automatic dispatch (#411) offers work only to riders and
 drivers whose location is fresh. Today going online is one switch on `r-home`
@@ -112,7 +112,7 @@ Name components as in the handoff.
 | Item | Rule | Source |
 | --- | --- | --- |
 | Going online | `PUT /driver/availability` first; the location is sent only after it succeeds | [partners.md](../../api/partners.md#put-driveravailability) |
-| Location | `PUT /driver/location` with the point and the accuracy the phone reports | [amendment #410](../../api/partners.md#amendment-410-driver-location-for-automatic-dispatch), proposed |
+| Location | `PUT /driver/location` with the point and the accuracy the phone reports | [amendment #410](../../api/partners.md#amendment-410-driver-location-for-automatic-dispatch), agreed |
 | "Confirmed N min ago", out of date | `location.state`, `confirmed_at`, `fresh_until` on the profile; never the coordinates | same |
 | Device position | The existing `requestDevicePosition` (15 s wait, `denied`, `unavailable`, `unsupported`) | `frontend/src/lib/devicePosition.ts` |
 | The message | Notification kind `confirm_location` | same |

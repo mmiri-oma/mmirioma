@@ -6,8 +6,10 @@ Issue: [#410](https://github.com/mmiri-oma/mmirioma/issues/410) ·
 Requirements: FR-031, FR-035, SRS §1 · Prompt:
 [prompts/21-driver-location.md](prompts/21-driver-location.md) · Contract:
 [partners.md, amendment #410](../api/partners.md#amendment-410-driver-location-for-automatic-dispatch)
-(proposed) · Designer: @DevBonavee + Claude Code (written design; no visual
-mockup yet) · Status: proposed (G2), not yet approved
+(agreed) · Designer: @DevBonavee + Claude Code (written design; no visual
+mockup yet) · Reviewed by: @nnamdi-security (+ Codex), 2026-11-12, PR #423 · Status: approved (G2, the written flow,
+states and wording only; the visual mockup is still to be attached and
+approved before the screens are built)
 
 **Two approvals.** Approving this record approves the written design: the
 flow, the states and the wording. The visual mockup is a separate approval:
@@ -126,9 +128,9 @@ with **Share my location** and **Not now**; the phone is asked only after
 | Screen | Element / action | Endpoint | Fields used |
 | --- | --- | --- | --- |
 | D1 | Go online | `PUT /driver/availability` | `is_available` |
-| D1, D3 | Share my location (consent) | `POST /driver/location/sharing` (amendment #410, proposed) | `grant` |
-| D1, D2 | Share or confirm location | `PUT /driver/location` (amendment #410, proposed) | `location`, `accuracy_metres`, `grant` |
-| D1, D2 | Go online without it, Cancel, refused, Turn off location sharing | `DELETE /driver/location` (amendment #410, proposed) | none |
+| D1, D3 | Share my location (consent) | `POST /driver/location/sharing` (amendment #410, agreed) | `grant` |
+| D1, D2 | Share or confirm location | `PUT /driver/location` (amendment #410, agreed) | `location`, `accuracy_metres`, `grant` |
+| D1, D2 | Go online without it, Cancel, refused, Turn off location sharing | `DELETE /driver/location` (amendment #410, agreed) | none |
 | D2 | Card state | `GET /driver/profile` | `location.state`, `confirmed_at`, `fresh_until`, `accuracy_metres` |
 | D3 | The message | `GET /driver/notifications` | `kind: confirm_location` (created by #411) |
 
