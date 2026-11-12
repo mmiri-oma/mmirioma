@@ -16,6 +16,27 @@ import { parseDetail, type AdminOrderDetail } from './adminDispatch'
 import { apiClient, ApiError, type ApiClient } from './client'
 import { SOURCE_REASONS, type AgreementMethod, type DeliveryWindow } from './confirmationTypes'
 
+/**
+ * Why a source cannot serve the order being confirmed (C1): the four shared
+ * safety reasons, then the six #407 order-fit reasons, in the server's order
+ * (docs/api/admin-water-sources.md, "The order-fit check"; agreed PR #417).
+ *
+ * Only the C1 options use this list. The hold review (R2) and the order
+ * detail's `source.reasons` keep the four values of `SOURCE_REASONS`, so that
+ * list is not widened. An unknown value still fails the parse as
+ * `invalid_response` instead of reading as an eligible source.
+ */
+export const C1_SOURCE_REASONS = [
+  ...SOURCE_REASONS,
+  'kind_not_set',
+  'unavailable',
+  'kind_mismatch',
+  'below_minimum_litres',
+  'above_maximum_litres',
+  'vehicle_not_suitable',
+] as const
+export type C1SourceReason = (typeof C1_SOURCE_REASONS)[number]
+
 const sourceOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -25,8 +46,8 @@ const sourceOptionSchema = z.object({
   /** Lagos calendar date the approval is valid through (inclusive), or `null`. */
   approved_until: z.string().nullable(),
   is_simulated: z.boolean(),
-  /** Empty means the source may be chosen for this category (FR-012). */
-  reasons: z.array(z.enum(SOURCE_REASONS)),
+  /** Empty means the source may be chosen for this order (FR-012; #407 order fit). */
+  reasons: z.array(z.enum(C1_SOURCE_REASONS)),
   /**
    * Where it collects water, or `null` until set (amendment #72). A quoted
    * Tanker order needs the customer's kind. Missing (an older server) reads

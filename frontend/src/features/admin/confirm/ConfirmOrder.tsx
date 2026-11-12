@@ -22,7 +22,7 @@ import { cx } from '../../../lib/cx'
 import {
   AGREEMENT_LABEL,
   KIND_CHIP,
-  REASON_LABEL,
+  C1_REASON_LABEL,
   SOURCE_KIND_LABEL,
   buildConfirmRequest,
   confirmKind,
@@ -413,7 +413,7 @@ function ConfirmSheet({
                     <span className="text-caption">{s.approximate_location}</span>
                     {s.reasons.map((r) => (
                       <span key={r} className="flex items-center gap-1.5 text-caption text-red">
-                        <AlertCircleIcon size={14} /> {REASON_LABEL[r]}
+                        <AlertCircleIcon size={14} /> {C1_REASON_LABEL[r]}
                       </span>
                     ))}
                   </div>

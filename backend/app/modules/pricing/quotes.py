@@ -6,9 +6,12 @@ docs/features/pricing.md.
 
 **The price** (FR-022): water + delivery + handling + MmiriOma margin.
 
-- **Water:** the highest cost per litre among the sources eligible today for
-  the pilot category and of the preferred kind (decision 3; Keke: any kind),
-  times the litres. The cost per litre is never sent to a customer (FR-011).
+- **Water:** the highest cost per litre among the sources that can serve the
+  order today in the pilot category, times the litres. "Can serve" is the
+  shared order-fit check (:func:`app.modules.sources.eligibility.eligible_sources_for`,
+  #407): activated with a current approval, a kind set, available, of the
+  preferred kind (decision 3; Keke: any kind), accepting the order's litres and
+  its vehicle. The cost per litre is never sent to a customer (FR-011).
 - **Delivery** (FR-022, docs/api/order-details-and-price.md, "Amendment
   #385"): with a delivery location, an active zone, OSRM answering in time,
   **every** eligible source having a pickup point and a matching price rule, the
@@ -59,6 +62,7 @@ from app.modules.pricing.models import (
     ServiceZone,
 )
 from app.modules.sources import service as sources
+from app.modules.sources.eligibility import OrderFit, SourceCandidate, eligible_sources_for
 from app.modules.sources.models import WaterCategory, WaterSourceKind
 from app.shared.lagos_time import LAGOS_TZ
 from app.shared.location import DECIMAL_PLACES, Location, to_point
@@ -244,7 +248,7 @@ class RoadDelivery:
 
 
 async def _road_delivery(
-    eligible: list[sources.EligibleSource],
+    eligible: list[SourceCandidate],
     location: Location,
     rule: PriceRule,
     trips: int,
@@ -315,6 +319,24 @@ def _kind(choice: Choice) -> WaterSourceKind | None:
     return WaterSourceKind(choice.water_source) if choice.water_source else None
 
 
+def _fit(choice: Choice, litres: int) -> OrderFit:
+    """The order-fit inputs for a choice (#407): whole-order litres, vehicle, preference."""
+    return OrderFit(litres=litres, delivery_type=choice.delivery_type, preferred_kind=_kind(choice))
+
+
+async def _serving_sources(
+    session: AsyncSession, *, water_category_id: uuid.UUID, fit: OrderFit, now: datetime
+) -> list[SourceCandidate]:
+    """The sources that pass the order-fit check today in Lagos."""
+    candidates = await eligible_sources_for(
+        session,
+        water_category_id=water_category_id,
+        fit=fit,
+        today=now.astimezone(LAGOS_TZ).date(),
+    )
+    return [candidate for candidate in candidates if candidate.eligible]
+
+
 async def create_quote(
     session: AsyncSession,
     *,
@@ -368,11 +390,8 @@ async def create_quote(
     ):
         return manual(ManualReason.CATEGORY_UNAVAILABLE)
 
-    eligible = await sources.eligible_sources(
-        session,
-        water_category_id=category.id,
-        kind=_kind(choice),
-        today=now.astimezone(LAGOS_TZ).date(),
+    eligible = await _serving_sources(
+        session, water_category_id=category.id, fit=_fit(choice, litres), now=now
     )
     if not eligible:
         return manual(ManualReason.NO_ELIGIBLE_SOURCE, category)
@@ -402,7 +421,12 @@ async def create_quote(
         return manual(ManualReason.NO_PRICE_RULE, category)
 
     rule = match.rule
-    cost_per_litre = max(source.cost_per_litre_minor_units for source in eligible)
+    # An eligible source always has an activation, so it always has a cost.
+    cost_per_litre = max(
+        source.cost_per_litre_minor_units
+        for source in eligible
+        if source.cost_per_litre_minor_units is not None
+    )
     price = compute_price(
         cost_per_litre=cost_per_litre,
         litres=litres,
@@ -570,13 +594,17 @@ async def check_quote_for_order(
                 for field in different
             ],
         )
-    costs = await sources.eligible_costs_per_litre(
+    # Re-checked on acceptance (#407): an admin may have marked the source
+    # unavailable or changed its limits since the quote. The quote's amounts
+    # are never recomputed here (FR-024): either it is accepted as priced,
+    # or the order is refused.
+    serving = await _serving_sources(
         session,
         water_category_id=quote.water_category_id,
-        kind=_kind(choice),
-        today=now.astimezone(LAGOS_TZ).date(),
+        fit=_fit(choice, quote.quantity_litres),
+        now=now,
     )
-    if not costs:
+    if not serving:
         raise APIError(
             HTTPStatus.CONFLICT,
             "no_eligible_source",

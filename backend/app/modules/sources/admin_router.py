@@ -17,6 +17,7 @@ from app.core.errors import ErrorResponse
 from app.modules.auth.dependencies import CurrentAdmin
 from app.modules.sources import admin
 from app.modules.sources.admin_schemas import (
+    ActivationCostWrite,
     ActivationStatusWrite,
     ActivationWrite,
     SourceLocationBody,
@@ -28,7 +29,12 @@ from app.modules.sources.admin_schemas import (
     source_read,
 )
 from app.modules.sources.models import ActivationStatus
-from app.modules.sources.service import UNSET, SourceLocation, SourceWithActivations
+from app.modules.sources.service import (
+    UNSET,
+    SourceLocation,
+    SourceWithActivations,
+    SupplierDetails,
+)
 from app.shared.lagos_time import lagos_today
 
 router = APIRouter(prefix="/admin/water-sources", tags=["admin water sources"])
@@ -46,6 +52,7 @@ _AUTH_ERRORS = {
     HTTPStatus.FORBIDDEN: {"model": ErrorResponse},
 }
 _NOT_FOUND = {HTTPStatus.NOT_FOUND: {"model": ErrorResponse}}
+_CONFLICT = {HTTPStatus.CONFLICT: {"model": ErrorResponse}}
 
 
 def _read(view: SourceWithActivations) -> WaterSourceRead:
@@ -77,6 +84,14 @@ async def add_water_source(
             kind=body.kind,
             is_simulated=body.is_simulated,
             location=_location(body.location),
+            details=SupplierDetails(
+                contact_name=body.contact_name,
+                contact_phone=body.contact_phone,
+                min_litres_per_order=body.min_litres_per_order,
+                max_litres_per_order=body.max_litres_per_order,
+                is_available=body.is_available,
+                vehicle_kinds=tuple(body.vehicle_kinds),
+            ),
         )
     )
 
@@ -85,7 +100,7 @@ async def add_water_source(
 async def edit_water_source(
     source_id: uuid.UUID, body: WaterSourceUpdate, admin_user: CurrentAdmin, db: DbSession
 ) -> WaterSourceRead:
-    """Edit the name, location or kind. A save that changes nothing writes nothing."""
+    """Edit any field of a source. A save that changes nothing writes nothing."""
     return _read(
         await admin.update(
             db,
@@ -95,11 +110,15 @@ async def edit_water_source(
             approximate_location=body.approximate_location,
             kind=body.kind,
             location=_location(body.location) if "location" in body.model_fields_set else UNSET,
+            changes=body.supplier_changes(),
         )
     )
 
 
-@router.put("/{source_id}/activations/{category_id}", responses={**_AUTH_ERRORS, **_NOT_FOUND})
+@router.put(
+    "/{source_id}/activations/{category_id}",
+    responses={**_AUTH_ERRORS, **_NOT_FOUND, **_CONFLICT},
+)
 async def activate_water_source(
     source_id: uuid.UUID,
     category_id: uuid.UUID,
@@ -116,6 +135,26 @@ async def activate_water_source(
             category_id=category_id,
             approved_until=body.approved_until,
             report_reference=body.report_reference,
+            cost_per_litre_minor_units=body.cost_per_litre_minor_units,
+        )
+    )
+
+
+@router.patch("/{source_id}/activations/{category_id}", responses={**_AUTH_ERRORS, **_NOT_FOUND})
+async def change_activation_cost(
+    source_id: uuid.UUID,
+    category_id: uuid.UUID,
+    body: ActivationCostWrite,
+    admin_user: CurrentAdmin,
+    db: DbSession,
+) -> WaterSourceRead:
+    """Change only the cost per litre (#407). New quotes use it; nothing else changes."""
+    return _read(
+        await admin.change_cost(
+            db,
+            actor=admin_user,
+            source_id=source_id,
+            category_id=category_id,
             cost_per_litre_minor_units=body.cost_per_litre_minor_units,
         )
     )

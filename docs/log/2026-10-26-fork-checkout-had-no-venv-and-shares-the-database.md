@@ -24,5 +24,10 @@
   requirements-dev.txt`, then run tools as `.venv/Scripts/python -m pytest` and
   `-m ruff`. Check the folder is ignored with `git check-ignore -v .venv/` (with
   the slash) before it exists.
+- **Seen again (DevBonavee + Claude Code, 2026-11-12, #407):** this checkout had no
+  `backend/.venv`, no `.env` and no `frontend/node_modules`, and Docker Desktop was not
+  running (`failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`).
+  Fixed the first and third with `py -3.14 -m venv .venv` plus `pip install -r
+  requirements-dev.txt`, and `npm ci`; the database checks wait for Docker.
 - **Status:** workaround
 - **Refs:** #30

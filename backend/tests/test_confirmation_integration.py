@@ -47,6 +47,7 @@ from app.modules.sources.models import (
     WaterCategory,
     WaterSource,
     WaterSourceCategory,
+    WaterSourceKind,
 )
 from tests import test_deliveries_integration as part1
 from tests.test_deliveries_integration import (
@@ -245,7 +246,11 @@ def test_options_list_eligible_sources_first(created: Created) -> None:
     async def scenario(sessions: Sessions) -> None:
         s = await setup(sessions, created)
         potable = await category(sessions, "potable")
-        suspended = WaterSource(name="AAA Suspended Borehole", approximate_location="Abakpa")
+        suspended = WaterSource(
+            name="AAA Suspended Borehole",
+            approximate_location="Abakpa",
+            kind=WaterSourceKind.BOREHOLE,
+        )
         async with sessions() as session:
             session.add(suspended)
             await session.commit()

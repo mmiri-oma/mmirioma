@@ -45,6 +45,14 @@ const BOREHOLE = {
   is_simulated: true,
   created_at: '2026-10-27T08:00:00Z',
   activations: [activation()],
+  is_available: true,
+  vehicle_kinds: ['keke', 'tanker'],
+  location: { latitude: 6.4361, longitude: 7.5134 },
+  contact_name: 'Sample Contact',
+  contact_phone: '+2348000000001',
+  min_litres_per_order: 600,
+  max_litres_per_order: 10000,
+  source_reasons: [],
 }
 const SUSPENDED = {
   id: 's2',
@@ -64,6 +72,14 @@ const SUSPENDED = {
       reasons: ['suspended', 'approval_expired'],
     }),
   ],
+  location: null,
+  contact_name: null,
+  contact_phone: null,
+  min_litres_per_order: null,
+  max_litres_per_order: null,
+  vehicle_kinds: ['tanker'],
+  is_available: false,
+  source_reasons: ['kind_not_set', 'unavailable'],
 }
 const LIST = { items: [BOREHOLE, SUSPENDED], categories: [POTABLE, UTILITY] }
 
@@ -209,7 +225,24 @@ describe('adding and editing a source', () => {
     await user.type(within(dialog).getByLabelText('Location'), 'Near the gate')
     await user.click(within(dialog).getByRole('button', { name: 'Add source' }))
     expect(await screen.findByText('Source added. Activate it for a category before it can serve an order.', {}, { timeout: WAIT })).toBeInTheDocument()
-    expect(writes()).toEqual([{ method: 'POST', path: '/admin/water-sources', body: { name: 'New Borehole', approximate_location: 'Near the gate', kind: null } }])
+    expect(writes()).toEqual([
+      {
+        method: 'POST',
+        path: '/admin/water-sources',
+        body: {
+          name: 'New Borehole',
+          approximate_location: 'Near the gate',
+          kind: null,
+          location: null,
+          contact_name: null,
+          contact_phone: null,
+          min_litres_per_order: null,
+          max_litres_per_order: null,
+          is_available: true,
+          vehicle_kinds: ['keke', 'tanker'],
+        },
+      },
+    ])
     expect(screen.queryByRole('alertdialog')).toBeNull()
   }, SLOW)
 
@@ -334,5 +367,132 @@ describe('activating, renewing, suspending and revoking', () => {
     expect(await within(dialog).findByText("We couldn't save this. Try again.", {}, { timeout: WAIT })).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Reason')).toHaveValue('Pump repair.')
     expect(document.body.textContent).not.toContain('SELECT')
+  }, SLOW)
+})
+
+describe('supplier details, order fit and cost edits (#407)', () => {
+  it('shows the facts line, the Unavailable chip and the no-kind notice', async () => {
+    renderPage()
+    const borehole = await card('Sample Borehole A')
+    expect(borehole.getByText('Sample Contact · 0800 000 0001')).toBeInTheDocument()
+    expect(borehole.getByText('Pickup point set')).toBeInTheDocument()
+    expect(borehole.getByText('600 to 10,000 litres per order')).toBeInTheDocument()
+    expect(borehole.getByText('Keke and Tanker')).toBeInTheDocument()
+    expect(borehole.queryByText('Unavailable')).toBeNull()
+    const supplier = await card('Sample Ninth Mile Supplier')
+    expect(supplier.getByText('Unavailable')).toBeInTheDocument()
+    expect(supplier.getByText('No contact')).toBeInTheDocument()
+    expect(supplier.getByText('No pickup point: road-distance pricing unavailable')).toBeInTheDocument()
+    expect(supplier.getByText('Tanker only')).toBeInTheDocument()
+    expect(screen.getByText("1 source has no kind set. It can't serve any order until you set one.")).toBeInTheDocument()
+    // The coordinates and the cost stay off the card's facts line.
+    expect(borehole.queryByText(/6\.4361/)).toBeNull()
+  }, SLOW)
+
+  it('disables Activate and Renew on a source with no kind, and says why', async () => {
+    renderPage()
+    const supplier = await card('Sample Ninth Mile Supplier')
+    expect(supplier.getByRole('button', { name: 'Renew' })).toBeDisabled()
+    expect(supplier.getByRole('button', { name: 'Activate' })).toBeDisabled()
+    expect(supplier.getAllByText('Set the kind first.').length).toBe(2)
+    const borehole = await card('Sample Borehole A')
+    expect(borehole.getByRole('button', { name: 'Activate' })).toBeEnabled()
+  }, SLOW)
+
+  it('offers Edit source when the server says the kind is needed (409)', async () => {
+    const user = userEvent.setup()
+    serve({ 'PUT /admin/water-sources/s1/activations/c-potable': { status: 409, body: envelope('water_source_kind_required') } })
+    renderPage()
+    const borehole = await card('Sample Borehole A')
+    await user.click(borehole.getByRole('button', { name: 'Activate' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.type(within(dialog).getByLabelText('Report reference'), 'SAMPLE-LR-0009')
+    fireEvent.change(within(dialog).getByLabelText('Approved until'), { target: { value: inDays(30) } })
+    await user.type(within(dialog).getByLabelText('Cost per litre (₦)'), '1.50')
+    await user.click(within(dialog).getByRole('button', { name: 'Activate' }))
+    expect(await within(dialog).findByText(/Set where this source collects water before activating it\./, {}, { timeout: WAIT })).toBeInTheDocument()
+    expect(screen.queryByText(/^Activated for /)).toBeNull()
+    await user.click(within(dialog).getByRole('button', { name: 'Edit source' }))
+    expect(await screen.findByText('Edit this source', {}, { timeout: WAIT })).toBeInTheDocument()
+  }, SLOW)
+
+  it('changes the cost alone, says new quotes use it, and keeps Save off until it differs', async () => {
+    const user = userEvent.setup()
+    serve({ 'PATCH /admin/water-sources/s1/activations/c-utility': { body: BOREHOLE } })
+    renderPage()
+    const borehole = await card('Sample Borehole A')
+    await user.click(borehole.getByRole('button', { name: 'Change cost' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText('Change cost for Utility Water')).toBeInTheDocument()
+    expect(within(dialog).getByText('New quotes use this cost. Quotes and orders already made keep their price.')).toBeInTheDocument()
+    const save = within(dialog).getByRole('button', { name: 'Save cost' })
+    expect(save).toBeDisabled()
+    const cost = within(dialog).getByLabelText('Cost per litre (₦)')
+    await user.clear(cost)
+    await user.type(cost, '1.80')
+    await user.click(save)
+    expect(await screen.findByText('Cost updated for Utility Water.', {}, { timeout: WAIT })).toBeInTheDocument()
+    expect(writes()).toEqual([{ method: 'PATCH', path: '/admin/water-sources/s1/activations/c-utility', body: { cost_per_litre_minor_units: 180 } }])
+  }, SLOW)
+
+  it('edits the supplier fields, sending only what changed and null for what was emptied', async () => {
+    const user = userEvent.setup()
+    serve({ 'PATCH /admin/water-sources/s1': { body: BOREHOLE } })
+    renderPage()
+    const borehole = await card('Sample Borehole A')
+    await user.click(borehole.getByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByLabelText(/Contact phone/)).toHaveValue('0800 000 0001')
+    await user.clear(within(dialog).getByLabelText(/Contact phone/))
+    await user.clear(within(dialog).getByLabelText(/Largest order/))
+    await user.click(within(dialog).getByRole('switch', { name: 'Available for new orders' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Keke' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText('Source updated.', {}, { timeout: WAIT })).toBeInTheDocument()
+    expect(writes()).toEqual([
+      { method: 'PATCH', path: '/admin/water-sources/s1', body: { contact_phone: null, max_litres_per_order: null, is_available: false, vehicle_kinds: ['tanker'] } },
+    ])
+  }, SLOW)
+
+  it('names each #407 field error before sending anything', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Add a source' }, { timeout: WAIT }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.type(within(dialog).getByLabelText('Name'), 'N')
+    await user.type(within(dialog).getByLabelText('Location'), 'L')
+    await user.type(within(dialog).getByLabelText(/Contact phone/), '12345')
+    await user.type(within(dialog).getByLabelText('Latitude'), '6.4')
+    await user.type(within(dialog).getByLabelText(/Smallest order/), '1000')
+    await user.type(within(dialog).getByLabelText(/Largest order/), '999')
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Keke' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Tanker' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Add source' }))
+    expect(within(dialog).getByText('Enter a Nigerian mobile number, for example 0803 000 0000.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Enter both latitude and longitude, or neither.')).toBeInTheDocument()
+    expect(within(dialog).getByText("The largest order can't be smaller than the smallest.")).toBeInTheDocument()
+    expect(within(dialog).getByText('Choose at least one vehicle.')).toBeInTheDocument()
+    expect(writes()).toEqual([])
+  }, SLOW)
+
+  it("shows the server's bounds message under the pickup point and keeps what was typed", async () => {
+    const user = userEvent.setup()
+    serve({
+      'POST /admin/water-sources': {
+        status: 422,
+        body: { error: { code: 'validation_error', message: 'Request validation failed', details: [{ loc: ['body', 'location'], msg: 'This location is outside the area we deliver in.', type: 'value_error' }] } },
+      },
+    })
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Add a source' }, { timeout: WAIT }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.type(within(dialog).getByLabelText('Name'), 'N')
+    await user.type(within(dialog).getByLabelText('Location'), 'L')
+    await user.type(within(dialog).getByLabelText('Latitude'), '51.5')
+    await user.type(within(dialog).getByLabelText('Longitude'), '-0.1')
+    await user.click(within(dialog).getByRole('button', { name: 'Add source' }))
+    expect(await within(dialog).findByText('This location is outside the area we deliver in.', {}, { timeout: WAIT })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Latitude')).toHaveValue('51.5')
+    expect(within(dialog).queryByText("We couldn't save this. Try again.")).toBeNull()
   }, SLOW)
 })

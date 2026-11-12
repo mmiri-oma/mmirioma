@@ -17,6 +17,14 @@ Business rules (FR-012, BR-10, contract "Order confirmation endpoints"):
   reason; eligibility then reports ``suspended`` or ``revoked``. Activating
   again clears the reason.
 - Nothing here is removed: activations are history the reviews rely on.
+- A source needs a kind before it can be activated (#407, decision 407-2):
+  :func:`activate` raises :class:`KindRequiredError`, the command line and the
+  admin screen both refuse.
+- The cost per litre can be changed on its own (:func:`change_cost`). Quotes
+  store their amounts and orders keep their quote's snapshot (FR-024, T-09),
+  so only new quotes read the new cost.
+- Supplier contact details (#407) are admin-only and never written to an
+  audit row: the row names the changed fields, never their values.
 """
 
 import uuid
@@ -25,14 +33,15 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from geoalchemy2 import Geometry, WKTElement
-from sqlalchemy import cast, func, select
+from geoalchemy2 import WKTElement
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.audit import service as audit_service
 from app.modules.auth import service as auth_service
 from app.modules.auth.models import User, UserRole
 from app.modules.sources.eligibility import eligibility_reasons
+from app.modules.sources.locations import SourceLocation, source_locations
 from app.modules.sources.models import (
     ActivationStatus,
     WaterCategory,
@@ -43,13 +52,15 @@ from app.modules.sources.models import (
 
 AUDIT_TARGET_TYPE = "water_source"
 
+__all__ = ["SourceLocation"]  # re-exported: callers import it from here
 
-@dataclass(frozen=True)
-class SourceLocation:
-    """A source's pickup point, WGS 84 decimal degrees (#385)."""
 
-    latitude: float
-    longitude: float
+class LitresRangeError(ValueError):
+    """An edit would leave the minimum litres above the maximum (#407)."""
+
+
+class KindRequiredError(Exception):
+    """The source has no kind, so it cannot be activated (#407, decision 407-2)."""
 
 
 class _Unset:
@@ -72,39 +83,36 @@ class SourceWithActivations:
 
 
 @dataclass(frozen=True)
-class EligibleSource:
-    """A source eligible for a category today, as a quote sees it (#385).
+class SupplierDetails:
+    """The #407 fields of a source, as a request sets them.
 
     Attributes:
-        source_id: The source.
-        cost_per_litre_minor_units: Its activation's cost, in kobo (never sent to a client).
-        location: Its pickup point, or None; a quote that could use a source
-            without one is priced with the zone's fee.
+        contact_name: Who to call at the source, or None.
+        contact_phone: Their number, already normalized to E.164, or None.
+        min_litres_per_order: Smallest complete order in litres, or None.
+        max_litres_per_order: Largest complete order in litres, or None.
+        is_available: Whether the source takes new work.
+        vehicle_kinds: ``keke`` and/or ``tanker``, at least one.
     """
 
-    source_id: uuid.UUID
-    cost_per_litre_minor_units: int
-    location: SourceLocation | None
+    contact_name: str | None = None
+    contact_phone: str | None = None
+    min_litres_per_order: int | None = None
+    max_litres_per_order: int | None = None
+    is_available: bool = True
+    vehicle_kinds: tuple[str, ...] = ("keke", "tanker")
 
 
 def _point(location: SourceLocation) -> WKTElement:
     return WKTElement(f"POINT({location.longitude!r} {location.latitude!r})", srid=4326)
 
 
-async def _locations(
-    session: AsyncSession, source_ids: Iterable[uuid.UUID]
-) -> dict[uuid.UUID, SourceLocation]:
-    """Read the pickup points of these sources; a source with none is absent."""
-    point = cast(WaterSource.location, Geometry)
-    rows = await session.execute(
-        select(WaterSource.id, func.ST_Y(point), func.ST_X(point)).where(
-            WaterSource.id.in_(list(source_ids)), WaterSource.location.is_not(None)
-        )
-    )
-    return {
-        source_id: SourceLocation(latitude=float(latitude), longitude=float(longitude))
-        for source_id, latitude, longitude in rows
-    }
+def _apply_vehicle_kinds(source: WaterSource, vehicle_kinds: Iterable[str]) -> None:
+    kinds = set(vehicle_kinds)
+    if not kinds or not kinds <= {"keke", "tanker"}:
+        raise ValueError("vehicle_kinds must be one or both of keke and tanker")
+    source.serves_keke = "keke" in kinds
+    source.serves_tanker = "tanker" in kinds
 
 
 async def get_acting_admin(session: AsyncSession, *, phone: str) -> User:
@@ -135,6 +143,7 @@ async def add_source(
     is_simulated: bool = False,
     kind: WaterSourceKind | None = None,
     location: SourceLocation | None = None,
+    details: SupplierDetails | None = None,
 ) -> WaterSource:
     """Add a water source (FR-011). Commits.
 
@@ -146,17 +155,27 @@ async def add_source(
         is_simulated: True for demo data (BR-09).
         kind: Ninth Mile or borehole (#21), or None to set it later.
         location: The pickup point (#385), or None to set it later.
+        details: Contact, litre limits, availability and vehicles (#407), or
+            None for the defaults (no contact, no limits, available, both
+            vehicles). Validated by the caller.
 
     Returns:
         The new source, with no activations: it serves no category yet.
     """
+    details = details or SupplierDetails()
     source = WaterSource(
         name=name,
         approximate_location=approximate_location,
         is_simulated=is_simulated,
         kind=kind,
         location=_point(location) if location is not None else None,
+        contact_name=details.contact_name,
+        contact_phone=details.contact_phone,
+        min_litres_per_order=details.min_litres_per_order,
+        max_litres_per_order=details.max_litres_per_order,
+        is_available=details.is_available,
     )
+    _apply_vehicle_kinds(source, details.vehicle_kinds)
     session.add(source)
     await session.flush()
     _audit(session, actor=actor, action="water_source_added", source=source)
@@ -182,7 +201,7 @@ async def set_kind(
     Raises:
         LookupError: No source has this id.
     """
-    source = await session.get(WaterSource, source_id, with_for_update=True)
+    source = await session.get(WaterSource, source_id, with_for_update=True, populate_existing=True)
     if source is None:
         raise LookupError("no water source has this id")
     source.kind = kind
@@ -192,75 +211,11 @@ async def set_kind(
     return source
 
 
-async def eligible_costs_per_litre(
-    session: AsyncSession,
-    *,
-    water_category_id: uuid.UUID,
-    kind: WaterSourceKind | None,
-    today: date,
-) -> list[int]:
-    """Return the cost per litre of every source eligible for a category today.
-
-    The costs of :func:`eligible_sources`; see it for the rules.
-    """
-    return [
-        eligible.cost_per_litre_minor_units
-        for eligible in await eligible_sources(
-            session, water_category_id=water_category_id, kind=kind, today=today
-        )
-    ]
-
-
-async def eligible_sources(
-    session: AsyncSession,
-    *,
-    water_category_id: uuid.UUID,
-    kind: WaterSourceKind | None,
-    today: date,
-) -> list[EligibleSource]:
-    """Return every source eligible for a category today, with its cost and pickup point.
-
-    Eligibility is the shared FR-012 check (:func:`eligibility.eligibility_reasons`:
-    activated, approval current on ``today`` in Lagos). The costs are for the
-    server's quote only and are never sent to a client (FR-011).
-
-    Args:
-        session: Database session.
-        water_category_id: The category.
-        kind: Only sources of this kind (a Tanker preference), or None for
-            every kind (a Keke order has no preference).
-        today: Today's date in Africa/Lagos.
-
-    Returns:
-        One per eligible source; empty when none is eligible.
-    """
-    query = (
-        select(WaterSourceCategory)
-        .join(WaterSource, WaterSource.id == WaterSourceCategory.source_id)
-        .where(WaterSourceCategory.water_category_id == water_category_id)
-    )
-    if kind is not None:
-        query = query.where(WaterSource.kind == kind)
-    eligible = [
-        activation
-        for activation in await session.scalars(query)
-        if not eligibility_reasons(activation, today=today)
-    ]
-    locations = await _locations(session, [activation.source_id for activation in eligible])
-    return [
-        EligibleSource(
-            source_id=activation.source_id,
-            cost_per_litre_minor_units=activation.cost_per_litre_minor_units,
-            location=locations.get(activation.source_id),
-        )
-        for activation in eligible
-    ]
-
-
 async def has_activation(session: AsyncSession, *, water_category_id: uuid.UUID) -> bool:
     """Whether any source is currently ``activated`` for the category (FR-014).
 
-    Approval dates are not checked here; :func:`eligible_costs_per_litre` does.
+    Approval dates are not checked here; the order-fit check does
+    (:func:`app.modules.sources.eligibility.eligible_sources_for`).
     """
     found = await session.scalar(
         select(WaterSourceCategory.id)
@@ -282,13 +237,14 @@ async def update_source(
     approximate_location: str | None = None,
     kind: WaterSourceKind | None = None,
     location: SourceLocation | None | _Unset = UNSET,
+    changes: dict[str, Any] | None = None,
 ) -> WaterSource:
-    """Edit a source's name, location and kind (#309, decision 3). Commits.
+    """Edit a source's name, location, kind and #407 details (#309, decision 3). Commits.
 
     Only the values that differ from the stored ones are written. If none
     differ, nothing is written and no audit row is added. Otherwise one
     ``water_source_updated`` row names the changed fields, never their values
-    (audit details keep to ids and kinds).
+    (audit details keep to ids and kinds; a contact phone is personal data).
 
     Args:
         session: Database session.
@@ -299,14 +255,20 @@ async def update_source(
         kind: New kind, or None to keep it. A kind cannot be cleared here.
         location: The new pickup point, None to clear it, or :data:`UNSET` to
             keep it (#385). The audit row names ``location`` and never the point.
+        changes: The #407 fields sent, by name (``contact_name``,
+            ``contact_phone``, ``min_litres_per_order``,
+            ``max_litres_per_order``, ``is_available``, ``vehicle_kinds``).
+            A field left out is kept. Validated by the caller, except the
+            minimum-not-above-maximum rule, which needs the stored value.
 
     Returns:
         The source.
 
     Raises:
         LookupError: No source has this id.
+        LitresRangeError: The minimum would be above the maximum.
     """
-    source = await session.get(WaterSource, source_id, with_for_update=True)
+    source = await session.get(WaterSource, source_id, with_for_update=True, populate_existing=True)
     if source is None:
         raise LookupError("no water source has this id")
     changed: list[str] = []
@@ -320,10 +282,31 @@ async def update_source(
         source.kind = kind
         changed.append("kind")
     if not isinstance(location, _Unset):
-        current = (await _locations(session, [source_id])).get(source_id)
+        current = (await source_locations(session, [source_id])).get(source_id)
         if location != current:
             source.location = _point(location) if location is not None else None
             changed.append("location")
+    changes = changes or {}
+    for field in (
+        "contact_name",
+        "contact_phone",
+        "min_litres_per_order",
+        "max_litres_per_order",
+        "is_available",
+    ):
+        if field in changes and changes[field] != getattr(source, field):
+            setattr(source, field, changes[field])
+            changed.append(field)
+    if "vehicle_kinds" in changes and list(changes["vehicle_kinds"]) != source.vehicle_kinds:
+        _apply_vehicle_kinds(source, changes["vehicle_kinds"])
+        changed.append("vehicle_kinds")
+    if (
+        source.min_litres_per_order is not None
+        and source.max_litres_per_order is not None
+        and source.min_litres_per_order > source.max_litres_per_order
+    ):
+        await session.rollback()
+        raise LitresRangeError("min_litres_per_order is above max_litres_per_order")
     if changed:
         _audit(session, actor=actor, action="water_source_updated", source=source, fields=changed)
     await session.commit()
@@ -362,7 +345,7 @@ async def list_sources(
     by_source: dict[uuid.UUID, list[tuple[WaterSourceCategory, WaterCategory]]] = {}
     for activation, category in rows:
         by_source.setdefault(activation.source_id, []).append((activation, category))
-    locations = await _locations(session, [source.id for source in sources])
+    locations = await source_locations(session, [source.id for source in sources])
     return [
         SourceWithActivations(source, by_source.get(source.id, []), locations.get(source.id))
         for source in sources
@@ -400,8 +383,15 @@ async def activate(
 
     Raises:
         LookupError: Unknown source or category.
+        KindRequiredError: The source has no kind (#407, decision 407-2).
+            Nothing is written, for a new activation and a renewal alike.
     """
-    source, category = await _source_and_category(session, source_id, category_code)
+    source, category = await _source_and_category(
+        session, source_id, category_code, lock_source=True
+    )
+    if source.kind is None:
+        await session.rollback()
+        raise KindRequiredError("set the source's kind before activating it")
     activation = await _activation(session, source.id, category.id)
     if activation is None:
         activation = WaterSourceCategory(source_id=source.id, water_category_id=category.id)
@@ -477,10 +467,61 @@ async def set_inactive_status(
     return activation
 
 
+async def change_cost(
+    session: AsyncSession,
+    *,
+    actor: User,
+    source_id: uuid.UUID,
+    category_code: str,
+    cost_per_litre_minor_units: int,
+) -> WaterSourceCategory:
+    """Change only an activation's cost per litre, in any status (#407). Commits.
+
+    The status, report reference, approval date and reason are not touched,
+    so a suspended activation stays suspended. The activation row is locked
+    and read fresh, so a suspension saved at the same moment is never undone
+    by a stale copy. A cost equal to the stored one writes nothing. Otherwise
+    one ``water_source_cost_changed`` audit row names the category, never the
+    old or new cost. Only new quotes read the cost (FR-024, T-09).
+
+    Args:
+        session: Database session.
+        actor: The admin making the change.
+        source_id: The source.
+        category_code: ``potable`` or ``utility``.
+        cost_per_litre_minor_units: The new cost in kobo, ``>= 0``.
+
+    Returns:
+        The activation.
+
+    Raises:
+        LookupError: Unknown source or category, or the source has never
+            been activated for the category.
+    """
+    source, category = await _source_and_category(session, source_id, category_code)
+    activation = await _activation(session, source.id, category.id)
+    if activation is None:
+        raise LookupError(f"the source has no activation for {category.code}")
+    if activation.cost_per_litre_minor_units != cost_per_litre_minor_units:
+        activation.cost_per_litre_minor_units = cost_per_litre_minor_units
+        _audit(
+            session,
+            actor=actor,
+            action="water_source_cost_changed",
+            source=source,
+            category=category,
+        )
+    await session.commit()
+    await session.refresh(activation)
+    return activation
+
+
 async def _source_and_category(
-    session: AsyncSession, source_id: uuid.UUID, category_code: str
+    session: AsyncSession, source_id: uuid.UUID, category_code: str, *, lock_source: bool = False
 ) -> tuple[WaterSource, WaterCategory]:
-    source = await session.get(WaterSource, source_id)
+    source = await session.get(
+        WaterSource, source_id, with_for_update=lock_source, populate_existing=lock_source
+    )
     if source is None:
         raise LookupError("no water source has this id")
     category = await session.scalar(
@@ -494,6 +535,8 @@ async def _source_and_category(
 async def _activation(
     session: AsyncSession, source_id: uuid.UUID, category_id: uuid.UUID
 ) -> WaterSourceCategory | None:
+    # Fresh values under the lock: a copy loaded earlier in the session could
+    # carry a status another admin has changed since (#407 review).
     return await session.scalar(
         select(WaterSourceCategory)
         .where(
@@ -501,6 +544,7 @@ async def _activation(
             WaterSourceCategory.water_category_id == category_id,
         )
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
 
 

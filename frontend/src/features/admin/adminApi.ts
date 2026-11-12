@@ -16,7 +16,7 @@ import { USE_MOCKS } from '../../lib/api/mode'
 import { lazyMock } from '../../lib/api/lazyMock'
 import { notConnected } from '../../lib/api/notConnected'
 import * as waterSources from '../../lib/api/adminWaterSources'
-import type { ActivationStatusWrite, ActivationWrite, WaterSourceCreate, WaterSourceUpdate } from '../../lib/api/adminWaterSources'
+import type { ActivationCostWrite, ActivationStatusWrite, ActivationWrite, WaterSourceCreate, WaterSourceUpdate } from '../../lib/api/adminWaterSources'
 import * as areas from './real/areas'
 import * as cash from './real/cash'
 import * as holds from './real/holds'
@@ -122,6 +122,8 @@ export const activateWaterSource = (id: string, categoryId: string, body: Activa
   USE_MOCKS ? waterSourceMock.activateWaterSource(id, categoryId, body) : waterSources.putAdminActivation(id, categoryId, body)
 export const setWaterSourceStatus = (id: string, categoryId: string, body: ActivationStatusWrite) =>
   USE_MOCKS ? waterSourceMock.setWaterSourceStatus(id, categoryId, body) : waterSources.setAdminActivationStatus(id, categoryId, body)
+export const changeWaterSourceCost = (id: string, categoryId: string, body: ActivationCostWrite) =>
+  USE_MOCKS ? waterSourceMock.changeWaterSourceCost(id, categoryId, body) : waterSources.patchAdminActivationCost(id, categoryId, body)
 
 export const listPayments = api('Payments', mock.listPayments)
 export const confirmPayment = api('Payments', mock.confirmPayment)

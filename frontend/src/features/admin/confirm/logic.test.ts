@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import historyConfirmed from '../../../../../docs/api/examples/admin-order-history-confirmed.json'
 import optionsSample from '../../../../../docs/api/examples/confirmation-options.json'
-import type { CategoryOptions } from '../../../lib/api/adminConfirmation'
+import { C1_SOURCE_REASONS, type CategoryOptions } from '../../../lib/api/adminConfirmation'
 import { adminOrderEventSchema } from '../../../lib/api/adminDispatch'
 import { ApiError } from '../../../lib/api/client'
 import { timelineFromHistory } from '../real/orders'
 import {
+  C1_REASON_LABEL,
   buildConfirmRequest,
   confirmKind,
   confirmProblem,
@@ -170,5 +171,14 @@ describe('the confirmation in the order timeline (Q5)', () => {
 
   it('leaves events that are neither confirmation nor assignment out', () => {
     expect(confirmationLine(adminOrderEventSchema.parse({ ...historyConfirmed.items[1], reason_code: null }))).toBeNull()
+  })
+})
+
+describe('C1 reason labels (#407)', () => {
+  it('words every reason the C1 options can carry, with the contract labels for the order-fit ones', () => {
+    for (const reason of C1_SOURCE_REASONS) expect(C1_REASON_LABEL[reason]).toBeTruthy()
+    expect(C1_REASON_LABEL.unavailable).toBe('Marked unavailable')
+    expect(C1_REASON_LABEL.vehicle_not_suitable).toBe('This vehicle cannot load here')
+    expect(C1_REASON_LABEL.approval_expired).toBe('Laboratory approval expired')
   })
 })

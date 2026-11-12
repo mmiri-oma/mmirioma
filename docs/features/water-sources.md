@@ -1,11 +1,14 @@
 # Water sources and source eligibility
 
-Requirements: FR-011, FR-012, FR-014, BR-09, BR-10, NFR-004 · Acceptance
-tests: T-04 (an expired approval blocks the source) · Contract:
+Requirements: FR-011, FR-012, FR-013, FR-014, FR-024, BR-09, BR-10, NFR-004 ·
+Acceptance tests: T-04 (an expired approval blocks the source), T-09 (a cost
+change does not reprice an existing quote or order) · Contract:
 [deliveries.md](../api/deliveries.md#order-confirmation-endpoints), "Source
-eligibility (shared with R2)" and "Data needed" (agreed G3, PR #111) ·
-Issue: #112 (from #87) · Pilot fallback: F1
-(pilot plan)
+eligibility (shared with R2)" and "Data needed" (agreed G3, PR #111);
+[admin-water-sources.md](../api/admin-water-sources.md), with its
+[#407 amendment](../api/admin-water-sources.md#amendment-407-supplier-details-order-fit-and-cost-edits)
+(agreed G3, PR #417) · Issues: #112 (from #87), #309, #385, #407 · Pilot
+fallback: F1 (pilot plan)
 
 ## 1. Overview and purpose
 
@@ -23,7 +26,18 @@ water category (FR-012). This feature records:
   collects water. A Tanker customer's source preference (`water_source`)
   is matched against it when quoting, ordering and confirming
   ([pricing.md](pricing.md); [order-details-and-price.md](../api/order-details-and-price.md#water-source-and-category),
-  point 2).
+  point 2). Since #407 a source needs a kind before it can be activated or
+  serve any order;
+- each source's **supplier details** (#407): a contact name and Nigerian mobile
+  number, the smallest and largest complete order it serves (in litres), whether
+  it is available for new work, and the vehicles (Keke, Tanker) that can load
+  there;
+- one **order-fit check** (#407, `eligible_sources_for`) that adds six reasons
+  after the safety ones for one order: kind not set, unavailable, the wrong kind
+  for a Tanker customer's preference, below the minimum, above the maximum, and a
+  vehicle that cannot load there. Quotes, quote acceptance, the order
+  confirmation options (C1) and the confirmation itself use it; #408 and #411
+  will too.
 
 An admin manages sources on the Water sources page (`/admin/water-sources`, #309,
 [design](../design/admin-water-sources.md)), which calls the admin water-source
@@ -53,22 +67,42 @@ R2 source review (holds.source_eligibility)
   free-text source          → not_eligible "This source is not in the source records."
   order has no category     → cannot_check "This order has no water category."
   reasons                   → eligible, or not_eligible with the first reason's message
+
+admin (Water sources page, #407)
+  add / edit ─────────────> contact, pickup point, litre limits, availability, vehicles
+                             + audit "water_source_updated" {fields} (names only)
+  activate / renew ───────> 409 water_source_kind_required while kind is null
+  change cost ────────────> cost_per_litre_minor_units only + audit "water_source_cost_changed"
+
+eligible_sources_for(category, OrderFit(litres, delivery_type, preferred_kind), today)
+  safety reasons (above), then
+  kind is null              → kind_not_set
+  is_available false        → unavailable
+  preferred kind differs    → kind_mismatch
+  litres < min / > max      → below_minimum_litres / above_maximum_litres
+  vehicle not allowed       → vehicle_not_suitable
+  used by: create_quote, check_quote_for_order (409 no_eligible_source),
+           confirmation_options (C1), confirm_order (source_order_reasons, FOR SHARE)
 ```
 
 ## 3. Important files
 
 | File | Responsibility |
 | --- | --- |
-| `backend/app/modules/sources/models.py` | `WaterSource`, `WaterCategory`, `WaterSourceCategory`, `ActivationStatus` |
-| `backend/app/modules/sources/eligibility.py` | `EligibilityReason`, `REASON_ORDER`, `eligibility_reasons` (pure), `source_reasons` (loads the activation) |
-| `backend/app/modules/sources/service.py` | Add sources, set the kind and the pickup `location` (#385), activate, suspend, revoke, list; one audit row per change; `get_acting_admin`; for quotes, `eligible_sources`, `eligible_costs_per_litre` and `has_activation` |
+| `backend/app/modules/sources/models.py` | `WaterSource` (with the #407 columns and `vehicle_kinds`), `WaterCategory`, `WaterSourceCategory`, `ActivationStatus` |
+| `backend/app/modules/sources/eligibility.py` | `EligibilityReason`, `REASON_ORDER`, `eligibility_reasons` (pure), `source_reasons` (loads the activation; R2); #407: `OrderFitReason`, `OrderFit`, `source_wide_reasons`, `order_fit_reasons`, `reasons_for_order` (pure), `eligible_sources_for` (every source with its reasons) and `source_order_reasons` (one chosen source, rows locked `FOR SHARE`) |
+| `backend/app/modules/sources/locations.py` | `SourceLocation` and `source_locations`: reading pickup points, shared by the service and the eligibility module |
+| `backend/app/modules/sources/service.py` | Add sources, set the kind, the pickup `location` (#385) and the #407 supplier details, activate (refused without a kind), change the cost, suspend, revoke, list; one audit row per change; `get_acting_admin`; `has_activation` for quotes |
 | `backend/app/modules/sources/cli.py` | The command-line tool (the fallback) |
 | `backend/app/modules/sources/admin.py` | What the admin endpoints do: look the source and category up by id (404 if missing), call the service function the command line uses, return the whole source |
 | `backend/app/modules/sources/admin_schemas.py` | Request and response bodies of the admin endpoints, the expiry state (30-day window) and the rule that `approved_until` is not in the past |
-| `frontend/src/lib/api/adminWaterSources.ts` | Typed calls and Zod checks for the admin endpoints (#309) |
-| `frontend/src/features/admin/pages/WaterSources.tsx`, `waterSources/` | The Water sources page, its three dialogs and the rules and words (`logic.ts`) |
+| `frontend/src/lib/api/adminWaterSources.ts` | Typed calls and Zod checks for the admin endpoints (#309, #407) |
+| `frontend/src/features/admin/pages/WaterSources.tsx`, `waterSources/` | The Water sources page, its four dialogs (add/edit, activate/renew, change cost, suspend/revoke) and the rules and words (`logic.ts`) |
 | `frontend/src/mocks/waterSourceMock.ts` | The mock endpoints for the demo, all SAMPLE DATA |
-| `backend/app/modules/sources/admin_router.py` | `GET`/`POST /admin/water-sources`, `PATCH /admin/water-sources/{id}`, `PUT .../activations/{category_id}`, `POST .../activations/{category_id}/status` |
+| `frontend/src/lib/api/adminConfirmation.ts`, `features/admin/confirm/logic.ts` | `C1_SOURCE_REASONS` and `C1_REASON_LABEL`: the C1 options' ten reasons, kept apart from the four the order detail and R2 use |
+| `backend/app/modules/sources/admin_router.py` | `GET`/`POST /admin/water-sources`, `PATCH /admin/water-sources/{id}`, `PUT` and `PATCH .../activations/{category_id}`, `POST .../activations/{category_id}/status` |
+| `backend/app/modules/pricing/quotes.py`, `backend/app/modules/confirmation/service.py` | The order-fit check at quote creation and acceptance, in the C1 options and at confirmation |
+| `backend/alembic/versions/20261112_0028_add_water_source_supplier_fields.py` | Migration `0028` (#407) |
 | `backend/app/modules/deliveries/holds.py` | `source_eligibility`: R2's answer from the shared check |
 | `backend/app/modules/orders/models.py` | `Order.water_category_id` |
 | `backend/alembic/versions/20261022_0011_add_water_categories_and_source_activations.py` | Migration `0011`, seeds the categories |
@@ -92,11 +126,24 @@ Migration `0011` (revises `0010`):
 Migration `0018` (#21) adds `water_sources.kind` (`ninth_mile` or
 `borehole`, VARCHAR + CHECK, nullable until the technical lead sets it).
 
+Migration `0027` (#385) adds `water_sources.location`, a nullable geography
+point (SRID 4326).
+
+Migration `0028` (#407) adds to `water_sources`: `contact_name` (up to 120),
+`contact_phone` (E.164, up to 16), `min_litres_per_order` and
+`max_litres_per_order` (INTEGER, nullable, each `>= 1`, minimum not above
+maximum, by CHECK), `is_available`, `serves_keke` and `serves_tanker` (booleans,
+default true; at least one vehicle, by CHECK), and a GiST index on `location`.
+Existing rows keep working: no contact, no limits, available, both vehicles.
+Its downgrade drops the columns and loses the values entered since; back up
+`water_sources` first.
+
 Audit rows: `audit_logs` with `target_type` `water_source`, `target_id` the
 source, `metadata` `{water_category_id, status}` (none for `water_source_added`;
 `{kind}` for `water_source_kind_set`; `{fields}`, the names of the changed fields and
 never their values, for `water_source_updated`, which the admin endpoints write when
-a name, location or kind is edited).
+any field is edited; `{water_category_id}` only, never an amount, for
+`water_source_cost_changed`).
 
 ## 5. API endpoints and request/response behavior
 
@@ -110,12 +157,25 @@ audit row, and returns the whole source with each activation's `expiry`
 The 404 codes are `water_source_not_found`, `water_category_not_found` and
 `activation_not_found`; a past `approved_until` is 422 `validation_error`.
 
+**#407 additions.** `WaterSourceRead` gains `contact_name`, `contact_phone`,
+`min_litres_per_order`, `max_litres_per_order`, `is_available`, `vehicle_kinds`
+and `source_reasons` (`kind_not_set`, `unavailable`); `POST` and `PATCH` accept
+the same fields (`null` clears the contact and the limits in a `PATCH`). A
+maximum below the minimum, sent or stored, is 422 on `max_litres_per_order`; a
+phone that is not a Nigerian mobile is 422. Activating or renewing a source with
+no kind is 409 `water_source_kind_required`. `PATCH .../activations/{category_id}`
+with `{cost_per_litre_minor_units}` changes only the cost, in any status.
+
 **Eligibility in orders.** The hold review's `GET /admin/orders/{reference}/hold`
 returns `source_eligibility` from the shared check, and
 `POST .../hold/continue` checks it again (409 `source_not_eligible`,
 `details.answer`). The R2 messages are in the
 [contract](../api/deliveries.md#source-eligibility-r2). The confirmation
-options read and the order fields come with #113.
+options (`GET /admin/orders/{reference}/confirmation-options`) carry the ten
+order-fit reasons for that order (#407); the order detail's `source.reasons`
+keeps the four safety ones. Placing an order with a quote whose sources no
+longer fit is 409 `no_eligible_source`, and confirming with a source that no
+longer fits is 409 `transition_requirements_unmet` with `source_eligible`.
 
 ## 6. Important business rules
 
@@ -138,10 +198,25 @@ options read and the order fields come with #113.
   accepts a past date.
 - **Laboratory reports stay outside the app:** only the reference is stored
   (F1).
-- **Kind** (#21): a source with no kind matches no Tanker preference, so it
-  never prices a Tanker quote and cannot be chosen when confirming a quoted
-  Tanker order. Keke orders take any kind. Quotes price the water with the
-  **highest** cost per litre among eligible sources of the preferred kind.
+- **Kind** (#21, #407 decision 407-2): a source needs a kind to be activated
+  or renewed, and a source with no kind (`kind_not_set`) serves no order at all,
+  Keke included. Keke orders take any kind that is set. Quotes price the water
+  with the **highest** cost per litre among the sources that fit the order.
+- **Order fit** (#407, D14): the litre limits apply to the complete order, not
+  one trip, and are inclusive. `is_available` is not a safety status: suspend
+  and revoke stay the BR-10 controls. An order placed before delivery types
+  existed has its vehicle not checked. No stock levels are kept.
+- **Re-checked at every step** (#407 review): at quote creation, when a quote
+  is accepted into an order, in the C1 options and when confirming. Options
+  loaded earlier are never trusted; confirmation reads the chosen source again
+  with its rows locked `FOR SHARE`, so an admin edit saving at the same moment
+  waits or is seen. An accepted quote is never repriced: if its sources no
+  longer fit, the order is refused instead.
+- **Cost changes** (#407, T-09): changing the cost alone keeps the status,
+  report reference and date, and only new quotes read it. The activation row is
+  read fresh under its lock, so a stale copy never undoes a suspension.
+- **Supplier contact** is admin-only, like the cost: never in a customer or
+  driver response, an audit row or a log.
 - **Simulated sources** may serve a real order for now (contract decision
   9); `water_sources.is_simulated` still marks them.
 - **A free-text source at pickup is never eligible** (hold review decision
@@ -171,6 +246,11 @@ endpoints are admin-only, as before.
 | A second activation row for the same source and category | Refused by the unique constraint; the service updates the existing row instead |
 | An activated row with a reason, or a suspended row without one | Refused by CHECK |
 | Order with no water category under source review | `cannot_check`; Continue refused |
+| `activate` (CLI or API) on a source with no kind | CLI: `Error: set the source's kind before activating it`, exit 1; API: 409 `water_source_kind_required`; nothing written |
+| A `PATCH` leaving the minimum litres above the maximum | 422 on `max_litres_per_order`, nothing written |
+| A pickup point outside `DELIVERY_LOCATION_BOUNDS` | 422 on `location`; the screen shows the server's message under the field |
+| Cost change on a category never activated | 404 `activation_not_found` (after the source and category checks) |
+| A source marked unavailable after the C1 options were loaded | Confirmation refused, 409 `transition_requirements_unmet` (`source_eligible`) |
 
 ## 9. Testing instructions
 
@@ -210,8 +290,23 @@ TEST_DATABASE_URL=... pytest tests/test_water_sources_integration.py tests/test_
   three 404 codes with nothing written; a past date stored nowhere; and
   customers and drivers getting 403 and never seeing the cost.
 - `test_hold_review_integration.py`: a free-text source is `not_eligible`.
+- `test_source_order_fit.py` (no database, #407): each order-fit reason alone
+  and together in the contract's order, the inclusive litre limits, the legacy
+  order without a delivery type, and the four safety values unchanged.
+- `test_source_order_fit_integration.py` (#407): supplier details audited by
+  field name only; the stored-limit 422; no activation or renewal without a kind;
+  the cost-only change, its audit row, its 404 order and a stale session that
+  never undoes a suspension; T-09; quotes, quote acceptance, C1 and confirmation
+  using the check; and a source edit waiting for a confirmation that holds it.
+- Frontend (#407): the new fields and `source_reasons` parsed and refused when
+  wrong, the cost `PATCH`, the 409; each form message, the facts line and the
+  no-kind notice; the screen's disabled Activate, Edit source after a 409,
+  Change cost, the supplier edit sending only what changed, and the server's
+  bounds message under the pickup point; the C1 parser accepting the ten
+  reasons while the order detail keeps four.
 - Migration: `alembic upgrade head`, `alembic check`, `alembic downgrade -1`
-  run on a throwaway PostGIS container (2026-10-22).
+  run on a throwaway PostGIS container (2026-10-22); for `0028`, upgrade,
+  downgrade, upgrade and `alembic check`.
 
 Manual check: `python -m app.modules.sources.cli list-categories`, then the
 commands in the module docstring with your admin phone; `list-sources`
@@ -235,9 +330,15 @@ the walkthrough and the points to watch are in
   notification is sent before `approved_until` (decision 4 on #309). The page
   shows an "Expires in N days" or "Expired" badge from the endpoints' `expiry`.
 - **The audit log has words for `water_source_updated`** ("Edited a water
-  source") but `water_source_suspended` and `water_source_revoked` still show as
-  the code until their words are added.
-- **Existing sources have no kind** after migration `0018`: the technical
-  lead sets each with `set-kind` before Tanker orders can be quoted.
+  source") and `water_source_cost_changed` ("Changed a water source's cost"),
+  but `water_source_suspended` and `water_source_revoked` still show as the code
+  until their words are added.
+- **Existing sources with no kind serve no order** since #407: an admin sets
+  each one's kind on the screen (a notice counts them) or with `set-kind`.
+- **The command line has no #407 options:** the contact, litre limits,
+  availability and vehicles are set on the screen; `add-source` gives the
+  defaults.
+- **No stock levels and no supplier login** (#407 out of scope). The
+  supplier's phone is not shown to drivers.
 - **A suspended source does not block orders already confirmed with it**
   (contract decision 10); the order detail will report it (#113).

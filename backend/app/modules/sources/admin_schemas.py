@@ -3,6 +3,7 @@
 docs/api/admin-water-sources.md. ``cost_per_litre_minor_units`` is the
 supplier's cost, an integer in kobo. It appears only in these bodies, which
 only an admin can reach; no customer, driver or quote response carries it.
+The supplier contact (#407) follows the same rule.
 """
 
 import uuid
@@ -15,15 +16,22 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
 from pydantic_core import PydanticCustomError
 
 from app.core.config import get_settings
-from app.modules.sources.eligibility import EligibilityReason, eligibility_reasons
+from app.modules.sources.eligibility import (
+    EligibilityReason,
+    OrderFitReason,
+    eligibility_reasons,
+    source_wide_reasons,
+)
 from app.modules.sources.models import (
     APPROXIMATE_LOCATION_MAX_LENGTH,
+    CONTACT_NAME_MAX_LENGTH,
     REPORT_REFERENCE_MAX_LENGTH,
     SOURCE_NAME_MAX_LENGTH,
     STATUS_REASON_MAX_LENGTH,
@@ -35,6 +43,7 @@ from app.modules.sources.models import (
 from app.modules.sources.service import SourceWithActivations
 from app.shared.lagos_time import lagos_today
 from app.shared.location import DECIMAL_PLACES, OUT_OF_BOUNDS_MESSAGE
+from app.shared.phone import normalize_nigerian_phone
 
 #: How many days before ``approved_until`` an activation starts to warn
 #: (decision 4 on #309; fixed in docs/design/admin-water-sources.md).
@@ -42,6 +51,13 @@ EXPIRY_WARNING_DAYS = 30
 
 #: ``water_source_categories.cost_per_litre_minor_units`` is a BIGINT.
 MAX_COST_MINOR_UNITS = 2**63 - 1
+#: ``water_sources.min_litres_per_order`` and ``max_litres_per_order`` are INTEGER.
+MAX_LITRES_PER_ORDER = 2**31 - 1
+
+#: The #407 fields a PATCH may set to ``null`` (clearing them), with ``location``.
+NULLABLE_UPDATE_FIELDS = frozenset(
+    {"location", "contact_name", "contact_phone", "min_litres_per_order", "max_litres_per_order"}
+)
 
 SourceName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=SOURCE_NAME_MAX_LENGTH)
@@ -60,6 +76,45 @@ Reason = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=STATUS_REASON_MAX_LENGTH),
 ]
+ContactName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=CONTACT_NAME_MAX_LENGTH),
+]
+
+
+def _nigerian_mobile(value: str) -> str:
+    # The normalizer's message never echoes the number, so it is safe to return.
+    return normalize_nigerian_phone(value)
+
+
+ContactPhone = Annotated[str, AfterValidator(_nigerian_mobile)]
+LitresPerOrder = Annotated[int, Field(strict=True, ge=1, le=MAX_LITRES_PER_ORDER)]
+VehicleKind = Literal["keke", "tanker"]
+
+
+def _vehicle_kinds(kinds: list[VehicleKind]) -> list[VehicleKind]:
+    """At least one, no repeats; returned keke before tanker (#407)."""
+    if len(set(kinds)) != len(kinds):
+        raise ValueError("List each vehicle kind once")
+    return [kind for kind in ("keke", "tanker") if kind in kinds]
+
+
+VehicleKinds = Annotated[list[VehicleKind], Field(min_length=1), AfterValidator(_vehicle_kinds)]
+
+
+def _max_not_below_min(value: int | None, info: ValidationInfo) -> int | None:
+    """Refuse a maximum below the minimum sent in the same body (#407).
+
+    A PATCH that sends only one of them is checked against the stored value
+    by the service instead.
+    """
+    minimum = info.data.get("min_litres_per_order")
+    if value is not None and minimum is not None and minimum > value:
+        raise ValueError("max_litres_per_order cannot be below min_litres_per_order")
+    return value
+
+
+MaxLitresPerOrder = Annotated[LitresPerOrder | None, AfterValidator(_max_not_below_min)]
 
 
 class SourceLocationBody(BaseModel):
@@ -103,30 +158,54 @@ class WaterSourceCreate(BaseModel):
     kind: WaterSourceKind | None = None
     location: SourceLocationField = None
     is_simulated: bool = False
+    contact_name: ContactName | None = None
+    contact_phone: ContactPhone | None = None
+    min_litres_per_order: LitresPerOrder | None = None
+    max_litres_per_order: MaxLitresPerOrder = None
+    is_available: bool = True
+    vehicle_kinds: VehicleKinds = Field(default_factory=lambda: ["keke", "tanker"])
 
 
 class WaterSourceUpdate(BaseModel):
     """``PATCH /admin/water-sources/{source_id}``: only the fields that change.
 
-    At least one field is required. A name, a place in words and a kind cannot
-    be sent as ``null``; the pickup ``location`` can, and ``null`` clears it
-    (#385).
+    At least one field is required. ``null`` clears the pickup ``location``
+    (#385) and the #407 contact and litre limits (:data:`NULLABLE_UPDATE_FIELDS`).
+    Every other field cannot be sent as ``null``.
     """
 
     name: SourceName | None = None
     approximate_location: Location | None = None
     kind: WaterSourceKind | None = None
     location: SourceLocationField = None
+    contact_name: ContactName | None = None
+    contact_phone: ContactPhone | None = None
+    min_litres_per_order: LitresPerOrder | None = None
+    max_litres_per_order: MaxLitresPerOrder = None
+    is_available: bool | None = None
+    vehicle_kinds: VehicleKinds | None = None
 
     @model_validator(mode="after")
     def _something_to_change(self) -> Self:
         sent = self.model_fields_set
         if not sent:
-            raise ValueError("Send at least one of name, approximate_location, kind and location")
-        for field in sent - {"location"}:
+            raise ValueError("Send at least one field to change")
+        for field in sent - NULLABLE_UPDATE_FIELDS:
             if getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
         return self
+
+    def supplier_changes(self) -> dict[str, object]:
+        """The #407 fields that were sent, by name, for the service."""
+        fields = (
+            "contact_name",
+            "contact_phone",
+            "min_litres_per_order",
+            "max_litres_per_order",
+            "is_available",
+            "vehicle_kinds",
+        )
+        return {field: getattr(self, field) for field in fields if field in self.model_fields_set}
 
 
 class ActivationWrite(BaseModel):
@@ -148,6 +227,17 @@ class ActivationWrite(BaseModel):
         if value < lagos_today():
             raise ValueError("approved_until must be today or later")
         return value
+
+
+class ActivationCostWrite(BaseModel):
+    """``PATCH /admin/water-sources/{source_id}/activations/{category_id}`` (#407).
+
+    Only the cost; the status, report reference and date are not accepted.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    cost_per_litre_minor_units: Annotated[int, Field(strict=True, ge=0, le=MAX_COST_MINOR_UNITS)]
 
 
 class ActivationStatusWrite(BaseModel):
@@ -205,6 +295,13 @@ class WaterSourceRead(BaseModel):
     is_simulated: bool
     created_at: datetime
     activations: list[ActivationRead]
+    contact_name: str | None
+    contact_phone: str | None
+    min_litres_per_order: int | None
+    max_litres_per_order: int | None
+    is_available: bool
+    vehicle_kinds: list[VehicleKind]
+    source_reasons: list[OrderFitReason]
 
 
 class WaterSourceListRead(BaseModel):
@@ -276,4 +373,11 @@ def source_read(view: SourceWithActivations, *, today: date) -> WaterSourceRead:
             activation_read(activation, category, today=today)
             for activation, category in view.activations
         ],
+        contact_name=source.contact_name,
+        contact_phone=source.contact_phone,
+        min_litres_per_order=source.min_litres_per_order,
+        max_litres_per_order=source.max_litres_per_order,
+        is_available=source.is_available,
+        vehicle_kinds=source.vehicle_kinds,
+        source_reasons=source_wide_reasons(source),
     )

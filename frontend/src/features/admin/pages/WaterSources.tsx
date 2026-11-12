@@ -13,8 +13,19 @@ import { formatNaira } from '../../../lib/format/money'
 import { WATER_SOURCES_ARE_SAMPLE } from '../adminApi'
 import { AdminFrame, PageHead } from '../AdminParts'
 import { adminKeys, useWaterSources } from '../queries'
-import { ActivateDialog, SourceDialog, StatusDialog } from '../waterSources/Dialogs'
-import { KIND_LABEL, STATUS_LABEL, STATUS_TONE, expiryBadge } from '../waterSources/logic'
+import { ActivateDialog, CostDialog, SourceDialog, StatusDialog } from '../waterSources/Dialogs'
+import {
+  KIND_LABEL,
+  SET_KIND_FIRST,
+  STATUS_LABEL,
+  STATUS_TONE,
+  contactLine,
+  expiryBadge,
+  kindNotice,
+  orderSizeLine,
+  pickupLine,
+  vehiclesLine,
+} from '../waterSources/logic'
 
 /** What is open over the page: one dialog at a time. */
 type Open =
@@ -22,13 +33,16 @@ type Open =
   | { dialog: 'edit'; source: WaterSourceRead }
   | { dialog: 'activate'; source: WaterSourceRead; category: WaterCategoryRead; current: ActivationRead | null }
   | { dialog: 'status'; source: WaterSourceRead; category: WaterCategoryRead; status: 'suspended' | 'revoked' }
+  | { dialog: 'cost'; source: WaterSourceRead; category: WaterCategoryRead; current: ActivationRead }
 
 /**
- * Water sources (docs/design/admin-water-sources.md, #309): where water is
- * collected, and the categories each place is approved for. An admin adds a
- * source, edits its name, location and kind, activates or renews it for a
- * category, and suspends or revokes it. Every change writes the same audit row
- * as the command-line tool, which stays as the fallback.
+ * Water sources (docs/design/admin-water-sources.md, #309, amendment #407):
+ * where water is collected, and the categories each place is approved for. An
+ * admin adds a source, edits its name, location, kind, supplier contact,
+ * pickup point, order sizes, availability and vehicles, activates or renews it
+ * for a category, changes its cost, and suspends or revokes it. A source with
+ * no kind cannot be activated, and a notice counts those sources. Every change
+ * writes an audit row naming the changed fields, never their values.
  *
  * The app records the report reference and does not check the laboratory
  * report (FR-012), so nothing here reads as the approval itself, and nothing
@@ -65,6 +79,7 @@ export function WaterSources() {
         }
       />
       {done && <Notice tone="success">{done}</Notice>}
+      {sources.data && kindNotice(sources.data.items) && <Notice tone="note">{kindNotice(sources.data.items)}</Notice>}
       {sources.isPending && <LoadingBlock label="Loading water sources" />}
       {sources.isError && <LoadFailure error={sources.error} onRetry={() => sources.refetch()} />}
       {sources.data && sources.data.items.length === 0 && (
@@ -78,8 +93,19 @@ export function WaterSources() {
       ))}
       {open?.dialog === 'add' && <SourceDialog source={null} onClose={close} onDone={finish} onRefresh={refresh} />}
       {open?.dialog === 'edit' && <SourceDialog source={open.source} onClose={close} onDone={finish} onRefresh={refresh} />}
-      {open?.dialog === 'activate' && <ActivateDialog source={open.source} category={open.category} current={open.current} onClose={close} onDone={finish} onRefresh={refresh} />}
+      {open?.dialog === 'activate' && (
+        <ActivateDialog
+          source={open.source}
+          category={open.category}
+          current={open.current}
+          onClose={close}
+          onDone={finish}
+          onRefresh={refresh}
+          onEditSource={() => setOpen({ dialog: 'edit', source: open.source })}
+        />
+      )}
       {open?.dialog === 'status' && <StatusDialog source={open.source} category={open.category} status={open.status} onClose={close} onDone={finish} onRefresh={refresh} />}
+      {open?.dialog === 'cost' && <CostDialog source={open.source} category={open.category} current={open.current} onClose={close} onDone={finish} onRefresh={refresh} />}
     </AdminFrame>
   )
 }
@@ -112,10 +138,12 @@ function SourceCard({ source, categories, setOpen }: { source: WaterSourceRead; 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="m-0 text-[17px] font-extrabold">{source.name}</h2>
-            {source.kind ? <Chip tone="blue">{KIND_LABEL[source.kind]}</Chip> : <Chip tone="gray">Kind not set</Chip>}
+            {source.kind ? <Chip tone="blue">{KIND_LABEL[source.kind]}</Chip> : <Chip tone="amber">Kind not set</Chip>}
+            {!source.is_available && <Chip tone="gray">Unavailable</Chip>}
             {source.is_simulated && <SampleTag>SIMULATED</SampleTag>}
           </div>
           <p className="mt-1 mb-0 text-sub text-mute">{source.approximate_location}</p>
+          <SourceFacts source={source} />
         </div>
         <Button variant="line" size="sm" block={false} onClick={() => setOpen({ dialog: 'edit', source })}>
           Edit
@@ -132,6 +160,27 @@ function SourceCard({ source, categories, setOpen }: { source: WaterSourceRead; 
         <CategoryRow key={category.id} source={source} category={category} current={source.activations.find((a) => a.category.id === category.id) ?? null} setOpen={setOpen} />
       ))}
     </Card>
+  )
+}
+
+/** One line of facts under the name (design amendment #407). Coordinates are never shown on the card. */
+function SourceFacts({ source }: { source: WaterSourceRead }) {
+  const pickup = pickupLine(source)
+  const facts: { label: string; text: string; muted?: boolean }[] = [
+    { label: 'Contact', text: contactLine(source) },
+    { label: 'Pickup point', text: pickup.text, muted: !pickup.set },
+    { label: 'Order size', text: orderSizeLine(source) },
+    { label: 'Vehicles', text: vehiclesLine(source.vehicle_kinds) },
+  ]
+  return (
+    <ul className="m-0 mt-1.5 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-caption">
+      {facts.map((fact) => (
+        <li key={fact.label} className={fact.muted ? 'text-mute' : undefined}>
+          <span className="sr-only">{fact.label}: </span>
+          {fact.text}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -157,6 +206,8 @@ function CategoryRow({
   setOpen: (open: Open) => void
 }) {
   const badge = current ? expiryBadge(current) : null
+  // Decision 407-2: no activation without a kind. The server refuses it too (409).
+  const noKind = source.kind === null
   return (
     <div className="border-0 border-t border-solid border-row-line px-3 py-3 first:border-t-0">
       <div className={`${GRID} grid grid-cols-2 gap-3`}>
@@ -179,10 +230,22 @@ function CategoryRow({
         </Cell>
         <Cell label="Report reference">{current ? current.report_reference : <span className="text-mute">None</span>}</Cell>
         <Cell label="Cost per litre">{current ? formatNaira(current.cost_per_litre_minor_units) : <span className="text-mute">None</span>}</Cell>
-        <div className="col-span-2 flex flex-wrap gap-2 lg:col-span-1">
-          <Button size="sm" block={false} variant={current ? 'line' : undefined} onClick={() => setOpen({ dialog: 'activate', source, category, current })}>
+        <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-1">
+          <Button
+            size="sm"
+            block={false}
+            variant={current ? 'line' : undefined}
+            disabled={noKind}
+            aria-describedby={noKind ? `set-kind-${source.id}-${category.id}` : undefined}
+            onClick={() => setOpen({ dialog: 'activate', source, category, current })}
+          >
             {current ? 'Renew' : 'Activate'}
           </Button>
+          {current && (
+            <Button variant="line" size="sm" block={false} onClick={() => setOpen({ dialog: 'cost', source, category, current })}>
+              Change cost
+            </Button>
+          )}
           {current && current.status !== 'suspended' && (
             <Button variant="line-danger" size="sm" block={false} onClick={() => setOpen({ dialog: 'status', source, category, status: 'suspended' })}>
               Suspend
@@ -192,6 +255,11 @@ function CategoryRow({
             <Button variant="line-danger" size="sm" block={false} onClick={() => setOpen({ dialog: 'status', source, category, status: 'revoked' })}>
               Revoke
             </Button>
+          )}
+          {noKind && (
+            <span id={`set-kind-${source.id}-${category.id}`} className="w-full text-caption text-mute">
+              {SET_KIND_FIRST}
+            </span>
           )}
         </div>
       </div>

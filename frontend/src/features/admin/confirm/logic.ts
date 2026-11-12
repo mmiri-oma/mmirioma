@@ -10,7 +10,14 @@
  * total agreed on the call. Pure functions only, so the screens stay thin.
  */
 import type { AgreementMethod, SourceReason } from '../../../lib/api/confirmationTypes'
-import { missingRequirements, type CategoryOptions, type ConfirmationRequirement, type ConfirmRequest, type SourceOption } from '../../../lib/api/adminConfirmation'
+import {
+  missingRequirements,
+  type C1SourceReason,
+  type CategoryOptions,
+  type ConfirmationRequirement,
+  type ConfirmRequest,
+  type SourceOption,
+} from '../../../lib/api/adminConfirmation'
 import type { AdminOrderDetail, AdminOrderEvent } from '../../../lib/api/adminDispatch'
 import { ApiError } from '../../../lib/api/client'
 import { formatDayDate, formatTime } from '../../../lib/format/datetime'
@@ -27,6 +34,21 @@ export const REASON_LABEL: Record<SourceReason, string> = {
   suspended: 'Suspended after a safety concern',
   revoked: 'Activation revoked',
   approval_expired: 'Laboratory approval expired',
+}
+
+/**
+ * The C1 options' labels: the four above and the six #407 order-fit reasons,
+ * with the contract's words (docs/api/admin-water-sources.md, "The order-fit check").
+ * The order detail and its C2 warning keep {@link REASON_LABEL}.
+ */
+export const C1_REASON_LABEL: Record<C1SourceReason, string> = {
+  ...REASON_LABEL,
+  kind_not_set: 'Kind not set',
+  unavailable: 'Marked unavailable',
+  kind_mismatch: "Not the customer's chosen source type",
+  below_minimum_litres: "Order is below this source's minimum",
+  above_maximum_litres: "Order is above this source's maximum",
+  vehicle_not_suitable: 'This vehicle cannot load here',
 }
 
 /** How the customer agreed: the hold review's codes and labels (confirmation decision 4). */

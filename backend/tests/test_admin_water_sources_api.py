@@ -1,4 +1,4 @@
-"""The admin water-source endpoints without a database (#309).
+"""The admin water-source endpoints without a database (#309, #407).
 
 docs/api/admin-water-sources.md: who may call them, what they validate, the
 shape of the answer and the expiry state. The service functions are replaced
@@ -19,6 +19,7 @@ from app.core.errors import APIError
 from app.modules.auth.models import UserRole
 from app.modules.sources import admin
 from app.modules.sources.admin_schemas import (
+    ActivationCostWrite,
     ActivationStatusWrite,
     ActivationWrite,
     WaterSourceCreate,
@@ -32,7 +33,12 @@ from app.modules.sources.models import (
     WaterSourceCategory,
     WaterSourceKind,
 )
-from app.modules.sources.service import UNSET, SourceLocation, SourceWithActivations
+from app.modules.sources.service import (
+    UNSET,
+    SourceLocation,
+    SourceWithActivations,
+    SupplierDetails,
+)
 from app.shared.lagos_time import lagos_today
 from tests import test_customer_account_api as account_api
 from tests.test_customer_account_api import sign_in
@@ -64,6 +70,7 @@ ENDPOINTS: list[tuple[str, str, dict[str, Any] | None]] = [
         f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}/status",
         {"status": "suspended", "reason": "Pump repair."},
     ),
+    ("PATCH", f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}", {"cost_per_litre_minor_units": 180}),
 ]
 
 
@@ -72,15 +79,30 @@ def view(
     approved_until: date,
     status: ActivationStatus = ActivationStatus.ACTIVATED,
     location: SourceLocation | None = None,
+    kind: WaterSourceKind | None = WaterSourceKind.BOREHOLE,
+    **supplier: Any,
 ) -> Any:
-    """A source with one activation for Utility Water, as the service returns it."""
+    """A source with one activation for Utility Water, as the service returns it.
+
+    Column defaults apply only on insert, so the #407 fields are set here.
+    """
     source = WaterSource(
         id=SOURCE_ID,
         name="Sample Borehole A",
         approximate_location="Off Ogui Road, Enugu",
         is_simulated=True,
-        kind=WaterSourceKind.BOREHOLE,
+        kind=kind,
         created_at=datetime(2026, 10, 27, 8, 0, tzinfo=UTC),
+        **{
+            "contact_name": None,
+            "contact_phone": None,
+            "min_litres_per_order": None,
+            "max_litres_per_order": None,
+            "is_available": True,
+            "serves_keke": True,
+            "serves_tanker": True,
+            **supplier,
+        },
     )
     activation = WaterSourceCategory(
         source_id=SOURCE_ID,
@@ -122,11 +144,14 @@ class FakeAdmin:
     async def set_status(self, _: object, **kwargs: Any) -> SourceWithActivations:
         return await self._answer("set_status", kwargs)
 
+    async def change_cost(self, _: object, **kwargs: Any) -> SourceWithActivations:
+        return await self._answer("change_cost", kwargs)
+
 
 @pytest.fixture
 def admin_fake(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeAdmin]:
     fake_admin = FakeAdmin()
-    for name in ("list_all", "create", "update", "activate", "set_status"):
+    for name in ("list_all", "create", "update", "activate", "set_status", "change_cost"):
         monkeypatch.setattr(admin, name, getattr(fake_admin, name))
     yield fake_admin
 
@@ -229,6 +254,7 @@ def test_adding_a_source_answers_201_with_the_source(
                 "kind": None,
                 "is_simulated": False,
                 "location": None,
+                "details": SupplierDetails(),
             },
         )
     ]
@@ -374,6 +400,57 @@ def test_an_unknown_source_is_a_404_with_the_contract_code(
             {"status": "revoked", "reason": " "},
         ),
         ("PATCH", f"{BASE}/not-a-uuid", {"name": "New"}),
+        # #407: contact, litre limits, availability, vehicles and the cost.
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "contact_phone": "+4420"}),
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "contact_name": " "}),
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "min_litres_per_order": 0}),
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "max_litres_per_order": "600"}),
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "min_litres_per_order": 6.5}),
+        (
+            "POST",
+            BASE,
+            {
+                "name": "A",
+                "approximate_location": "B",
+                "min_litres_per_order": 1000,
+                "max_litres_per_order": 999,
+            },
+        ),
+        (
+            "POST",
+            BASE,
+            {"name": "A", "approximate_location": "B", "max_litres_per_order": 2**31},
+        ),
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "vehicle_kinds": []}),
+        ("POST", BASE, {"name": "A", "approximate_location": "B", "vehicle_kinds": ["bus"]}),
+        (
+            "POST",
+            BASE,
+            {"name": "A", "approximate_location": "B", "vehicle_kinds": ["keke", "keke"]},
+        ),
+        ("PATCH", f"{BASE}/{SOURCE_ID}", {"is_available": None}),
+        ("PATCH", f"{BASE}/{SOURCE_ID}", {"vehicle_kinds": None}),
+        ("PATCH", f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}", {}),
+        (
+            "PATCH",
+            f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}",
+            {"cost_per_litre_minor_units": None},
+        ),
+        (
+            "PATCH",
+            f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}",
+            {"cost_per_litre_minor_units": -1},
+        ),
+        (
+            "PATCH",
+            f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}",
+            {"cost_per_litre_minor_units": "180"},
+        ),
+        (
+            "PATCH",
+            f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}",
+            {"cost_per_litre_minor_units": 180, "status": "activated"},
+        ),
     ],
 )
 def test_bad_bodies_are_422_and_nothing_runs(
@@ -417,3 +494,171 @@ def test_the_status_body_takes_only_suspended_or_revoked() -> None:
     assert ActivationStatusWrite(status="revoked", reason="Withdrawn.").status == "revoked"
     with pytest.raises(ValidationError):
         ActivationStatusWrite(status="activated", reason="No.")
+
+
+# --- #407: supplier details, order fit and cost edits ---------------------------------
+
+
+def test_the_list_carries_the_supplier_details_and_source_reasons(
+    api: TestClient, admin_fake: FakeAdmin
+) -> None:
+    admin_fake.current = view(
+        approved_until=lagos_today() + timedelta(days=90),
+        contact_name="Sample Contact",
+        contact_phone="+2348030000000",
+        min_litres_per_order=600,
+        max_litres_per_order=10_000,
+        serves_keke=False,
+    )
+    [source] = api.get(BASE, headers=sign_in(api, UserRole.ADMIN)).json()["items"]
+    assert {
+        key: source[key]
+        for key in (
+            "contact_name",
+            "contact_phone",
+            "min_litres_per_order",
+            "max_litres_per_order",
+            "is_available",
+            "vehicle_kinds",
+            "source_reasons",
+        )
+    } == {
+        "contact_name": "Sample Contact",
+        "contact_phone": "+2348030000000",
+        "min_litres_per_order": 600,
+        "max_litres_per_order": 10_000,
+        "is_available": True,
+        "vehicle_kinds": ["tanker"],
+        "source_reasons": [],
+    }
+
+
+def test_a_source_with_no_kind_or_unavailable_lists_both_source_reasons(
+    api: TestClient, admin_fake: FakeAdmin
+) -> None:
+    admin_fake.current = view(
+        approved_until=lagos_today() + timedelta(days=90), kind=None, is_available=False
+    )
+    [source] = api.get(BASE, headers=sign_in(api, UserRole.ADMIN)).json()["items"]
+    assert source["source_reasons"] == ["kind_not_set", "unavailable"]
+    # The activation keeps the four safety reasons only.
+    assert source["activations"][0]["reasons"] == []
+
+
+def test_adding_a_source_with_supplier_details_normalizes_the_phone_and_vehicles(
+    api: TestClient, admin_fake: FakeAdmin
+) -> None:
+    response = api.post(
+        BASE,
+        json={
+            "name": "Sample Borehole A",
+            "approximate_location": "Off Ogui Road",
+            "kind": "borehole",
+            "contact_name": " Sample Contact ",
+            "contact_phone": "0803 000 0000",
+            "min_litres_per_order": 600,
+            "max_litres_per_order": 600,
+            "is_available": False,
+            "vehicle_kinds": ["tanker", "keke"],
+        },
+        headers=sign_in(api, UserRole.ADMIN),
+    )
+    assert response.status_code == 201
+    assert admin_fake.calls[0][1]["details"] == SupplierDetails(
+        contact_name="Sample Contact",
+        contact_phone="+2348030000000",
+        min_litres_per_order=600,
+        max_litres_per_order=600,
+        is_available=False,
+        vehicle_kinds=("keke", "tanker"),
+    )
+
+
+def test_a_patch_sends_only_the_supplier_fields_given_and_null_clears(
+    api: TestClient, admin_fake: FakeAdmin
+) -> None:
+    headers = sign_in(api, UserRole.ADMIN)
+    api.patch(f"{BASE}/{SOURCE_ID}", json={"name": "New"}, headers=headers)
+    api.patch(
+        f"{BASE}/{SOURCE_ID}",
+        json={"contact_phone": None, "max_litres_per_order": 5000, "vehicle_kinds": ["keke"]},
+        headers=headers,
+    )
+    untouched, changed = (kwargs["changes"] for _, kwargs in admin_fake.calls)
+    assert untouched == {}
+    assert changed == {
+        "contact_phone": None,
+        "max_litres_per_order": 5000,
+        "vehicle_kinds": ["keke"],
+    }
+
+
+def test_the_cost_patch_sends_only_the_cost(api: TestClient, admin_fake: FakeAdmin) -> None:
+    response = api.patch(
+        f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}",
+        json={"cost_per_litre_minor_units": 180},
+        headers=sign_in(api, UserRole.ADMIN),
+    )
+    assert response.status_code == 200
+    assert admin_fake.calls == [
+        (
+            "change_cost",
+            {
+                "source_id": SOURCE_ID,
+                "category_id": CATEGORY_ID,
+                "cost_per_litre_minor_units": 180,
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "code", ["water_source_not_found", "water_category_not_found", "activation_not_found"]
+)
+def test_the_cost_patch_passes_on_each_404(
+    api: TestClient, admin_fake: FakeAdmin, monkeypatch: pytest.MonkeyPatch, code: str
+) -> None:
+    async def missing(_: object, **__: Any) -> Any:
+        raise APIError(404, code, "Not found")
+
+    monkeypatch.setattr(admin, "change_cost", missing)
+    response = api.patch(
+        f"{BASE}/{SOURCE_ID}/activations/{CATEGORY_ID}",
+        json={"cost_per_litre_minor_units": 180},
+        headers=sign_in(api, UserRole.ADMIN),
+    )
+    assert (response.status_code, error_code(response)) == (404, code)
+    assert "180" not in response.text
+
+
+def test_activating_a_source_with_no_kind_is_409(
+    api: TestClient, admin_fake: FakeAdmin, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def no_kind(_: object, **__: Any) -> Any:
+        raise APIError(
+            409,
+            "water_source_kind_required",
+            "Set where this source collects water before activating it.",
+        )
+
+    monkeypatch.setattr(admin, "activate", no_kind)
+    _, path, body = ENDPOINTS[3]
+    response = api.put(path, json=body, headers=sign_in(api, UserRole.ADMIN))
+    assert (response.status_code, error_code(response)) == (409, "water_source_kind_required")
+
+
+def test_supplier_bodies_accept_the_boundaries() -> None:
+    body = WaterSourceCreate(
+        name="A",
+        approximate_location="B",
+        min_litres_per_order=1,
+        max_litres_per_order=1,
+        vehicle_kinds=["keke"],
+    )
+    assert (body.min_litres_per_order, body.max_litres_per_order) == (1, 1)
+    assert WaterSourceCreate(name="A", approximate_location="B").vehicle_kinds == [
+        "keke",
+        "tanker",
+    ]
+    assert WaterSourceUpdate(contact_name=None).supplier_changes() == {"contact_name": None}
+    assert ActivationCostWrite(cost_per_litre_minor_units=0).cost_per_litre_minor_units == 0

@@ -38,7 +38,7 @@ from app.modules.pricing.models import (
     MIN_MANUAL_QUOTE_MINOR_UNITS,
     AgreementMethod,
 )
-from app.modules.sources.eligibility import EligibilityReason
+from app.modules.sources.eligibility import EligibilityReason, OrderFitReason
 from app.modules.sources.models import WaterSourceKind
 
 Note = Annotated[str, StringConstraints(strip_whitespace=True, max_length=EVENT_NOTE_MAX_LENGTH)]
@@ -148,7 +148,9 @@ class SourceOptionRead(BaseModel):
     Attributes:
         report_reference: For this category, or null with no activation.
         approved_until: Lagos date, inclusive, or null with no activation.
-        reasons: Empty means it may be chosen.
+        reasons: Empty means it may be chosen for this order: the four safety
+            reasons and the six #407 order-fit reasons, in that order. The
+            order detail's ``source.reasons`` keeps the four safety reasons.
         kind: Where it collects water (``ninth_mile``, ``borehole``), or
             null until set; a quoted Tanker order needs the customer's kind
             (deliveries.md, amendment #72). Never a quality claim (FR-014).
@@ -160,7 +162,7 @@ class SourceOptionRead(BaseModel):
     report_reference: str | None
     approved_until: date | None
     is_simulated: bool
-    reasons: list[EligibilityReason]
+    reasons: list[EligibilityReason | OrderFitReason]
     kind: WaterSourceKind | None
 
     @classmethod

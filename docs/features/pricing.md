@@ -38,7 +38,9 @@ reliable price exists (SRS §6). Customers see the total only.
 4. A customer asks for a price after the address step (`POST /quotes`). The
    server checks, in order: an active picked zone; the pilot category
    (setting `PILOT_WATER_CATEGORY`, Utility Water) active with an activated
-   source; a source of the preferred kind eligible today; a vehicle plan; the
+   source; a source that fits the order today (the #407 order-fit check:
+   activated with a current approval, a kind set, available, of the preferred
+   kind, accepting the litres and the vehicle); a vehicle plan; the
    zone's fee; a matching price rule
    (`price_lists.match_price_rule`). The first that fails is the manual
    reason; otherwise the quote is computed, stored and answered with its
@@ -90,7 +92,7 @@ shown in the pilot.
 | `backend/app/modules/pricing/quotes.py` | `create_quote`, `compute_price`, `check_quote_for_order`, `quote_summaries`; the rules below |
 | `backend/app/modules/pricing/rate_limit.py` | The quote rate limits (NFR-002) |
 | `backend/app/modules/dispatch/vehicles.py` | `plan_for`: the vehicle plan (FR-013), outside the dispatch service to avoid an import cycle |
-| `backend/app/modules/sources/service.py` | `eligible_costs_per_litre`, `has_activation`, `set_kind` |
+| `backend/app/modules/sources/eligibility.py`, `service.py` | `eligible_sources_for` (the #407 order-fit check, also run when a quote is accepted), `has_activation`, `set_kind` |
 | `backend/alembic/versions/20261026_0018_add_quotes_and_source_kind.py` | `quotes`, `orders.quote_id`, `water_sources.kind` |
 | `backend/tests/test_quotes_api.py` | Arithmetic, schemas, limits, endpoint; no database |
 | `backend/tests/test_quotes_integration.py` | Quotes, ordering and confirming against PostGIS |
@@ -194,8 +196,9 @@ Errors: 401, 403 (`forbidden` for staff and drivers, `csrf_failed`), 404
 Quotes (#21, technical lead's decisions A-F, recorded in the contract):
 
 - **The price** is water + delivery + handling + margin (FR-022). Water: the
-  **highest** cost per litre among sources eligible today for the category
-  and of the preferred kind (Keke: any kind), so the source confirmed later
+  **highest** cost per litre among sources that fit the order today in the
+  category (#407: of the preferred kind, Keke any kind that is set, within the
+  source's litre limits and vehicles), so the source confirmed later
   never costs more than the quote. Delivery: the zone's fee, which replaces
   the whole FR-022 delivery cost while there is no OSRM (base, distance and
   extra trips). Handling and margin: the matched rule.

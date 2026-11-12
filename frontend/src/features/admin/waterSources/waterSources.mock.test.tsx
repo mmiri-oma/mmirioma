@@ -41,10 +41,12 @@ describe('the Water sources screen on the mock demo', () => {
     const user = userEvent.setup()
     await mockLogin({ phone: '0800 000 0100', password: DEMO_PASSWORD })
     renderPage()
-    await screen.findByRole('heading', { name: 'Sample Borehole B' }, { timeout: WAIT })
-    // Sample Borehole B has never been activated: both categories offer Activate.
-    const card = within((await screen.findByRole('heading', { name: 'Sample Borehole B' })).closest('div[class*="flex-col"]') as HTMLElement)
-    await user.click(card.getAllByRole('button', { name: 'Activate' })[0])
+    // Sample Borehole B has no kind, so it cannot be activated until one is set (#407).
+    const unkind = within((await screen.findByRole('heading', { name: 'Sample Borehole B' }, { timeout: WAIT })).closest('div[class*="flex-col"]') as HTMLElement)
+    expect(unkind.getAllByRole('button', { name: 'Activate' })[0]).toBeDisabled()
+    // The Ninth Mile supplier has never been activated for Potable Water.
+    const card = within((await screen.findByRole('heading', { name: 'Sample Ninth Mile Supplier' })).closest('div[class*="flex-col"]') as HTMLElement)
+    await user.click(card.getByRole('button', { name: 'Activate' }))
     const dialog = await screen.findByRole('alertdialog')
     await user.type(within(dialog).getByLabelText('Report reference'), 'SAMPLE-LR-0100')
     const until = new Date(Date.now() + 60 * 60 * 1000 + 90 * 86_400_000).toISOString().slice(0, 10)

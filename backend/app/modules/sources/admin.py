@@ -11,6 +11,7 @@ Every function commits through the service function it calls.
 import uuid
 from datetime import date
 from http import HTTPStatus
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +40,14 @@ async def _require_source(session: AsyncSession, source_id: uuid.UUID) -> WaterS
     if source is None:
         raise _source_not_found()
     return source
+
+
+def _activation_not_found() -> APIError:
+    return APIError(
+        HTTPStatus.NOT_FOUND,
+        "activation_not_found",
+        "This source has not been activated for this category",
+    )
 
 
 async def _require_category(session: AsyncSession, category_id: uuid.UUID) -> WaterCategory:
@@ -78,6 +87,7 @@ async def create(
     kind: WaterSourceKind | None,
     is_simulated: bool,
     location: service.SourceLocation | None = None,
+    details: service.SupplierDetails | None = None,
 ) -> SourceWithActivations:
     """Add a source (audit ``water_source_added``). It serves no category yet."""
     source = await service.add_source(
@@ -88,6 +98,7 @@ async def create(
         is_simulated=is_simulated,
         kind=kind,
         location=location,
+        details=details,
     )
     return await _view(session, source.id)
 
@@ -101,11 +112,14 @@ async def update(
     approximate_location: str | None,
     kind: WaterSourceKind | None,
     location: service.SourceLocation | None | service._Unset = service.UNSET,
+    changes: dict[str, Any] | None = None,
 ) -> SourceWithActivations:
-    """Edit a source's name, location and kind.
+    """Edit a source's name, location, kind and #407 details.
 
     Raises:
-        APIError: 404 ``water_source_not_found``.
+        APIError: 404 ``water_source_not_found``; 422 ``validation_error`` on
+            ``max_litres_per_order`` when the edit would leave the stored
+            minimum above the maximum.
     """
     try:
         await service.update_source(
@@ -116,7 +130,21 @@ async def update(
             approximate_location=approximate_location,
             kind=kind,
             location=location,
+            changes=changes,
         )
+    except service.LitresRangeError:
+        raise APIError(
+            HTTPStatus.UNPROCESSABLE_ENTITY,
+            "validation_error",
+            "Request validation failed",
+            details=[
+                {
+                    "loc": ["body", "max_litres_per_order"],
+                    "msg": "The largest order cannot be smaller than the smallest",
+                    "type": "value_error",
+                }
+            ],
+        ) from None
     except LookupError:
         raise _source_not_found() from None
     return await _view(session, source_id)
@@ -135,19 +163,57 @@ async def activate(
     """Activate a source for a category, or renew it, in any status (FR-012).
 
     Raises:
-        APIError: 404 ``water_source_not_found`` or ``water_category_not_found``.
+        APIError: 404 ``water_source_not_found`` or ``water_category_not_found``;
+            409 ``water_source_kind_required`` when the source has no kind
+            (#407): nothing is written.
     """
     await _require_source(session, source_id)
     category = await _require_category(session, category_id)
-    await service.activate(
-        session,
-        actor=actor,
-        source_id=source_id,
-        category_code=category.code,
-        approved_until=approved_until,
-        report_reference=report_reference,
-        cost_per_litre_minor_units=cost_per_litre_minor_units,
-    )
+    try:
+        await service.activate(
+            session,
+            actor=actor,
+            source_id=source_id,
+            category_code=category.code,
+            approved_until=approved_until,
+            report_reference=report_reference,
+            cost_per_litre_minor_units=cost_per_litre_minor_units,
+        )
+    except service.KindRequiredError:
+        raise APIError(
+            HTTPStatus.CONFLICT,
+            "water_source_kind_required",
+            "Set where this source collects water before activating it.",
+        ) from None
+    return await _view(session, source_id)
+
+
+async def change_cost(
+    session: AsyncSession,
+    *,
+    actor: User,
+    source_id: uuid.UUID,
+    category_id: uuid.UUID,
+    cost_per_litre_minor_units: int,
+) -> SourceWithActivations:
+    """Change only an activation's cost per litre (#407); new quotes only.
+
+    Raises:
+        APIError: 404 ``water_source_not_found``, ``water_category_not_found``
+            or ``activation_not_found``, in that order.
+    """
+    await _require_source(session, source_id)
+    category = await _require_category(session, category_id)
+    try:
+        await service.change_cost(
+            session,
+            actor=actor,
+            source_id=source_id,
+            category_code=category.code,
+            cost_per_litre_minor_units=cost_per_litre_minor_units,
+        )
+    except LookupError:
+        raise _activation_not_found() from None
     return await _view(session, source_id)
 
 
@@ -178,9 +244,5 @@ async def set_status(
             reason=reason,
         )
     except LookupError:
-        raise APIError(
-            HTTPStatus.NOT_FOUND,
-            "activation_not_found",
-            "This source has not been activated for this category",
-        ) from None
+        raise _activation_not_found() from None
     return await _view(session, source_id)

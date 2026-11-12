@@ -31,6 +31,7 @@ from app.modules.pricing.models import DeliveryBasis, PriceRule, Quote
 from app.modules.pricing.osrm import FallbackReason
 from app.modules.pricing.quotes import ManualReason
 from app.modules.sources import service as sources
+from app.modules.sources.eligibility import OrderFit, eligible_sources_for
 from app.modules.sources.models import WaterSource, WaterSourceKind
 from app.shared.location import Location, LocationSource
 from tests import test_quotes_integration as part1
@@ -562,13 +563,13 @@ def test_a_pickup_point_is_set_read_changed_cleared_and_audited_without_the_coor
 
         async def eligible() -> dict[uuid.UUID, sources.SourceLocation | None]:
             async with sessions() as session:
-                found = await sources.eligible_sources(
+                found = await eligible_sources_for(
                     session,
                     water_category_id=category_id,
-                    kind=WaterSourceKind.BOREHOLE,
+                    fit=OrderFit(3000, "tanker", WaterSourceKind.BOREHOLE),
                     today=date.today(),
                 )
-            return {item.source_id: item.location for item in found}
+            return {item.source_id: item.location for item in found if item.eligible}
 
         assert (await eligible())[w.borehole_id] is None
         await set_location(sessions, w.admin, w.borehole_id, SOURCE_A)
