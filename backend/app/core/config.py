@@ -77,6 +77,8 @@ class Settings(BaseSettings):
             ``utility`` (Utility Water) by default; ``potable`` only once a
             source is activated for it after laboratory verification
             (FR-012, FR-014).
+        driver_location_freshness_seconds: Maximum age of a current driver
+            point for automatic dispatch (FR-031, #410); default 300 seconds.
         quote_validity_minutes: How long a server quote can be ordered
             (FR-023, SRS §8; contract question 7): 60 by default.
         sms_provider: ``mock`` (development and test: nothing is sent, the
@@ -127,6 +129,7 @@ class Settings(BaseSettings):
     delivery_location_bounds: str = DEFAULT_DELIVERY_LOCATION_BOUNDS
     support_whatsapp_enabled: bool = False
     pilot_water_category: Literal["potable", "utility"] = "utility"
+    driver_location_freshness_seconds: int = Field(default=300, gt=0)
     quote_validity_minutes: int = Field(default=60, ge=1, le=24 * 60)
     sms_provider: Literal["mock", "termii"] = "mock"
     termii_base_url: str = "https://api.ng.termii.com"

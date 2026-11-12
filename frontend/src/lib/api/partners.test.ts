@@ -83,6 +83,18 @@ describe('partner account calls', () => {
     }
   })
 
+  it('preserves a future location state without accepting coordinates (#410)', async () => {
+    const location = { ...partnerProfile.location, state: 'unavailable' }
+    const { client } = setup({ ...partnerProfile, location: { ...location, latitude: 6.452713, longitude: 7.510348, grant: 7 } })
+    const profile = await getDriverProfile(undefined, client)
+    expect(profile.location).toEqual(location)
+  })
+
+  it('rejects malformed location sharing metadata (#410)', async () => {
+    const { client } = setup({ ...partnerProfile, location: { ...partnerProfile.location, sharing: 'yes' } })
+    await expect(getDriverProfile(undefined, client)).rejects.toMatchObject({ code: 'invalid_response' })
+  })
+
   it('reads an approval status this build does not know', async () => {
     const { client } = setup({ ...partnerProfile, approval_status: 'on_hold' })
     await expect(getDriverProfile(undefined, client)).resolves.toMatchObject({ approval_status: 'on_hold' })

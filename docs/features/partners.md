@@ -187,6 +187,11 @@ TEST_DATABASE_URL=... pytest tests/test_partners_integration.py tests/test_dispa
 
 ## 10. Known limitations
 
+The backend now also supports revocable current-location sharing (#410), documented
+in [driver-location.md](driver-location.md). The new collection screens still need
+visual approval and implementation; existing online/offline screens do not collect
+a location.
+
 - Approval, suspension and the verified vehicle are set by an administrator
   in the admin driver directory ([admin-drivers.md](admin-drivers.md), #45),
   not by the partner.

@@ -51,7 +51,7 @@ class AuthenticatedSession:
 #: The version of ``/terms`` and ``/privacy`` a new sign-up accepts: the date of
 #: the latest change to either page. Bump it in the same change that edits one
 #: (``test_password_rule.py`` fails otherwise). Existing users are not asked again.
-TERMS_VERSION = "2026-11-03"
+TERMS_VERSION = "2026-11-12"
 
 
 def _invalid_credentials() -> APIError:
@@ -306,6 +306,10 @@ async def set_user_active(session: AsyncSession, *, phone: str, active: bool) ->
     user = await session.scalar(select(User).where(User.phone == phone))
     if user is None:
         raise LookupError("No account with this phone number")
+    if not active and user.role is UserRole.DRIVER:
+        from app.modules.partners.location import clear_for_driver
+
+        await clear_for_driver(session, user.id)
     user.is_active = active
     if not active:
         await session.execute(

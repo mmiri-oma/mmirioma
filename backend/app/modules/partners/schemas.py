@@ -25,6 +25,7 @@ from app.modules.dispatch.models import (
     VehicleProfile,
 )
 from app.modules.dispatch.plates import normalize_plate
+from app.modules.partners.location_schemas import DriverLocationRead
 
 #: Local gallons to litres, exactly (FR-021; docs/architecture/api-mapping.md).
 LITRES_PER_LOCAL_GALLON = 4
@@ -166,3 +167,4 @@ class PartnerProfileRead(BaseModel):
     vehicle: PartnerVehicleRead
     service_zones: list[ZoneRead]
     preferences: PreferencesRead
+    location: DriverLocationRead

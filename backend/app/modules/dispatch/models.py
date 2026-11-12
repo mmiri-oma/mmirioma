@@ -17,12 +17,14 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     Enum,
     ForeignKey,
     Index,
     String,
     UniqueConstraint,
+    false,
     text,
     true,
 )
@@ -172,10 +174,14 @@ class DriverProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         new_order_alerts: Partner preference, stored only (partners.md,
             decision 5): no partner message is sent yet.
         sms_updates: As ``new_order_alerts``.
+        location_sharing_on: Explicit dispatch-location consent is enabled.
+        location_sharing_grant: Monotonic version invalidating late writes
+            after withdrawal or offline (#410, FR-035).
     """
 
     __tablename__ = "driver_profiles"
     __table_args__ = (
+        CheckConstraint("location_sharing_grant >= 0", name="location_sharing_grant_nonnegative"),
         CheckConstraint(
             f"declared_capacity_gallons BETWEEN {MIN_DECLARED_GALLONS} AND {MAX_DECLARED_GALLONS}",
             name="declared_capacity_gallons_range",
@@ -210,6 +216,10 @@ class DriverProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     new_order_alerts: Mapped[bool] = mapped_column(default=True, server_default=true())
     sms_updates: Mapped[bool] = mapped_column(default=True, server_default=true())
+    location_sharing_on: Mapped[bool] = mapped_column(default=False, server_default=false())
+    location_sharing_grant: Mapped[int] = mapped_column(
+        BigInteger, default=0, server_default=text("0")
+    )
 
 
 class DriverServiceZone(UUIDPrimaryKeyMixin, TimestampMixin, Base):

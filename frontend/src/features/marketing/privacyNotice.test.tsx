@@ -8,7 +8,7 @@ import { PrivacyPage } from './LegalPages'
 
 // PRIVACY_NOTICE.md is the source (Vite will not load files outside frontend/).
 // When the notice changes, update these two and the page together (#93).
-const NOTICE_VERSION = '8.0'
+const NOTICE_VERSION = '9.0'
 const NOTICE_SECTIONS = [
   '1. Who operates MmiriOma?',
   '2. What information do we collect?',
@@ -59,6 +59,12 @@ describe('the /privacy page mirrors PRIVACY_NOTICE.md (#93)', () => {
     expect(screen.getByText(/Hostinger \(HOSTINGER Global S\.à r\.l\., Luxembourg\).*data centre in Paris, France\./)).toBeInTheDocument()
     expect(screen.getByText(/Backblaze \(Backblaze, Inc\., United States\).*data centre in Amsterdam, the Netherlands\./)).toBeInTheDocument()
     expect(screen.queryByText(/Railway/)).not.toBeInTheDocument()
+  })
+
+  it('explains current dispatch location consent, visibility and deletion (#410)', () => {
+    renderPage()
+    expect(screen.getByText(/Current rider or driver location: only while sharing is enabled/)).toBeInTheDocument()
+    expect(screen.getByText(/Customers never receive this point/)).toBeInTheDocument()
   })
 
   it('states how long deletion requests are kept (section 8, #118)', () => {

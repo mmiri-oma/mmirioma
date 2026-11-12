@@ -1219,6 +1219,7 @@ def test_anonymize_partner_removes_their_details_and_keeps_the_records(created: 
             (
                 "partner_anonymized",
                 {
+                    "location_points_cleared": 0,
                     "zones_removed": 1,
                     "decline_notes_removed": 1,
                     "gps_points_cleared": 2,

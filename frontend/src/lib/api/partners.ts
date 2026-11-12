@@ -37,6 +37,15 @@ const partnerVehicleSchema = z.object({
   transfer_methods: z.array(z.string()),
 })
 
+/** Coordinate-free location summary (#410); future state strings remain readable. */
+const driverLocationReadSchema = z.object({
+  state: z.string(),
+  sharing: z.boolean(),
+  confirmed_at: z.string().nullable(),
+  fresh_until: z.string().nullable(),
+  accuracy_metres: z.number().int().positive().nullable(),
+})
+
 /** `PartnerProfileRead` (partners.md, "Partner object"). */
 export const partnerProfileReadSchema = z.object({
   id: z.string(),
@@ -48,6 +57,8 @@ export const partnerProfileReadSchema = z.object({
   approval_status: z.string(),
   /** FR-031 availability; the design calls it "online". */
   is_available: z.boolean(),
+  /** Age/accuracy/sharing only; never device coordinates or a sharing grant (#410). */
+  location: driverLocationReadSchema,
   /** `YYYY-MM-DD`, Africa/Lagos. */
   partner_since: z.string(),
   vehicle: partnerVehicleSchema,
