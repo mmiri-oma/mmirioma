@@ -141,6 +141,7 @@ const AUDIT_WORDS: Record<string, string> = {
   water_source_kind_set: "Set a water source's kind",
   water_source_activated: 'Activated a water source',
   water_source_updated: 'Edited a water source',
+  water_source_cost_changed: "Changed a water source's cost",
   website_message_deleted: 'Deleted a website contact message',
 }
 

@@ -16,9 +16,10 @@
   fallback F1). The supplier's cost per litre is stored here and never sent
   to a client.
 
-These rows are entered by the technical lead with the command-line tool
-(:mod:`app.modules.sources.cli`, F1). A row here records that the technical
-lead entered an approval; it is not itself legal compliance (FR-012).
+These rows are entered on the admin Water sources screen (#309, #407) or
+with the command-line tool (:mod:`app.modules.sources.cli`, F1). A row here
+records that an admin entered an approval; it is not itself legal compliance
+(FR-012).
 """
 
 import uuid
@@ -31,6 +32,8 @@ from sqlalchemy import (
     CheckConstraint,
     Enum,
     ForeignKey,
+    Index,
+    Integer,
     String,
     UniqueConstraint,
     false,
@@ -47,6 +50,9 @@ CATEGORY_LABEL_MAX_LENGTH = 60
 SUPPORTED_USES_MAX_LENGTH = 500
 REPORT_REFERENCE_MAX_LENGTH = 100
 STATUS_REASON_MAX_LENGTH = 500
+CONTACT_NAME_MAX_LENGTH = 120
+#: E.164: ``+234`` and ten digits is 14 characters; 16 leaves room for the format.
+CONTACT_PHONE_MAX_LENGTH = 16
 
 
 class WaterSourceKind(StrEnum):
@@ -74,12 +80,40 @@ class WaterSource(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         is_simulated: True for demo data (BR-09). A real order may still use
             a simulated source for now (order confirmation contract,
             decision 9); clients show its Simulated tag.
-        kind: :class:`WaterSourceKind`, or null until the technical lead sets
-            it. A source with no kind can serve a Keke order (no preference)
-            but never matches a Tanker customer's preference.
+        kind: :class:`WaterSourceKind`, or null until an admin sets it. A
+            source with no kind cannot be activated and is excluded from every
+            order with ``kind_not_set`` (#407, decision 407-2).
+        contact_name, contact_phone: Who to call at the source (#407,
+            decision 407-1), or null. The phone is E.164. Admin-only: never
+            sent to a customer or a driver, never audited or logged.
+        min_litres_per_order, max_litres_per_order: The order sizes, in whole
+            litres of the complete order, the supplier agreed to serve (D14,
+            decision 407-3), or null for no limit.
+        is_available: Whether the source takes new work now. Not a safety
+            status: that is suspend and revoke on an activation (BR-10).
+        serves_keke, serves_tanker: The vehicles that can load here (D14). At
+            least one is true; :attr:`vehicle_kinds` is the list the API uses.
     """
 
     __tablename__ = "water_sources"
+    __table_args__ = (
+        CheckConstraint(
+            "min_litres_per_order IS NULL OR min_litres_per_order >= 1",
+            name="min_litres_positive",
+        ),
+        CheckConstraint(
+            "max_litres_per_order IS NULL OR max_litres_per_order >= 1",
+            name="max_litres_positive",
+        ),
+        CheckConstraint(
+            "min_litres_per_order IS NULL OR max_litres_per_order IS NULL"
+            " OR min_litres_per_order <= max_litres_per_order",
+            name="min_litres_not_above_max",
+        ),
+        CheckConstraint("serves_keke OR serves_tanker", name="serves_a_vehicle"),
+        # Nearest-source lookups for dispatch (#411) and road pricing (#408).
+        Index("ix_water_sources_location", "location", postgresql_using="gist"),
+    )
 
     name: Mapped[str] = mapped_column(String(SOURCE_NAME_MAX_LENGTH))
     approximate_location: Mapped[str] = mapped_column(String(APPROXIMATE_LOCATION_MAX_LENGTH))
@@ -97,6 +131,22 @@ class WaterSource(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             values_callable=lambda kinds: [kind.value for kind in kinds],
         )
     )
+    contact_name: Mapped[str | None] = mapped_column(String(CONTACT_NAME_MAX_LENGTH))
+    contact_phone: Mapped[str | None] = mapped_column(String(CONTACT_PHONE_MAX_LENGTH))
+    min_litres_per_order: Mapped[int | None] = mapped_column(Integer)
+    max_litres_per_order: Mapped[int | None] = mapped_column(Integer)
+    is_available: Mapped[bool] = mapped_column(default=True, server_default=true())
+    serves_keke: Mapped[bool] = mapped_column(default=True, server_default=true())
+    serves_tanker: Mapped[bool] = mapped_column(default=True, server_default=true())
+
+    @property
+    def vehicle_kinds(self) -> list[str]:
+        """The vehicles that can load here, ``keke`` before ``tanker`` (#407)."""
+        return [
+            kind
+            for kind, serves in (("keke", self.serves_keke), ("tanker", self.serves_tanker))
+            if serves
+        ]
 
 
 class WaterCategory(UUIDPrimaryKeyMixin, TimestampMixin, Base):

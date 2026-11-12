@@ -34,6 +34,9 @@ interface ConfirmDialogProps {
  *   dialog, and focus returns to the button that opened it on close.
  * - Escape and a tap on the backdrop cancel, except while `loading`.
  * - The page behind does not scroll while it is open.
+ * - The panel is never taller than the screen: the title and the buttons stay
+ *   in view and only the body scrolls, so a long form (the Water sources
+ *   dialog, #407) still has its buttons on a short or 360 px screen.
  */
 export function ConfirmDialog({
   open,
@@ -109,13 +112,14 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={`${id}-title`}
         aria-describedby={children ? `${id}-body` : undefined}
-        className="rise-1 relative flex w-full max-w-[420px] flex-col gap-3 rounded-[22px] bg-white p-5 pb-[max(20px,env(safe-area-inset-bottom))] text-ink shadow-[0_24px_60px_rgba(10,37,64,0.3)] sm:p-6"
+        className="rise-1 relative flex max-h-full w-full max-w-[420px] flex-col gap-3 rounded-[22px] bg-white p-5 pb-[max(20px,env(safe-area-inset-bottom))] text-ink shadow-[0_24px_60px_rgba(10,37,64,0.3)] sm:p-6"
       >
         <h2 id={`${id}-title`} className="m-0 text-[19px] leading-[1.3] font-extrabold">
           {title}
         </h2>
         {children && (
-          <div id={`${id}-body`} className="text-[15px] leading-[1.5] text-slate">
+          // min-h-0 lets the body shrink inside the capped panel; the padding keeps focus rings from being clipped.
+          <div id={`${id}-body`} className="-mx-1 min-h-0 overflow-y-auto overscroll-contain px-1 text-[15px] leading-[1.5] text-slate">
             {children}
           </div>
         )}

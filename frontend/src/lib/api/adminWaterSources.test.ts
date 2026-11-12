@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createAdminWaterSource,
   listAdminWaterSources,
+  patchAdminActivationCost,
   putAdminActivation,
   setAdminActivationStatus,
   updateAdminWaterSource,
@@ -30,6 +31,14 @@ const SOURCE: WaterSourceRead = {
       reasons: [],
     },
   ],
+  location: { latitude: 6.4361, longitude: 7.5134 },
+  contact_name: 'Sample Contact',
+  contact_phone: '+2348000000001',
+  min_litres_per_order: 600,
+  max_litres_per_order: 10000,
+  is_available: true,
+  vehicle_kinds: ['keke', 'tanker'],
+  source_reasons: [],
 }
 
 function setup(body: unknown, status = 200) {
@@ -123,6 +132,57 @@ describe('the admin water-source calls (docs/api/admin-water-sources.md)', () =>
   it('reports a response of the wrong shape as invalid_response, not a wrong source', async () => {
     const { client } = setup({ items: [{ ...SOURCE, kind: 'spring' }], categories: [] })
     expect((await rejection(listAdminWaterSources(undefined, client))).code).toBe('invalid_response')
+  })
+
+  it('reads the #407 supplier fields and the source-wide reasons', async () => {
+    const { client } = setup({ items: [{ ...SOURCE, kind: null, is_available: false, source_reasons: ['kind_not_set', 'unavailable'] }], categories: [] })
+    const [source] = (await listAdminWaterSources(undefined, client)).items
+    expect(source).toMatchObject({ contact_phone: '+2348000000001', min_litres_per_order: 600, vehicle_kinds: ['keke', 'tanker'], source_reasons: ['kind_not_set', 'unavailable'] })
+  })
+
+  it.each([
+    ['an unknown source reason', { source_reasons: ['closed'] }],
+    ['an unknown vehicle', { vehicle_kinds: ['bus'] }],
+    ['litres that are not whole', { max_litres_per_order: 600.5 }],
+    ['a missing #407 field', { is_available: undefined }],
+  ])('reports %s as invalid_response', async (_, change) => {
+    const { client } = setup({ items: [{ ...SOURCE, ...change }], categories: [] })
+    expect((await rejection(listAdminWaterSources(undefined, client))).code).toBe('invalid_response')
+  })
+
+  it('sends the supplier fields and the pickup point when adding a source', async () => {
+    const { fetchMock, client } = setup(SOURCE, 201)
+    const body = {
+      name: 'Sample Borehole A',
+      approximate_location: 'Off Ogui Road',
+      kind: 'borehole' as const,
+      location: { latitude: 6.4361, longitude: 7.5134 },
+      contact_name: 'Sample Contact',
+      contact_phone: '0800 000 0001',
+      min_litres_per_order: 600,
+      max_litres_per_order: null,
+      is_available: true,
+      vehicle_kinds: ['tanker' as const],
+    }
+    await createAdminWaterSource(body, client)
+    expect(sent(fetchMock).body).toEqual(body)
+  })
+
+  it('changes the cost with a PATCH to the activation, the cost alone in integer kobo', async () => {
+    const { fetchMock, client } = setup(SOURCE)
+    await patchAdminActivationCost(SOURCE.id, 'c-utility', { cost_per_litre_minor_units: 180 }, client)
+    expect(sent(fetchMock)).toEqual({
+      url: `${BASE_URL}/api/v1/admin/water-sources/${SOURCE.id}/activations/c-utility`,
+      method: 'PATCH',
+      body: { cost_per_litre_minor_units: 180 },
+      csrf: 'csrf-token',
+    })
+  })
+
+  it('passes 409 water_source_kind_required through from an activation', async () => {
+    const { client } = setup({ error: { code: 'water_source_kind_required', message: 'Set the kind', details: null } }, 409)
+    const error = await rejection(putAdminActivation(SOURCE.id, 'c-utility', { approved_until: '2027-03-31', report_reference: 'R', cost_per_litre_minor_units: 1 }, client))
+    expect([error.status, error.code]).toEqual([409, 'water_source_kind_required'])
   })
 
   it('refuses a cost that is not an integer, so a float never reaches the screen', async () => {

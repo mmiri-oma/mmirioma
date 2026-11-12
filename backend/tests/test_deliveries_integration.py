@@ -42,7 +42,7 @@ from app.modules.deliveries.models import (
 from app.modules.dispatch.models import Assignment, AssignmentStatus, DeclineReason
 from app.modules.messaging.sms import MockSmsProvider
 from app.modules.orders.models import Order, OrderEvent, OrderStatus, TransitionReason
-from app.modules.sources.models import WaterSource
+from app.modules.sources.models import WaterSource, WaterSourceKind
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
@@ -140,7 +140,12 @@ class Setup:
 
 
 async def setup(sessions: Sessions, created: Created) -> Setup:
-    source = WaterSource(name="Sample Borehole A", approximate_location="Near the market gate")
+    # A kind is needed to activate and to serve an order (#407, decision 407-2).
+    source = WaterSource(
+        name="Sample Borehole A",
+        approximate_location="Near the market gate",
+        kind=WaterSourceKind.BOREHOLE,
+    )
     async with sessions() as session:
         session.add(source)
         await session.commit()

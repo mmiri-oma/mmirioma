@@ -1778,7 +1778,7 @@ a category it returns a list of reasons; an empty list means eligible.
 | `approval_expired` | `approved_until` is before today in Africa/Lagos (T-04) | Laboratory approval expired |
 
 **Agreed amendment (#407, 2026-11-12, @nnamdi-security + Codex,
-PR #417; not implemented).** The confirmation
+PR #417; built in the #407 implementation PR).** The confirmation
 options (C1) gain six more reasons after these four, worked out for the order
 being confirmed: `kind_not_set`, `unavailable`, `kind_mismatch`,
 `below_minimum_litres`, `above_maximum_litres` and `vehicle_not_suitable`.

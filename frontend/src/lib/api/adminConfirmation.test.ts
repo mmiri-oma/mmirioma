@@ -3,7 +3,7 @@ import adminOrderDetail from '../../../../docs/api/examples/admin-order-detail.j
 import historyConfirmed from '../../../../docs/api/examples/admin-order-history-confirmed.json'
 import confirmationOptions from '../../../../docs/api/examples/confirmation-options.json'
 import confirmRequest from '../../../../docs/api/examples/order-confirm-request.json'
-import { confirmOrder, getConfirmationOptions, missingRequirements, type ConfirmRequest } from './adminConfirmation'
+import { C1_SOURCE_REASONS, confirmOrder, getConfirmationOptions, missingRequirements, type ConfirmRequest } from './adminConfirmation'
 import { getAdminOrderDetail, getOrderHistory } from './adminDispatch'
 import { ApiError, createApiClient } from './client'
 
@@ -55,6 +55,22 @@ describe('order confirmation API functions (deliveries.md, "Order confirmation e
     body.categories[0].sources[0].reasons = ['flooded']
     const { client } = setup(body)
     await expect(getConfirmationOptions('MO-7KQ2M9XH4T', undefined, client)).rejects.toMatchObject({ code: 'invalid_response' })
+  })
+
+  it('reads every #407 order-fit reason in the C1 options, in the server order', async () => {
+    expect(C1_SOURCE_REASONS.slice(4)).toEqual(['kind_not_set', 'unavailable', 'kind_mismatch', 'below_minimum_litres', 'above_maximum_litres', 'vehicle_not_suitable'])
+    const body = structuredClone(confirmationOptions)
+    body.categories[0].sources[0].reasons = ['approval_expired', ...C1_SOURCE_REASONS.slice(4)]
+    const { client } = setup(body)
+    const categories = await getConfirmationOptions('MO-7KQ2M9XH4T', undefined, client)
+    expect(categories[0].sources[0].reasons).toEqual(['approval_expired', ...C1_SOURCE_REASONS.slice(4)])
+  })
+
+  it('keeps the order detail to the four safety reasons: an order-fit reason there is invalid_response', async () => {
+    const body = structuredClone(adminOrderDetail) as { source: { reasons: string[] } }
+    body.source.reasons = ['unavailable']
+    const { client } = setup(body)
+    await expect(getAdminOrderDetail('MO-7KQ2M9XH4T', undefined, client)).rejects.toMatchObject({ code: 'invalid_response' })
   })
 
   it('confirms with the agreed body and returns the confirmed order (contract samples)', async () => {

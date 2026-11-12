@@ -25,7 +25,8 @@ from app.modules.pricing import osrm
 from app.modules.pricing.osrm import FallbackReason, Point, RoadDistanceUnavailable
 from app.modules.pricing.quotes import _road_delivery, _same_pin, road_delivery_cost
 from app.modules.pricing.schemas import QuoteCreate
-from app.modules.sources.service import EligibleSource, SourceLocation
+from app.modules.sources.eligibility import SourceCandidate
+from app.modules.sources.service import SourceLocation
 from app.shared.location import OUT_OF_BOUNDS_MESSAGE, Location, LocationSource
 
 APP = Path(__file__).resolve().parents[1] / "app"
@@ -268,7 +269,7 @@ async def test_a_missing_or_unreadable_snap_distance_is_none_not_a_failure(
 
 @pytest.mark.anyio
 async def test_the_quote_keeps_the_snap_distance_of_the_road_it_priced(osrm_on: None) -> None:
-    eligible = [EligibleSource(uuid.uuid4(), 150, SourceLocation(6.4361, 7.5134))]
+    eligible = [SourceCandidate(uuid.uuid4(), 150, SourceLocation(6.4361, 7.5134), [])]
     rule = SimpleNamespace(
         base_delivery_fee_minor_units=100_000,
         distance_rate_minor_units_per_km=10_000,

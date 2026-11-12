@@ -32,6 +32,7 @@ from app.modules.sources.models import (
     WaterCategory,
     WaterSource,
     WaterSourceCategory,
+    WaterSourceKind,
 )
 from app.shared.lagos_time import lagos_today
 from tests import test_deliveries_integration as part1
@@ -107,7 +108,11 @@ def test_command_line_lifecycle_is_audited(created: Created) -> None:
 
         async with sessions() as session:
             source = await sources.add_source(
-                session, actor=admin, name="Sample Borehole C", approximate_location="Emene"
+                session,
+                actor=admin,
+                name="Sample Borehole C",
+                approximate_location="Emene",
+                kind=WaterSourceKind.BOREHOLE,
             )
         created.source_ids.append(source.id)
 
@@ -373,7 +378,10 @@ def test_a_simulated_source_counts_like_any_other(created: Created) -> None:
     async def scenario(sessions: Sessions) -> None:
         potable = await category(sessions, "potable")
         source = WaterSource(
-            name="Demo Tanker Yard", approximate_location="Coal Camp", is_simulated=True
+            name="Demo Tanker Yard",
+            approximate_location="Coal Camp",
+            is_simulated=True,
+            kind=WaterSourceKind.NINTH_MILE,
         )
         async with sessions() as session:
             session.add(source)

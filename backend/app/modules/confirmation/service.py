@@ -32,8 +32,10 @@ Rules, in the order they are applied by :func:`confirm_order`:
    :mod:`app.modules.confirmation.schemas`.
 3. **Row 7 checks under the order lock** (409 ``transition_requirements_unmet``
    with ``details.missing``): ``phone_verified``, ``source_eligible`` (the
-   shared check, :mod:`app.modules.sources.eligibility`) and
-   ``delivery_window_set``. Nothing is written when one fails.
+   shared order-fit check, :func:`app.modules.sources.eligibility.source_order_reasons`,
+   #407: safety, kind set, available, the order's litres and vehicle, read
+   fresh with the source's rows locked, so options loaded earlier are never
+   trusted) and ``delivery_window_set``. Nothing is written when one fails.
 4. **One transaction** (question 1): row 26 ``quote_requested`` →
    ``awaiting_confirmation`` (reason ``manual_quote``; skipped for a quoted
    order, already there), then row 7 →
@@ -79,10 +81,18 @@ from app.modules.pricing import quotes
 from app.modules.pricing.models import AgreementMethod, OrderPriceSnapshot
 from app.modules.sources.eligibility import (
     EligibilityReason,
+    OrderFit,
+    SourceReason,
     eligibility_reasons,
-    source_reasons,
+    reasons_for_order,
+    source_order_reasons,
 )
-from app.modules.sources.models import WaterCategory, WaterSource, WaterSourceCategory
+from app.modules.sources.models import (
+    WaterCategory,
+    WaterSource,
+    WaterSourceCategory,
+    WaterSourceKind,
+)
 from app.shared.lagos_time import LAGOS_TZ, lagos_today
 from app.shared.phone import format_phone_for_display
 
@@ -112,7 +122,18 @@ class SourceOption:
 
     source: WaterSource
     activation: WaterSourceCategory | None
-    reasons: list[EligibilityReason]
+    reasons: list[SourceReason]
+
+
+def order_fit(order: Order) -> OrderFit:
+    """The order-fit inputs for an order (#407): whole-order litres, vehicle, preference."""
+    return OrderFit(
+        litres=order.quantity_litres,
+        delivery_type=order.delivery_type.value if order.delivery_type is not None else None,
+        preferred_kind=(
+            WaterSourceKind(order.water_source.value) if order.water_source is not None else None
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -126,7 +147,11 @@ class CategoryOptions:
 async def confirmation_options(
     session: AsyncSession, *, reference: str, today: date | None = None
 ) -> list[CategoryOptions]:
-    """Every active category with every source and its eligibility (C1).
+    """Every active category with every source and why it cannot serve this order (C1).
+
+    The reasons are the safety reasons and the #407 order-fit reasons for this
+    order (docs/api/admin-water-sources.md, "The order-fit check"). They help
+    the dispatcher choose; confirmation checks again (:func:`confirm_order`).
 
     Args:
         session: Database session; the caller enforces the admin role.
@@ -141,7 +166,8 @@ async def confirmation_options(
     Raises:
         APIError: 404 ``order_not_found``.
     """
-    await orders_service.get_order_for_staff(session, reference=reference)
+    staff = await orders_service.get_order_for_staff(session, reference=reference)
+    fit = order_fit(staff.order)
     today = today or lagos_today()
     categories = list(
         await session.scalars(
@@ -161,7 +187,9 @@ async def confirmation_options(
         for source in sources:
             activation = activations.get((source.id, category.id))
             options.append(
-                SourceOption(source, activation, eligibility_reasons(activation, today=today))
+                SourceOption(
+                    source, activation, reasons_for_order(source, activation, fit, today=today)
+                )
             )
         # Stable sort keeps name order inside each group.
         options.sort(key=lambda option: bool(option.reasons))
@@ -287,10 +315,11 @@ async def confirm_order(
     missing = []
     if staff.customer.phone_verified_at is None:
         missing.append(Requirement.PHONE_VERIFIED)
-    reasons = await source_reasons(
+    reasons = await source_order_reasons(
         session,
         source_id=source.id,
         water_category_id=category.id,
+        fit=order_fit(order),
         today=now.astimezone(LAGOS_TZ).date(),
     )
     if reasons:

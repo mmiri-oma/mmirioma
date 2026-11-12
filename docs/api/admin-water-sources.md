@@ -234,8 +234,8 @@ coordinates. In `PATCH`, `location: null` clears it and leaving the field out ke
 **Status: agreed** (G3), @nnamdi-security (+ Codex), 2026-11-12, PR #417.
 Originally proposed on 2026-11-12 for
 [#407](https://github.com/mmiri-oma/mmirioma/issues/407) by @DevBonavee
-(+ Claude Code). The reviewer is not the author. Documentation only; the
-implementation is the next #407 PR.
+(+ Claude Code). The reviewer is not the author. Built in the #407
+implementation PR (branch `feat/407-water-source-supplier-fields`).
 
 Requirements: FR-011, FR-012, FR-013, FR-014, FR-024, BR-10 · Tests: T-04, T-09
 · Design: [amendment #407](../design/admin-water-sources.md#amendment-407-supplier-details-order-fit-and-cost-edits)

@@ -1,8 +1,8 @@
 """Command-line management of water sources for the technical lead (pilot fallback F1).
 
-There are no admin screens for sources before the pilot (technical lead,
-#87, 2026-10-20), so sources and their category activations are managed
-here, like vehicles (``app.modules.dispatch.cli``). Every change names the
+Before the admin Water sources screen (#309), sources and their category
+activations were managed only here (technical lead, #87, 2026-10-20), like
+vehicles (``app.modules.dispatch.cli``). It stays as the fallback. Every change names the
 admin account making it (``--by``) and writes an audit row (NFR-004). Run
 from ``backend/`` with the virtualenv active and ``DATABASE_URL`` configured::
 
@@ -21,7 +21,9 @@ from ``backend/`` with the virtualenv active and ``DATABASE_URL`` configured::
     python -m app.modules.sources.cli list-sources
 
 Activate only after the independent laboratory verification and the checks
-FR-012 requires; the app cannot verify them. The report itself stays outside
+FR-012 requires; the app cannot verify them. A source needs a kind first
+(``--kind`` or ``set-kind``, #407). The supplier contact, litre limits,
+availability and vehicles are set on the admin Water sources screen. The report itself stays outside
 the app: enter only its reference.
 """
 
@@ -251,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         print(asyncio.run(_main(args)))
-    except LookupError as exc:
+    except (LookupError, service.KindRequiredError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
     return 0
