@@ -714,6 +714,7 @@ on the current backend, including the delivery type and zone breakdowns
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-12 | Agreed, not implemented (#411), defined in [deliveries.md](deliveries.md#automatic-dispatch-and-reassignment-411): `assignment_expired` starts being created when a system offer expires, and a new admin kind `dispatch_escalated`. `GET /admin/settings` exposes the read-only timeout and attempt limit (D10); audit reads must support nullable system actors without dropping rows | @nnamdi-security (+ Codex), G3 review of PR #416, 2026-11-12 |
 | 2026-11-02 | Added `source` (`app` or `website`) to the admin support request and made `customer.id` nullable, for the public contact form (additive; a client that assumes `customer.id` is a string must handle `null`; #339) | @nnamdi-security (technical lead, G3, 2026-11-02, with `POST /public/contact`) |
 | 2026-11-02 | Proposed (#333): `from`/`to` custom range and `include_cancelled` on `GET /admin/reports` ([amendment](#amendment-proposed-in-333-chosen-date-range-and-cancelled-orders)) | @nnamdi-security (technical lead, G3, 2026-11-02) |
 | 2026-11-01 | Added `AuditLogRead.target_label` (additive, resolved when read, #296) | @nnamdi-security (technical lead, G3) |

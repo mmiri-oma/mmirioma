@@ -157,11 +157,12 @@ Water."
 
 ## Amendment #407: supplier details, order fit and cost edits
 
-**Status: proposed** (G2) on 2026-11-12 for
+**Status: approved** (G2, written amendment), @nnamdi-security (+ Codex),
+2026-11-12, PR #417. Originally proposed on 2026-11-12 for
 [#407](https://github.com/mmiri-oma/mmirioma/issues/407) by @DevBonavee
 (+ Claude Code), with the
 [contract amendment](../api/admin-water-sources.md#amendment-407-supplier-details-order-fit-and-cost-edits).
-Not yet approved. It needs one reviewer who is not the author. A written
+The reviewer is not the author. Build #407 from this approved written
 design, like the rest of this record; it changes no existing wording above
 except where this section says so.
 
@@ -174,7 +175,7 @@ layout and every existing state stay as they are.
 Under the name and location, one line of facts, each shown only when set:
 
 - **Contact:** "Sample Contact · +234 803 000 0000". "No contact" when both are empty.
-- **Pickup point:** "Pickup point set" or, in grey, "No pickup point: priced with the zone fee". The coordinates are not shown on the card.
+- **Pickup point:** "Pickup point set" or, in grey, "No pickup point: road-distance pricing unavailable". The coordinates are not shown on the card.
 - **Order size:** "600 to 10,000 litres per order", "From 600 litres", "Up to 10,000 litres", or "Any order size".
 - **Vehicles:** "Keke and Tanker", "Keke only" or "Tanker only".
 
@@ -206,9 +207,9 @@ The dialog keeps Name, Location (in words) and Kind, and adds, in this order:
 | --- | --- | --- |
 | Contact name | Text, optional, up to 120 | none |
 | Contact phone | Phone, optional | "Enter a Nigerian mobile number, for example 0803 000 0000." |
-| Pickup point | Two number fields, Latitude and Longitude, optional, both or neither. Hint: "Copy them from a map pin at the collection point. Used to price by road distance." | "Enter both latitude and longitude, or neither." and, when the server refuses the point, "This point is outside the delivery area." |
-| Smallest order (litres) | Whole number, optional | "Enter a whole number of litres." |
-| Largest order (litres) | Whole number, optional | "The largest order can't be smaller than the smallest." |
+| Pickup point | Two number fields, Latitude and Longitude, optional, both or neither. Hint: "Copy them from a map pin at the collection point. Used to price by road distance." | "Enter both latitude and longitude, or neither." and, when the server refuses the point, the server's bounds-validation message (a sanity box, not a service-area decision) |
+| Smallest order (litres) | Whole number of at least 1, optional | "Enter a whole number of litres greater than zero." |
+| Largest order (litres) | Whole number of at least 1, optional | "Enter a whole number of litres greater than zero." or "The largest order can't be smaller than the smallest." |
 | Available for new orders | Switch, on by default | Under it: "Turn this off when the source is closed or out of water. It is not a safety status: use Suspend for that." |
 | Vehicles that can load here | Two checkboxes, Keke and Tanker, both ticked by default | "Choose at least one vehicle." |
 
@@ -237,6 +238,18 @@ change.
 | --- | --- |
 | Activate on a source with no kind (409 `water_source_kind_required`) | In the dialog: "Set where this source collects water before activating it." with **Edit source**, which closes this dialog and opens Edit |
 | Activation gone during Change cost (404 `activation_not_found`) | The existing "This source has changed or been removed." with **Refresh** |
+
+### Loading, failure and accessibility
+
+Both dialogs keep entered values and show field errors on validation failure;
+a generic/network failure has an inline message and retry. Saving shows the
+existing button spinner and disables duplicate submits. Failed edits never
+show a success toast. Back/Escape, keyboard focus containment and restoration,
+visible labels, checkbox grouping, screen-reader error associations and the
+existing small-screen scrolling behavior remain required. A 409 after a stale
+Activate/Renew dialog offers Edit source; the activation is not claimed saved.
+Show only facts returned by the server; no pickup point does not promise a
+zone price because a zone may also lack a fee and require a manual quote.
 
 ### Honesty rules for the amendment
 
