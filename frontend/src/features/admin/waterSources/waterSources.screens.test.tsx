@@ -154,6 +154,20 @@ describe('the Water sources screen against the real API (#309)', () => {
     expect(supplier.getByRole('button', { name: 'Renew' })).toBeInTheDocument()
   }, SLOW)
 
+  it('gives the header and every category row the same column tracks, with no content-sized track (#421)', async () => {
+    renderPage()
+    await card('Sample Borehole A')
+    // jsdom has no layout, so the template itself is checked: the header and each row
+    // are separate grids, and an `auto` track would size each row to its own buttons.
+    const header = screen.getAllByRole('row')[0]
+    const template = /lg:grid-cols-\[[^\]]+\]/.exec(header.className)?.[0]
+    expect(template).toBeDefined()
+    expect(template).not.toMatch(/auto/)
+    const rows = document.querySelectorAll(`div.${CSS.escape(template!)}`)
+    // One header and two category rows on each of the two cards.
+    expect(rows.length).toBe(6)
+  }, SLOW)
+
   it('says nothing about the water itself', async () => {
     renderPage()
     await card('Sample Borehole A')
