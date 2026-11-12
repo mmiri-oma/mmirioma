@@ -43,6 +43,7 @@ ignored. Application code must read configuration only through `get_settings()`.
 | `SESSION_COOKIE_SECURE` | bool, or unset                       | unset: on in production only |
 | `SESSION_COOKIE_SAMESITE` | `lax`, `strict`, `none`            | `lax`                   |
 | `PILOT_WATER_CATEGORY` | `utility`, `potable` (category code)  | `utility`               |
+| `DRIVER_LOCATION_FRESHNESS_SECONDS` | positive integer seconds | `300` |
 | `QUOTE_VALIDITY_MINUTES` | int, 1 to 1440                     | `60`                    |
 | `OSRM_BASE_URL`          | empty, or an http(s) URL           | empty (off)             |
 | `OSRM_TIMEOUT_SECONDS`   | number, over 0 up to 10            | `2`                     |

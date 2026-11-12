@@ -1051,10 +1051,19 @@ async def set_driver_availability(
     profile = (
         None
         if user is None
-        else await session.scalar(select(DriverProfile).where(DriverProfile.user_id == user.id))
+        else await session.scalar(
+            select(DriverProfile)
+            .where(DriverProfile.user_id == user.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
     )
     if profile is None:
         raise LookupError("No driver profile for this phone number")
+    if not available:
+        from app.modules.partners.location import clear_locked
+
+        await clear_locked(session, profile)
     profile.is_available = available
     await session.commit()
     await session.refresh(profile)

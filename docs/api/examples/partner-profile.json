@@ -26,5 +26,12 @@
   "preferences": {
     "new_order_alerts": true,
     "sms_updates": true
+  },
+  "location": {
+    "state": "none",
+    "sharing": false,
+    "confirmed_at": null,
+    "fresh_until": null,
+    "accuracy_metres": null
   }
 }

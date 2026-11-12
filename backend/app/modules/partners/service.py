@@ -20,7 +20,8 @@ Rules implemented here:
 
 import asyncio
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from http import HTTPStatus
 
 from sqlalchemy import select
@@ -40,6 +41,8 @@ from app.modules.dispatch.models import (
     VehicleProfile,
 )
 from app.modules.notifications import admin_messages
+from app.modules.partners import location as driver_location
+from app.modules.partners.location_schemas import DriverLocationRead
 from app.modules.pricing.models import ServiceZone
 
 
@@ -52,12 +55,14 @@ class PartnerProfile:
         profile: Their driver profile.
         vehicle: The verified vehicle, or None until an admin links one.
         zones: The zones they work in, sign-up zone first.
+        location: Current location age/sharing, with no coordinates (#410).
     """
 
     user: User
     profile: DriverProfile
     vehicle: VehicleProfile | None
     zones: list[ServiceZone]
+    location: DriverLocationRead = field(default_factory=DriverLocationRead)
 
 
 def _no_driver_profile() -> APIError:
@@ -164,7 +169,7 @@ async def register_partner(
 async def _profile_of(session: AsyncSession, user: User, *, lock: bool = False) -> DriverProfile:
     statement = select(DriverProfile).where(DriverProfile.user_id == user.id)
     if lock:
-        statement = statement.with_for_update()
+        statement = statement.with_for_update().execution_options(populate_existing=True)
     profile = await session.scalar(statement)
     if profile is None:
         raise _no_driver_profile()
@@ -186,7 +191,10 @@ async def _load(session: AsyncSession, user: User, profile: DriverProfile) -> Pa
             .order_by(DriverServiceZone.created_at, DriverServiceZone.id)
         )
     )
-    return PartnerProfile(user=user, profile=profile, vehicle=vehicle, zones=zones)
+    location = await driver_location.read_location(session, profile, now=datetime.now(UTC))
+    return PartnerProfile(
+        user=user, profile=profile, vehicle=vehicle, zones=zones, location=location
+    )
 
 
 async def get_profile(session: AsyncSession, user: User) -> PartnerProfile:
@@ -223,8 +231,8 @@ async def update_preferences(
 async def set_availability(session: AsyncSession, user: User, *, available: bool) -> PartnerProfile:
     """Go online or offline (FR-031 availability) and commit.
 
-    Setting the value the partner already has changes nothing and writes no
-    audit row.
+    Repeating a value writes no availability audit row. Offline requests
+    always invalidate location grants and delete the point (#410).
 
     Raises:
         APIError: 404 ``no_driver_profile``; 403 ``partner_not_approved``
@@ -239,6 +247,8 @@ async def set_availability(session: AsyncSession, user: User, *, available: bool
             "Your account is waiting for approval. You can take orders once admin "
             "approves your vehicle.",
         )
+    if not available:
+        await driver_location.clear_locked(session, profile)
     if profile.is_available != available:
         profile.is_available = available
         audit_service.record(

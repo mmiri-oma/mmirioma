@@ -238,7 +238,7 @@ function Rows({ rows }: { rows: [ReactNode, ReactNode][] }) {
  * section, with the same facts (#93). Change both together; the notice is the
  * source.
  */
-const PRIVACY_VERSION = 'Version 8.0, last updated 3 November 2026.'
+const PRIVACY_VERSION = 'Version 9.0, last updated 12 November 2026.'
 
 const PRIVACY: Section[] = [
   {
@@ -306,6 +306,10 @@ const PRIVACY: Section[] = [
             [
               'Delivery records: arrival time, attempts to contact you, quantity delivered, how the delivery was confirmed, and any incident the driver or our staff record',
               'To confirm delivery and resolve problems or disputes.',
+            ],
+            [
+              "A rider or driver’s current phone location, its accuracy and confirmation time, when they choose to share while online",
+              "To consider them for nearby automatic offers. Only the latest point is kept; no history and no customer access.",
             ],
             [
               "Optional GPS location of the driver's phone at arrival and at delivery",
@@ -385,7 +389,10 @@ const PRIVACY: Section[] = [
         We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. The app asks for your
         phone's location <b>only when you choose "Use my location"</b>, after telling you why. You can refuse and type your address instead, or
         place a pin on the map by hand; nothing else changes. A map location is saved only if you add it to an address or an order. We use it to
-        help the rider find you and, when we price by road distance, to work out the distance. We never use it to track you. The other location
+        help the rider find you and, when we price by road distance, to work out the distance. We never use it to track you. A rider or driver can also choose to share their current location after an explanation when going online or confirming location.
+        With consent, the app refreshes it only while open and visible. Refusing leaves them online for manual assignments; they are not eligible
+        for automatic offers. Only the latest point is kept, and it is deleted when sharing is withdrawn, they go offline, their approval is
+        removed, or their account is deactivated or anonymized. Customers never receive this point. The separate delivery-evidence location
         we record is the optional GPS position of the <b>driver's</b> phone at arrival and at delivery, with the driver's consent (section 2).
         We do not show live vehicle locations.
       </p>
@@ -478,6 +485,7 @@ const PRIVACY: Section[] = [
               "Feedback on an order: as long as the order record (3 years after the order is completed)",
               "Your message is removed when the order's personal details are deleted or anonymized, or when your account is closed; the rating and answers stay with the anonymized order, as they no longer identify you.",
             ],
+            ['Current rider or driver location: only while sharing is enabled and they remain online', 'Replaced on confirmation; deleted on withdrawal, offline, removal of approval, deactivation or anonymization.'],
             ['Driver GPS points: 90 days after the delivery', 'Deleted, unless needed for an open complaint or dispute.'],
             [
               'Cash payment and refund records, including refund bank details: at least 6 years, or longer where Nigerian accounting or tax law requires',

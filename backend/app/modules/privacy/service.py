@@ -42,6 +42,7 @@ from app.modules.deliveries import retention as deliveries
 from app.modules.dispatch import retention as jobs
 from app.modules.notifications import service as notifications
 from app.modules.orders import retention as orders
+from app.modules.partners import location as driver_location
 from app.modules.payments import retention as payments
 from app.modules.pricing import retention as quotes
 
@@ -126,6 +127,7 @@ class PartnerAnonymizeResult:
 
     Attributes:
         partner_id: The account's id, for the request register.
+        location_points_cleared: Current dispatch points deleted (#410).
         zones_removed: Service zones removed from their profile.
         decline_notes_removed: Their own words on declines, replaced.
         gps_points_cleared: GPS points they recorded, cleared.
@@ -145,6 +147,7 @@ class PartnerAnonymizeResult:
     reasons_cleared: int
     notes_to_review: int
     applied: bool
+    location_points_cleared: int = 0
 
 
 @dataclass(frozen=True)
@@ -386,6 +389,8 @@ async def anonymize_partner(
     """
     partner = await accounts.get_partner(session, phone=partner_phone)
     partner_id = partner.id
+    # Hold the shared profile lock through blocker checks and anonymization.
+    profile = await driver_location.lock_profile(session, partner_id)
     worked = await jobs.worked_order_ids(session, driver_id=partner_id)
 
     blockers = await jobs.live_job_references(session, driver_id=partner_id)
@@ -403,6 +408,9 @@ async def anonymize_partner(
     if blockers:
         raise PartnerNotReady(sorted(blockers))
 
+    location_points = (
+        await driver_location.clear_locked(session, profile) if profile is not None else 0
+    )
     notes = await deliveries.count_partner_notes(session, driver_id=partner_id)
     marker = await accounts.new_phone_marker(session)
     await accounts.anonymize_account(
@@ -422,6 +430,7 @@ async def anonymize_partner(
         target_type="user",
         target_id=partner_id,
         details={
+            "location_points_cleared": location_points,
             "zones_removed": zones,
             "decline_notes_removed": declines,
             "gps_points_cleared": gps,
@@ -431,6 +440,7 @@ async def anonymize_partner(
     )
     await _finish(session, apply)
     return PartnerAnonymizeResult(
+        location_points_cleared=location_points,
         partner_id=partner_id,
         zones_removed=zones,
         decline_notes_removed=declines,

@@ -24,7 +24,13 @@ from app.modules.notifications.schemas import (
     NotificationRead,
 )
 from app.modules.orders.schemas import PageParams
+from app.modules.partners import location as driver_location
 from app.modules.partners import service
+from app.modules.partners.location_schemas import (
+    DriverLocationRead,
+    DriverLocationUpdate,
+    SharingGrantRead,
+)
 from app.modules.partners.schemas import (
     AvailabilityUpdate,
     PartnerProfileRead,
@@ -60,6 +66,7 @@ def profile_read(partner: service.PartnerProfile) -> PartnerProfileRead:
     """
     profile = partner.profile
     return PartnerProfileRead(
+        location=partner.location,
         id=partner.user.id,
         name=partner.user.name,
         phone=partner.user.phone,
@@ -156,4 +163,32 @@ async def mark_notifications_read(
     await notifications_service.mark_read(
         db, user_id=driver.id, ids=body.ids if body is not None else None
     )
+    return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+_LOCATION_ERRORS = {
+    **_PROFILE_ERRORS,
+    HTTPStatus.CONFLICT: {"model": ErrorResponse},
+    HTTPStatus.UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+}
+
+
+@router.post("/location/sharing", responses=_LOCATION_ERRORS)
+async def enable_location_sharing(driver: CurrentDriver, db: DbSession) -> SharingGrantRead:
+    """Issue a grant after explicit location consent (FR-035, #410)."""
+    return SharingGrantRead(grant=await driver_location.grant_sharing(db, driver))
+
+
+@router.put("/location", responses=_LOCATION_ERRORS)
+async def confirm_driver_location(
+    body: DriverLocationUpdate, driver: CurrentDriver, db: DbSession
+) -> DriverLocationRead:
+    """Confirm one current device point; never return coordinates (FR-031)."""
+    return await driver_location.confirm_location(db, driver, body)
+
+
+@router.delete("/location", status_code=HTTPStatus.NO_CONTENT, responses=_AUTH_ERRORS)
+async def delete_driver_location(driver: CurrentDriver, db: DbSession) -> Response:
+    """Withdraw sharing and invalidate outstanding writes, retaining availability."""
+    await driver_location.withdraw_sharing(db, driver)
     return Response(status_code=HTTPStatus.NO_CONTENT)

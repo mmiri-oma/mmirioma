@@ -186,6 +186,12 @@ gave, as above, and ask which number they wrote from (#364).
 
 ### Deletion: riders and drivers
 
+Current dispatch location (#410) is separate from delivery-evidence GPS. Only the
+latest point is stored. Withdrawal, going offline, removal of approval, account
+deactivation and anonymization delete it and invalidate its sharing grant under
+the driver-profile lock. No monthly retention delay applies. The anonymization
+report and audit include `location_points_cleared`; never coordinates.
+
 A rider or driver asks by the support line or the privacy email (the
 partner app has no "Delete my account"); confirm identity by call-back as
 above. Rules confirmed by the privacy contact on #119 (2026-10-27).

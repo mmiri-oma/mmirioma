@@ -3,8 +3,8 @@
 <!-- The website's Privacy page (/privacy, frontend/src/features/marketing/LegalPages.tsx)
 mirrors this notice section by section. Change both together. -->
 
-**Version:** 8.0  
-**Last updated:** 3 November 2026  
+**Version:** 9.0<br>
+**Last updated:** 12 November 2026<br>
 **Service area:** Enugu State, Nigeria
 
 At **MmiriOma**, we respect your privacy. This notice explains what personal information we collect when you create an account, request water, receive a delivery, pay, contact us or deliver for us as a rider or driver; why we use it; who receives it; how long we keep it; and how you can exercise your rights. We aim to handle personal data in accordance with the **Nigeria Data Protection Act 2023** and other applicable laws.
@@ -33,6 +33,7 @@ MmiriOma is a water ordering and delivery service for households and businesses,
 | The price we calculate when you ask for one, and, if you shared a map location, that location | Show you a price you can order at, check that your order matches it, and work out the delivery cost from the road distance. The price is kept with your order; the map location is kept only as long as section 8 says |
 | Order records: water category, the water source used, the agreed price and how you agreed it, the confirmed delivery window, and each change of order status | Process and support your order, and keep a history of what happened |
 | Delivery records: arrival time, attempts to contact you, quantity delivered, how the delivery was confirmed, and any incident the driver or our staff record | Confirm delivery and resolve problems or disputes |
+| A rider or driver’s current phone location, its accuracy and confirmation time, when they choose to share while online | Consider them for nearby automatic offers. Only the latest point is kept; no history and no customer access |
 | Optional GPS location of the driver's phone at arrival and at delivery | Support delivery verification. Recorded only when the driver has given consent and their phone allows it; never used to track you |
 | Cash payment records: amount due, amount collected, who collected and received it, and when | Account for cash paid on delivery |
 | Bank account details, only if we pay you a refund by bank transfer | Make that refund |
@@ -58,7 +59,7 @@ You must verify your mobile number before your first order. We send a 6-digit co
 
 ## 5. Addresses and location data
 
-We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. The app asks for your phone's location **only when you choose "Use my location"**, after telling you why. You can refuse and type your address instead, or place a pin on the map by hand; nothing else changes. A map location is saved only if you add it to an address or an order. We use it to help the rider find you and, when we price by road distance, to work out the distance. We never use it to track you. The other location we record is the optional GPS position of the **driver's** phone at arrival and at delivery, with the driver's consent (section 2). We do not show live vehicle locations.
+We use the address, landmark and instructions you type to decide whether we can deliver, agree the price and find you. The app asks for your phone's location **only when you choose "Use my location"**, after telling you why. You can refuse and type your address instead, or place a pin on the map by hand; nothing else changes. A map location is saved only if you add it to an address or an order. We use it to help the rider find you and, when we price by road distance, to work out the distance. We never use it to track you. A rider or driver can also choose to share their current location after an explanation when going online or confirming location. With consent, the app refreshes it only while open and visible. Refusing leaves them online for manual assignments; they are not eligible for automatic offers. Only the latest point is kept, and it is deleted when sharing is withdrawn, they go offline, their approval is removed, or their account is deactivated or anonymized. Customers never receive this point. The separate delivery-evidence location we record is the optional GPS position of the **driver's** phone at arrival and at delivery, with the driver's consent (section 2). We do not show live vehicle locations.
 
 ## 6. Payments, refunds and delivery evidence
 
@@ -95,6 +96,7 @@ We keep information only as long as set out below. Our staff review stored data 
 | Messages in the app | As long as the order they are about | Deleted when your account is closed |
 | Order and delivery records, including delivery addresses and map locations | 3 years after the order is completed | Personal details deleted or anonymized; the payment subset is kept as below |
 | Feedback on an order | As long as the order record (3 years after the order is completed) | Your message is removed when the order's personal details are deleted or anonymized, or when your account is closed; the rating and answers stay with the anonymized order, as they no longer identify you |
+| Current rider or driver location | Only while sharing is enabled and they remain online | Replaced on confirmation; deleted on withdrawal, offline, removal of approval, deactivation or anonymization |
 | Driver GPS points | 90 days after the delivery | Deleted, unless needed for an open complaint or dispute |
 | Cash payment and refund records, including refund bank details | At least 6 years, or longer where Nigerian accounting or tax law requires | Securely deleted or anonymized when that obligation ends |
 | Complaints, disputes and incident records | 3 years after resolution | Deleted or anonymized, unless continued retention is justified |

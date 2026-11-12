@@ -100,6 +100,7 @@ async def _run(args: argparse.Namespace) -> str:
             return "\n".join(
                 [
                     f"Rider or driver {partner.partner_id}: account anonymized and deactivated.",
+                    f"Current location points cleared: {partner.location_points_cleared}",
                     f"Service zones removed: {partner.zones_removed}",
                     f"Decline notes removed: {partner.decline_notes_removed}",
                     f"GPS points cleared: {partner.gps_points_cleared}",

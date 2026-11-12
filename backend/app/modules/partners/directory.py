@@ -45,6 +45,7 @@ from app.modules.dispatch.models import (
     VehicleProfile,
 )
 from app.modules.notifications import service as notifications_service
+from app.modules.partners import location as driver_location
 from app.modules.pricing.models import ServiceZone
 
 #: Digits needed before ``q`` is also matched against phones (as for customers).
@@ -289,13 +290,18 @@ async def get_driver(session: AsyncSession, driver_id: uuid.UUID) -> DriverRow:
 
 
 async def _lock_driver(session: AsyncSession, driver_id: uuid.UUID) -> tuple[User, DriverProfile]:
-    """Load and lock a driver's account and profile, so two admins cannot race."""
+    """Lock the profile and refresh account state, serializing driver changes.
+
+    Location writes/clears take this same profile lock (#410). Locking it
+    before account updates also avoids opposing account/profile lock orders.
+    """
     found = (
         await session.execute(
             select(User, DriverProfile)
             .join(DriverProfile, DriverProfile.user_id == User.id)
             .where(User.id == driver_id, User.role == UserRole.DRIVER)
-            .with_for_update()
+            .with_for_update(of=DriverProfile)
+            .execution_options(populate_existing=True)
         )
     ).first()
     if found is None:
@@ -424,6 +430,7 @@ async def set_approval(
             )
     else:
         await _release_offered_job(session, admin=admin, driver=user)
+        await driver_location.clear_locked(session, profile)
         profile.is_available = False
     status_changed = profile.approval_status is not approval_status
     details: dict[str, object] = {}
@@ -535,12 +542,13 @@ async def set_activation(
         APIError: 404 ``driver_not_found``; 409 ``driver_has_accepted_job``.
     """
     reason = _blank_to_none(reason)
-    user, _ = await _lock_driver(session, driver_id)
+    user, profile = await _lock_driver(session, driver_id)
     if user.is_active is is_active:
         await session.rollback()
         return await get_driver(session, driver_id)
     if not is_active:
         await _release_offered_job(session, admin=admin, driver=user)
+        await driver_location.clear_locked(session, profile)
     user.is_active = is_active
     audit_service.record(
         session,
