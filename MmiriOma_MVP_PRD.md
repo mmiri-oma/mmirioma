@@ -48,7 +48,7 @@ These findings are qualitative and not yet statistically representative or an es
 
 1. Enable a customer to request/confirm a water delivery using a mobile browser.
 2. Quote transparent pricing using configured quantity, route zone/distance, fulfilment method and handling charges.
-3. Allow dispatchers to approve and assign an order to a capable, available operator.
+3. Automatically confirm and offer eligible orders to capable, available operators, with dispatcher approval and assignment for exceptions and manual overrides (#411 target approved 12 November 2026; not yet implemented).
 4. Communicate confirmed delivery windows and status changes.
 5. Record evidence of complete unloading and customer acknowledgement.
 6. Record actual revenue and variable delivery costs for unit-economics assessment.
@@ -126,8 +126,8 @@ Priority labels: **P0 = must work for live pilot**, **P1 = desirable within four
 3. Customer selects water category **only among verified, available options** and quantity.
 4. System checks pricing and capacity and displays the **final price**, source/category description, supported-use notice, and available windows.
 5. Customer enters a verified phone/contact method and accepts the price and delivery terms.
-6. System creates a pending order reference; order becomes confirmed only after dispatcher/source/capacity validation and any required payment condition.
-7. Dispatcher assigns suitable operator, who accepts.
+6. System creates an order reference and automatically confirms an eligible order only after phone, source, capacity, accepted window and payment conditions pass. Exceptions remain awaiting dispatcher confirmation; missing operating-hour/window rules block automation.
+7. System offers eligible orders to a suitable operator, who accepts. Declines and timed-out system offers retry within a configured limit, then escalate to staff. Manual intervention persists until staff resolve the order; a busy or held driver cannot receive another live job.
 8. Operator records pickup and progress; customer can view status.
 9. Operator handles unloading/transfer; customer confirms quantity and delivery or disputes it.
 10. Dispatcher reconciles payment and actual costs; optional feedback is collected.
@@ -229,3 +229,9 @@ These must be settled through team decisions and field evidence, not invented as
 - **3 (vehicle limits):** administrators configure vehicles and verified payloads; at most two trips per vehicle per order; larger orders need a larger vehicle or a manual quote (FR-013).
 - **4 (quote strategy):** server-computed quotes from supplier water cost, base delivery fee, OSRM road-distance charge, additional-trip charges, handling and a fixed margin or a percentage of water + delivery + handling, rounded up to whole naira, with delivery-zone rates as the fallback and a manual quote for what no plan fits (FR-022).
 - **Still open:** 7 (minimum contribution policy and discounts) and 8 (whether a subscription preference is realistic); and, in SRS §12, the narrow open points listed there, including when the delivery code is activated (#67).
+
+**Update, 12 November 2026 (#411, PR #416):** automatic confirmation, offers,
+expiry, retries and escalation are approved target behavior under the agreed
+dispatch contract. Dispatcher control and safe manual fallbacks remain. This
+is a requirements amendment, not an implementation or deployment claim;
+#407/#408/#410, window/operating-hours agreement and G2 designs remain gates.

@@ -17,7 +17,7 @@ separately (G3, PR #91). The
 [Order confirmation endpoints](#order-confirmation-endpoints) were agreed
 separately (G3, PR #111); they add row 26. The
 [Automatic dispatch and reassignment](#automatic-dispatch-and-reassignment-411)
-section is **proposed, not agreed** (#411).
+section is **agreed, not implemented** (#411; G3 review on 2026-11-12).
 
 This document is the single source for order statuses after creation and
 for every allowed transition. It replaces the draft "Transitions" table in
@@ -2228,12 +2228,14 @@ charges.
 
 ## Automatic dispatch and reassignment (#411)
 
-Status: **proposed** (not agreed). Proposed on 2026-11-12 by @Cloudcrackamara
+Status: **agreed** (G3), reviewed on 2026-11-12 by @nnamdi-security
+(+ Codex), who is not the original author, under the owner's instruction to
+answer the questions and merge PR #416. Originally proposed by @Cloudcrackamara
 (+ Claude Code) for [#411](https://github.com/mmiri-oma/mmirioma/issues/411)
 (DSP-02), part of the automated ordering, pricing, mapping and dispatch plan
-the owner approved on 2026-11-05. Nothing here is built, and nothing here may
-be built until a reviewer who is not the author sets this section to
-**agreed** (G3).
+the owner approved on 2026-11-05. Nothing here is built. This agreement does
+not close #411 or its dependencies. The G2 designs and the cross-feature
+window/operating-hours contract in #408 remain prerequisites to implementation.
 
 Requirements: FR-013, FR-031, FR-032, FR-033, FR-050, BR-03, BR-05, BR-10,
 NFR-004 · Acceptance tests: T-03, T-04, T-07.
@@ -2246,10 +2248,9 @@ location and its freshness
 ([#410](https://github.com/mmiri-oma/mmirioma/issues/410)). Where a rule needs
 that data, this section says so and does not define it.
 
-It also needs an SRS and PRD amendment (section 2.1, FR-031, FR-032, FR-033
-rows 4, 7 and 8, section 8 "Driver rejects job", PRD lines 51 and 129), which
-today describe a dispatcher who approves and assigns every order. That text is
-written with the agreement of this section, not here.
+The SRS and PRD dispatch amendments accompany this agreement. The future
+implementation must update the transition table and tests for rows 4, 7, 8
+and 10; existing runtime behavior remains unchanged by this documentation PR.
 
 ### What does not change
 
@@ -2263,7 +2264,7 @@ written with the agreement of this section, not here.
   awaiting administrator review, its assignment stays `accepted`, so the
   driver gets no other order until the hold is resolved. Confirmed by
   @nnamdi-security on
-  [#411](https://github.com/mmiri-oma/mmirioma/issues/411#issuecomment-6827846937),
+  [#411](https://github.com/mmiri-oma/mmirioma/issues/411#issuecomment-6827953477),
   2026-11-12, who also chose this live-assignment rule over deactivating the
   driver's account.
 - **No new order status.** "Awaiting assignment" is wording for a `confirmed`
@@ -2276,12 +2277,12 @@ written with the agreement of this section, not here.
 
 ### Changes to the transition table
 
-| # | Today | Proposed |
+| # | Today | Agreed target (not implemented) |
 | --- | --- | --- |
-| 4 | `quote_requested` → `confirmed`, customer, planned with quotes | Built here for pay on delivery: an order placed with a valid quote and a verified phone is `confirmed` in the same transaction as it is created, with no staff action. The frozen price snapshot is written and the FR-050 confirmation SMS is sent, as a dispatcher's confirmation does today. An unverified phone is still refused (FR-003). The window condition is [decision D5](#decisions-needed-before-agreement) |
-| 7 | `awaiting_confirmation` → `confirmed`, admin | Unchanged, and now the path for exception orders only (manual quote, a check that needs a person). Whether the system also makes this change when an order waited only for opening hours is [decision D5](#decisions-needed-before-agreement) |
+| 4 | `quote_requested` → `confirmed`, customer, planned with quotes | System actor for pay on delivery when D5 prerequisites pass: an order placed with a valid quote and a verified phone is `confirmed` in the same transaction as it is created, with no staff action. The frozen price snapshot is written in the transaction; the FR-050 confirmation SMS is attempted after commit, with failure recorded and no rollback of confirmation. An unverified phone is still refused (FR-003). The window condition is [decision D5](#decisions-needed-before-agreement) |
+| 7 | `awaiting_confirmation` → `confirmed`, admin | Admin for exceptions; system may confirm when waiting only for opening hours after D5 revalidation. See [decision D5](#decisions-needed-before-agreement) |
 | 8 | `confirmed` → `assigned`, admin | Actor **admin or system**. The system offers an order only when it is [eligible for dispatch](#eligibility-for-dispatch) and the driver passes every [eligibility](#driver-eligibility-proposed) check |
-| 10 | `assigned` → `confirmed`; the system part reserved, never used | The system part is built: an unanswered system offer expires, with reason `assignment_expired`, and the assignment becomes `expired` |
+| 10 | `assigned` → `confirmed`; the system part reserved, never used | To implement: an unanswered system offer expires, with reason `assignment_expired`, and the assignment becomes `expired` |
 
 Every change the system makes is an `order_events` row with a null actor
 (shown as the system), and an audit entry, like any other transition
@@ -2301,12 +2302,15 @@ payment code calls it instead of repeating the rule.
 An order is also not offered automatically while its selected source is
 suspended or no longer eligible (FR-012, BR-10, T-04;
 [decision D8](#decisions-needed-before-agreement)), or after it has been
-[escalated](#offers-retry-and-escalation).
+[escalated](#offers-retry-and-escalation), or while `dispatch.manual_only` is
+true. Operating-hours and window prerequisites follow D5 below. Source
+eligibility is rechecked for manual assignment too; a manual override never
+bypasses source safety.
 
 ### Driver eligibility (proposed)
 
 The table in [Assignment statuses](#assignment-statuses-built-in-s1-07) gains
-two reasons and changes one. The checks apply to a dispatcher's assign and to
+three reasons and changes one. The checks apply to a dispatcher's assign and to
 an automatic offer alike; `reasons` keeps listing every problem at once, in a
 fixed order.
 
@@ -2314,7 +2318,8 @@ fixed order.
 | --- | --- | --- |
 | `outside_service_zone` | **New** | The order has a service zone and the driver does not serve it (`driver_service_zones`; FR-031 "service area") |
 | `transfer_method_unsupported` | **New** | The order is a tanker order and the driver's `transfer_methods`, set by an administrator at approval, do not include the order's tank type (`ground` or `overhead`; FR-013, FR-031 "handling") |
-| `over_payload` | **Changed**, if [decision D4](#decisions-needed-before-agreement) is taken as recommended | The order cannot be carried by this driver's vehicle within the trips the customer was quoted: each load is within the verified safe payload (BR-03), and the trips needed (quantity divided by payload, rounded up; FR-013) are at most the quoted trips and never more than two. Today the check refuses any order above one load, so an order quoted for two trips can be priced but never assigned |
+| `delivery_type_mismatch` | **New** | The driver's approved delivery type does not match the order (`keke` or `tanker`); an absent type is not eligible for automatic offers and must be verified before manual assignment |
+| `over_payload` | **Changed**, under [decision D4](#decisions-needed-before-agreement) | The order cannot be carried by this driver's vehicle within the trips the customer was quoted: each load is within the verified safe payload (BR-03), and the trips needed (quantity divided by payload, rounded up; FR-013) are at most the quoted trips and never more than two. Today the check refuses any order above one load, so an order quoted for two trips can be priced but never assigned |
 
 The sentence "Service area and handling capability (FR-031) are not checked
 yet" under that table is removed when this section is built.
@@ -2323,7 +2328,7 @@ yet" under that table is removed when this section is built.
 parses `reasons` with a closed `z.enum`, so one unknown reason makes the whole
 driver list fail as `invalid_response`
 (`docs/log/2026-10-26-new-eligibility-reason-breaks-the-admin-dispatch-client.md`).
-The two new reasons, their labels and a test that a list carrying them parses
+The three new reasons, their labels and a test that a list carrying them parses
 ship in the same pull request as the backend change.
 
 Automatic offers add checks that a dispatcher's assign does not have, because
@@ -2336,6 +2341,10 @@ a dispatcher can see what the system cannot:
 These exclude a driver from ranking. They are not `reasons`, and a dispatcher
 may still assign that driver by hand.
 
+An order without an active service zone is never offered automatically.
+For a legacy order with no zone, manual assignment may proceed without the
+zone-membership check only; every other safety check still applies.
+
 ### Ranking
 
 The system offers the order to the eligible driver nearest the order's
@@ -2345,14 +2354,14 @@ is offered an order; it never changes a price (FR-022).
 
 ### Offers, retry and escalation
 
-| Rule | Proposal |
+| Rule | Agreed behavior |
 | --- | --- |
 | Timeout | A system offer expires after the offer timeout, by default **5 minutes**. A dispatcher's offer never expires, as today |
 | Next driver | After a decline or a timeout the order returns to `confirmed` (row 10) and is offered to the next eligible driver. A driver is never offered the same order twice by the system |
 | Attempt limit | After the attempt limit of failed attempts, by default **3**, the system stops offering the order and escalates it |
 | Failed attempt | A system offer that the driver declined or that expired. A dispatcher's withdraw, a cancellation and "no eligible driver" are not failed attempts |
 | No eligible driver | The order stays `confirmed` and is tried again on the next tick. Nothing is recorded as an attempt, and nothing says a driver was found |
-| Escalation | The order keeps status `confirmed`, records when it was escalated, and each active administrator receives **one** message. No further automatic offer is made for it |
+| Escalation | For offer exhaustion the order stays `confirmed`, records when it was escalated and becomes manual-only. Each active administrator receives **one** message, transactionally deduplicated per order/escalation/recipient. No further automatic offer is made for it |
 | Settings | The timeout and the attempt limit are settings. Their names and where they live are [decision D10](#decisions-needed-before-agreement) |
 | Late accept | An accept or decline that arrives after the offer expired is refused; the order is not moved ([open question 1](#open-questions-for-the-reviewers-411)) |
 
@@ -2367,35 +2376,43 @@ driver: the order row lock decides the order of events, and the two unique
 indexes refuse what is left. When an index refuses an offer, the tick moves to
 the next eligible driver.
 
-**Dispatcher override.** Assign and withdraw keep working on any order, at
-any point. A dispatcher's action always wins: the tick never withdraws or
-replaces a dispatcher's offer.
+**Dispatcher override.** Assign and withdraw retain their existing status,
+expected-status and safety checks; they cannot override a completed delivery
+or withdraw a driver already on the road through a pre-departure endpoint.
+A successful manual assign or withdrawal sets `dispatch.manual_only=true`
+in the same transaction. It remains true for the order's lifetime: no new
+driver, restart, decline or timer silently resumes automatic offers. Staff
+finish assignment manually; a resume-automation endpoint is outside #411.
+The tick never withdraws or replaces a dispatcher's offer.
 
-### Fields added (all additive)
+### Fields added and compatibility changes
 
 `AdminAssignment`:
 
 | Field | Rule |
 | --- | --- |
 | `offered_by` | Now **nullable**: `null` when the system made the offer. A client that assumes an object must handle `null` |
-| `offer_expires_at` | When a system offer expires (UTC), or `null` for a dispatcher's offer and for any assignment that is no longer `offered`. The client may show a countdown from it for a system offer only |
+| `offer_expires_at` | System offer deadline (UTC), retained on historical assignments for audit; `null` for a dispatcher's offer. Show a countdown only while that assignment is `offered` |
 | `attempt_number` | `1`, `2`, … for a system offer: its place among the order's system offers. `null` for a dispatcher's offer |
 
 `AdminOrderDetail` and each item of `GET /admin/orders`:
 
 | Field | Rule |
 | --- | --- |
+| `dispatch.manual_only` | Boolean; false initially, true after successful manual assign/withdraw or escalation; no automatic reset |
 | `dispatch.failed_attempts` | The number of failed attempts so far (integer, `0` or more) |
 | `dispatch.escalated_at` | When the system stopped offering the order (UTC), or `null` |
 
 ```json
-{ "dispatch": { "failed_attempts": 3, "escalated_at": "2026-11-12T10:20:00Z" } }
+{ "dispatch": { "failed_attempts": 3, "escalated_at": "2026-11-12T10:20:00Z", "manual_only": true } }
 ```
 
-The client words the three states from fields it already has: a `confirmed`
+The client words the states from the response fields: a `confirmed`
 order with no live assignment is "Awaiting assignment"; with
 `dispatch.escalated_at` set it is escalated; an `assigned` order shows its
-offer and, for a system offer, the attempt number.
+offer and, for a system offer, the attempt number. A manual-only confirmed
+order is labelled "Awaiting dispatcher assignment", with escalation taking
+precedence when present.
 
 The driver job object gains `offer_expires_at` (the same value as on
 `AdminAssignment`), so the driver's offer screen can show the time left.
@@ -2429,73 +2446,93 @@ Messages never contain a customer phone, an address or a delivery code (SRS
 | --- | --- | --- |
 | 409 | `offer_expired` | The driver accepts or declines an offer that has expired ([open question 1](#open-questions-for-the-reviewers-411)) |
 
-`driver_not_eligible` gains the two `details.reasons` values above. No other
+`driver_not_eligible` gains the three `details.reasons` values above. No other
 code changes.
 
 ### Data needed
 
-Reversible migrations, reviewed by a person; no existing row is rewritten.
+Migrations must be reviewed by a person. Preserve existing business values
+and history; the new manual-only column receives its default on old rows.
+Downgrade limitations are explicit below.
 
 - `assignments`: `offered_by` becomes nullable; new `offer_expires_at`
   (nullable) and `attempt_number` (nullable); a partial index on
   `offer_expires_at` for live offers, which the tick reads.
-- `orders`: new `dispatch_escalated_at` (nullable).
+- `orders`: new `dispatch_escalated_at` (nullable) and
+  `dispatch_manual_only` (non-null boolean, default false for existing rows).
 - `order_price_snapshots`: `entered_by` becomes nullable, and the customer
   agreement method gains a value for a quote the customer accepted in the
-  app, so the system can write the snapshot of row 4. Whether the window also
-  becomes nullable is [decision D5](#decisions-needed-before-agreement).
+  app (`accepted_in_app`), so the system can write the snapshot of row 4.
+  The snapshot window remains required; #408 must agree its semantics before
+  automatic confirmation is enabled. No nullable-window migration is approved
+  here.
+- `audit_logs.actor_id` becomes nullable for system actions. The audit service
+  must accept it and use an outer join on reads so system rows are not lost;
+  `AuditLogRead.actor` becomes nullable and clients label null as "System".
+  Update schemas, examples and frontend parsing together.
+
+New fields are additive, but making an existing actor nullable and adding
+closed-enum values require coordinated client changes. A downgrade must refuse
+while system-owned rows cannot satisfy the old non-null constraints; never
+delete audit or business history to make rollback pass.
 
 The source selected for an order, and the driver's location and its age, are
 defined by #407, #408 and #410.
 
 ### Decisions needed before agreement
 
-These come from #411. Each is open: the recommendation is the issue's, not a
-decision, and this section cannot be agreed until a reviewer records an answer
-for each.
+Resolved by @nnamdi-security (+ Codex) on 2026-11-12 during the owner-requested
+review of PR #416. The heading is retained for existing links.
 
-| # | Question | Recommendation |
-| --- | --- | --- |
-| D4 | **Trips and the assigned vehicle.** A quote may plan two trips, but assignment refuses any order above one load | Allow up to two trips with each load within the verified payload, and offer only drivers whose vehicle needs no more trips than were quoted, so the price stays right. Otherwise escalate |
-| D5 | **Window and operating hours.** Row 7 and the price snapshot require a delivery window. See #408 | An order placed outside operating hours waits until opening |
-| D7 | **Prepaid.** Paystack and bank transfer are not built | Build only the single eligibility function |
-| D8 | **Source lost after acceptance.** The selected source is suspended after a driver accepted | Select the next nearest source of the same type at the unchanged price, and escalate if there is none. Never raise the customer's price without their agreement (BR-05) |
-| D9 | **Distance for ranking.** FR-022 bans straight-line distance for pricing; it does not mention ranking | A PostGIS shortlist, then road distance for the top few, with the PostGIS order as the fallback, for ranking only |
-| D10 | **Settings.** Names, defaults and whether they are environment settings or stored values. See #408 | As #408 decides; defaults 5 minutes and 3 attempts |
+| # | Decision |
+| --- | --- |
+| D4 | Allow `ceil(litres / verified_payload)` trips, at most two, with no overloaded load. For quoted orders, do not exceed the frozen quoted trip count. For a manually priced order without a trip snapshot, allow at most two trips under the existing manual confirmation. No suitable driver means awaiting assignment, not an immediate failure; three actual failed offers cause escalation. Never change the accepted total automatically. |
+| D5 | Do not offer outside configured Africa/Lagos operating hours. The order waits until opening; if opening is the only outstanding condition, row 7 may be performed by the system after revalidating source, quote agreement, phone, payment and window. #408 must agree hours, overnight/day boundaries and the customer-accepted window/ETA before this path can be built. No opening hours, loading times or ETA values are invented here. Keep the snapshot window required; if a valid window is unavailable, use `awaiting_confirmation` for staff review, never a falsely confirmed delivery. Existing accepted quotes are not repriced just because opening occurs after quote expiry. |
+| D7 | Build only the shared eligibility function. It rejects unverified prepaid payments; add neither Paystack nor bank transfer in #411. |
+| D8 | Before pickup, revalidate and select the nearest eligible replacement of the same kind and category under #407/#408, preserving price, handling and trip constraints. Retain original quote/source history and record the replacement and notify the assigned driver. If none qualifies, or pickup already happened, stop progression and place the job under administrator review using the existing hold workflow; the driver remains held. Never silently replace collected water, resume a hold, or increase the price. New offers against an ineligible source are blocked. |
+| D9 | Use a bounded PostGIS shortlist, then road distance where reliable, with deterministic PostGIS-distance/driver-ID order as the fallback for ranking only. #408 owns the routing adapter/provider approval; no new provider is approved here. Revalidate freshness and eligibility under the transaction locks before offering. Straight-line distance never enters price or customer ETA. |
+| D10 | Environment settings through `get_settings()`, exposed read-only in `/admin/settings`: `DISPATCH_OFFER_TIMEOUT_SECONDS=300` and `DISPATCH_MAX_FAILED_ATTEMPTS=3`, both positive integers. Snapshot the deadline when making an offer; a configuration change does not alter existing deadlines. #408 owns hours and ETA settings. Tick cadence and shortlist bound must be documented and tested as bounded implementation settings; no unbounded provider fan-out. |
 
 ### Open questions for the reviewers (#411)
 
-Raised while writing this section; neither the SRS nor #411 answers them.
+Resolved in the same review; the heading is retained for existing links.
 
-1. **A late accept.** Today a driver who is not the offered driver gets 404
-   `order_not_found` (T-07). After an offer expires the driver no longer holds
-   it, so today's code would answer 404, which reads as "no such order" to a
-   driver who was looking at it a moment ago. Proposed: 409 `offer_expired`
-   for the driver whose own offer on that order expired, and 404 for everyone
-   else, so T-07 holds. Or keep 404 for both.
-2. **After a dispatcher withdraws.** Does the system offer the order again on
-   the next tick, or does it wait for the dispatcher? Offering again could
-   undo the dispatcher's intent; waiting needs a way to hand the order back to
-   the system. No recommendation.
-3. **After escalation.** What resumes automatic offers: nothing (dispatcher
-   only), a dispatcher's action, or a new driver becoming available? Proposed:
-   nothing; an escalated order is assigned by a dispatcher.
-4. **An order with no service zone.** `orders.service_zone_id` is nullable.
-   Proposed: `outside_service_zone` is not raised for such an order, for a
-   dispatcher's assign; whether the system may offer it at all is open.
-5. **Keke and tanker.** Orders and drivers both carry a delivery type (`keke`
-   or `tanker`), and nothing checks that they match. Is that a new
-   eligibility reason, or is the vehicle payload check enough? Not proposed
-   here.
-6. **A dispatcher's unanswered offer.** Proposed above: it never expires, as
-   today. Or should every offer expire?
+1. **Late accept/decline:** 409 `offer_expired` for the authenticated driver
+   whose own offer expired, including when the deadline has passed but the
+   tick has not processed it yet. At `now >= offer_expires_at`, refuse under
+   the order/assignment locks. Preserve 404 `order_not_found` for other
+   drivers, and never return customer details with the expired-offer error.
+   A newer live offer to that driver takes precedence over historical ones.
+2. **Dispatcher withdrawal:** persistent manual-only control as defined above;
+   do not offer again on the next tick. Manual assignment remains available.
+3. **Escalation:** dispatcher-only resolution; availability changes and
+   restarts do not clear escalation, reset attempts or restart offers.
+4. **No service zone:** never automatically offer. Manual assignment retains
+   the legacy no-zone behavior without bypassing other eligibility checks.
+5. **Keke/tanker:** require a matching approved delivery type for manual and
+   automatic assignment, with `delivery_type_mismatch`. Payload alone does
+   not establish vehicle suitability. Update closed frontend enums and labels
+   in the same implementation PR as all three new reasons.
+6. **Dispatcher offer expiry:** retain current behavior: no automatic expiry.
+   `offer_expires_at` is null and the system leaves the offer under dispatcher
+   control until acceptance, decline or explicit withdrawal/cancellation.
+
+### Required implementation verification
+
+In addition to #411's existing tests: exact-deadline races (including before
+expiry processing); another driver's expired offer returning 404; withdrawal
+and escalation surviving restart; no-zone and delivery-type cases; manual
+no-quote two-trip capacity; operating-hours boundaries under #408; source
+loss before and after pickup; historical audit reads with a null actor;
+notification deduplication; nullable actor/closed-enum frontend parsing; and
+migration downgrade refusal without deletion of system-owned history.
 
 ### Build issues
 
 After agreement, in [#411](https://github.com/mmiri-oma/mmirioma/issues/411):
 the G2 design for the admin states (awaiting assignment, offer attempts,
-escalated) and the driver's countdown; the SRS and PRD amendment; the
-migrations; the backend; the client changes. Example files in
+escalated/manual-only) and the driver's countdown; the dependent #408
+window contract; the migrations; the backend; the client changes. Example files in
 [examples/](examples/) and the tests that check them against the built schemas
 are added with the build.
 

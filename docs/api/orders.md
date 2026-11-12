@@ -354,7 +354,7 @@ happened.
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
-| 2026-11-12 | Proposed (#411): `AdminOrderRead` and `AdminOrderDetail` gain `dispatch: { failed_attempts, escalated_at }` (additive), and a pay-on-delivery order placed with a valid quote is `confirmed` at creation (row 4). Defined in [deliveries.md](deliveries.md#automatic-dispatch-and-reassignment-411) | Not yet |
+| 2026-11-12 | Agreed, not implemented (#411): `AdminOrderRead` and `AdminOrderDetail` gain `dispatch: { failed_attempts, escalated_at, manual_only }` (additive), and a pay-on-delivery order placed with a valid quote is `confirmed` at creation (row 4). Defined in [deliveries.md](deliveries.md#automatic-dispatch-and-reassignment-411) | @nnamdi-security (+ Codex), G3 review of PR #416, 2026-11-12 |
 | 2026-10-28 | **Agreed:** each item of `GET /admin/orders` gains `driver: { id, name } \| null`, the driver of the order's live assignment (`offered` or `accepted`; additive, list only). The detail is unchanged. Defined in [deliveries.md](deliveries.md#amendment-204-the-driver-on-the-admin-order-list) | @nnamdi-security, technical lead (G3, PR #205) |
 | 2026-10-28 | **Agreed:** an administrator can cancel because the customer asked: `customer_request` on `GET /admin/orders/{reference}/cancellation-outcome` and `POST /admin/orders/{reference}/transition` (additive; the amount is always 0 in the pilot, F5). Defined in [deliveries.md](deliveries.md#cancel-because-the-customer-asked-174) | @nnamdi-security, technical lead (G3, PR #203) |
 | 2026-10-28 | **Built:** `delivery_window`, `price` and `water_category` on `OrderRead` (#165, PR #187). The contract is unchanged | @nnamdi-security (approved PR #187) |
