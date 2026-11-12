@@ -84,7 +84,7 @@ D2. ONLINE CARD STATES (on r-home and t-home, under "You are online")
 
 D3. "CONFIRM YOUR LOCATION" MESSAGE
   The in-app notification "Confirm your location": "An order is waiting.
-  Open MmiriOma and confirm where you are to be offered it." Tapping it opens
+  Open MmiriOma and confirm where you are so you can be considered for it." Tapping it opens
   r-home or t-home. If they already agreed to share this session, it starts
   D1b; otherwise it shows D1a's explanation first. It never asks the phone
   directly, names no customer, address or order, and never promises an offer.

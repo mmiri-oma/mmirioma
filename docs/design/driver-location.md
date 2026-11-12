@@ -56,7 +56,9 @@ it** (line). The second sets the partner online, calls
 wording without asking the phone.
 
 After **Share location and go online**: the app goes online
-(`PUT /driver/availability`), then shows "Finding your location…" with
+(`PUT /driver/availability`), turns sharing on
+(`POST /driver/location/sharing`, which returns the grant every location
+update carries), then shows "Finding your location…" with
 **Cancel** while the phone's own prompt is up (15 seconds at most). Cancel
 leaves them online and calls `DELETE /driver/location` (D2c).
 
@@ -70,7 +72,10 @@ driver's consent for this session. It is withdrawn by **Go online without
 it**, **Cancel**, a refused phone prompt, **Turn off location sharing** (D2) or
 going offline. While it is withdrawn the app asks the phone for nothing,
 automatic refresh is off, and any answer from a position request already in
-flight is thrown away, not sent.
+flight is thrown away, not sent. The server enforces it too: a location update
+sent before the withdrawal is refused (409 `location_sharing_withdrawn`), so
+it can never bring sharing back. Consenting again means the explanation and
+**Share my location** again, which issues a new grant.
 
 ### D2. The online card
 
@@ -97,9 +102,8 @@ changes nothing until the point goes stale; then the card shows Out of date.
 ### D3. The message
 
 Notification kind `confirm_location`, title **Confirm your location**, body
-"An order is waiting. Open MmiriOma and confirm where you are to be offered
-it." It never names a customer, an address or an order, and confirming does
-not guarantee an offer. Only partners who are online and otherwise eligible for
+"An order is waiting. Open MmiriOma and confirm where you are so you can be
+considered for it." It never names a customer, an address or an order. Only partners who are online and otherwise eligible for
 the waiting order receive it.
 
 Tapping it opens the home screen. If consent for this session is already given,
@@ -114,6 +118,7 @@ with **Share my location** and **Not now**; the phone is asked only after
 | 409 `driver_offline` | Shows the card as Offline: they went offline elsewhere |
 | 403 `partner_not_approved` | Shows the Not approved card |
 | 422 on `location` | "This location is outside the area we deliver in." with **Try again** |
+| 409 `location_sharing_withdrawn` | Sharing was turned off (here or in another tab) since this update started: stop refreshing and show Not shared. **Try again** opens the explanation |
 | No connection | "Check your connection." with **Try again**; the partner stays online. The card says which step failed: going online, sending the location, or turning sharing off |
 
 ## Screen-to-endpoint table
@@ -121,7 +126,8 @@ with **Share my location** and **Not now**; the phone is asked only after
 | Screen | Element / action | Endpoint | Fields used |
 | --- | --- | --- | --- |
 | D1 | Go online | `PUT /driver/availability` | `is_available` |
-| D1, D2 | Share or confirm location | `PUT /driver/location` (amendment #410, proposed) | `location`, `accuracy_metres` |
+| D1, D3 | Share my location (consent) | `POST /driver/location/sharing` (amendment #410, proposed) | `grant` |
+| D1, D2 | Share or confirm location | `PUT /driver/location` (amendment #410, proposed) | `location`, `accuracy_metres`, `grant` |
 | D1, D2 | Go online without it, Cancel, refused, Turn off location sharing | `DELETE /driver/location` (amendment #410, proposed) | none |
 | D2 | Card state | `GET /driver/profile` | `location.state`, `confirmed_at`, `fresh_until`, `accuracy_metres` |
 | D3 | The message | `GET /driver/notifications` | `kind: confirm_location` (created by #411) |

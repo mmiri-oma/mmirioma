@@ -483,6 +483,42 @@ function decides it, with the current time passed in, so #411 and the profile
 answer the same way. Automatic offers (#411) need `fresh`; a dispatcher's
 manual assignment does not check location at all.
 
+### Sharing grants
+
+Sharing is switched on by the server, not assumed from a request. The driver
+profile stores `location_sharing_grant`, a whole number that starts at 0 and
+only goes up, and `location_sharing_on`, a boolean, default `false`.
+
+- Turning sharing **on** (`POST /driver/location/sharing`) adds 1 to the grant,
+  sets sharing on and returns the new grant.
+- Turning sharing **off** (`DELETE /driver/location`), and every clearing path
+  below, adds 1 to the grant, sets sharing off and deletes the point.
+- A location write must carry the grant it was given. It is stored only when
+  that grant equals the current one **and** sharing is on.
+
+Because every "off" bumps the grant, any request sent before it carries an old
+grant and is refused, however late it arrives. Sharing comes back only through
+a new `POST` after the explanation, which issues a new grant that no earlier
+request knows. All of this happens under the driver-profile lock below.
+
+### `POST /driver/location/sharing`
+
+Driver session and CSRF. No body. The driver has seen the explanation and
+agreed to share (design D1). Requires an active, approved, online driver:
+otherwise 403 `partner_not_approved` or 409 `driver_offline`, as
+`PUT /driver/location`.
+
+**200**
+
+```json
+{ "grant": 7 }
+```
+
+Calling it while sharing is already on still issues a new grant (and makes
+the previous one stale), so a second tab or a retried request cannot reuse an
+old grant. It stores no point; the app sends one next with
+`PUT /driver/location`.
+
 ### `PUT /driver/location`
 
 Driver session and CSRF. Stores the driver's current point, replacing any
@@ -491,11 +527,12 @@ earlier one.
 **Request** (example added with the build: `examples/driver-location-request.json`)
 
 ```json
-{ "location": { "latitude": 6.452713, "longitude": 7.510348 }, "accuracy_metres": 25 }
+{ "location": { "latitude": 6.452713, "longitude": 7.510348 }, "accuracy_metres": 25, "grant": 7 }
 ```
 
 | Field | Rule |
 | --- | --- |
+| `grant` | Required. The whole number `POST /driver/location/sharing` returned. A write with any other grant, or while sharing is off, is 409 `location_sharing_withdrawn` and stores nothing |
 | `location.latitude`, `location.longitude` | As the [location object](delivery-location.md#location-object): WGS 84 degrees, stored to 6 decimal places, and inside the [delivery bounds](delivery-location.md#delivery-bounds). There is no `source` field: the point always comes from the phone |
 | `accuracy_metres` | Required. The radius the phone reports, in metres: a number greater than 0 and at most 100,000. It is stored as a whole metre rounded **up** (`ceil`), so any accepted value stores as at least 1 (0.4 m stores as 1, 25.0 as 25, 25.1 as 26). It is shown to the driver and kept for #411; it does not make a point fresh or stale ([decision 410-4](#open-questions-410)) |
 
@@ -508,35 +545,43 @@ earlier one.
 | 403 | `csrf_failed` | Missing or wrong CSRF token |
 | 403 | `partner_not_approved` | The partner is `pending` or `suspended` |
 | 409 | `driver_offline` | `is_available` is `false`: go online first. Nothing is stored |
+| 409 | `location_sharing_withdrawn` | Sharing is off, or `grant` is not the current grant (sharing was turned off or granted again since). Nothing is stored. The app stops refreshing and shows Not shared; it asks again only through the explanation |
 | 422 | `validation_error` | A field rule above. A point outside the bounds is reported on `["body", "location"]` with the message "This location is outside the area we deliver in." |
 
 Sending a point again within the same second is not an error; the later one
 wins. There is no endpoint to read another driver's point.
 
-**Atomic with every clearing path.** The eligibility check (active account,
-`approved`, `is_available`) and the write happen in one transaction that first
-locks the driver's profile row (`SELECT ... FOR UPDATE`). Every path that
-clears the point (below) takes the same lock before it changes the profile and
-deletes the point. So a location request and an "offline" can never interleave:
-either the request runs first and its point is then deleted, or the offline
-runs first and the request sees `is_available = false` and answers 409
-`driver_offline` without writing. A point can never survive, or be restored
-after, a clearing path.
+**Atomic, and ordered by the lock.** The checks (active account, `approved`,
+`is_available`, sharing on, grant current) and the write happen in one
+transaction that first locks the driver's profile row (`SELECT ... FOR
+UPDATE`). `POST /driver/location/sharing` and every clearing path (below) take
+the same lock. So for any write W and any "off" D (withdrawal, offline,
+suspension, deactivation, anonymizing):
+
+- **W locks first:** W stores its point; D then deletes it and bumps the grant.
+- **D locks first:** D bumps the grant; W then carries an old grant and is
+  refused with 409, storing nothing.
+
+Either way, after D commits no point exists, and none can be stored until a
+later `POST /driver/location/sharing` issues a new grant. Going offline and
+online again does not turn sharing back on.
 
 ### `DELETE /driver/location`
 
-Driver session and CSRF. Withdraws sharing: deletes the driver's point now,
-under the same lock, and leaves them online. **204**, also when there was no
-point. The app calls it when the driver refuses or cancels sharing, or turns
-it off, so the server stops treating an earlier point as fresh at once
-(otherwise a point confirmed four minutes ago would stay eligible for one more
-minute). Errors: 401 `not_authenticated`, 403 `forbidden`, 403 `csrf_failed`.
+Driver session and CSRF. Withdraws sharing: under the same lock it sets
+sharing off, adds 1 to the grant and deletes the driver's point, and leaves
+them online. **204**, also when sharing was already off. The app calls it when
+the driver refuses or cancels sharing, or turns it off, so the server stops
+treating an earlier point as fresh at once, and every location request already
+sent is refused. Errors: 401 `not_authenticated`, 403 `forbidden`, 403
+`csrf_failed`.
 
 ### `PartnerProfileRead` gains `location`
 
 ```json
 "location": {
   "state": "fresh",
+  "sharing": true,
   "confirmed_at": "2026-11-12T09:12:00Z",
   "fresh_until": "2026-11-12T09:17:00Z",
   "accuracy_metres": 25
@@ -549,12 +594,14 @@ minute). Errors: 401 `not_authenticated`, 403 `forbidden`, 403 `csrf_failed`.
 | `confirmed_at` | When the point was received (UTC), or `null` with `none` |
 | `fresh_until` | `confirmed_at` plus the setting, or `null` with `none`. The app refreshes before this time while it is open and visible (D6) |
 | `accuracy_metres` | The stored accuracy, or `null` with `none` |
+| `sharing` | `true` while sharing is on. The grant itself is not returned here; the app keeps the one `POST /driver/location/sharing` gave it |
 
 No latitude or longitude is returned, here or anywhere else.
 
 ### Clearing the point
 
-The point is deleted, not kept, whenever the driver stops being available:
+Each of these sets sharing off, adds 1 to the grant and deletes the point,
+whenever the driver stops being available or withdraws:
 
 - `PUT /driver/availability` with `false`, in the same transaction;
 - an admin moving the partner to `pending` or `suspended`, which already sets
@@ -564,8 +611,8 @@ The point is deleted, not kept, whenever the driver stops being available:
 - `DELETE /driver/location` (withdrawn sharing).
 
 Each path takes the driver-profile lock described under
-[`PUT /driver/location`](#put-driverlocation) before it deletes, in the same
-transaction as the change that triggers it.
+[`PUT /driver/location`](#put-driverlocation) first, in the same transaction
+as the change that triggers it.
 
 A point is never written to a log, an audit row or a notification. No history
 table exists, so an overwritten or cleared point is gone.
@@ -573,9 +620,9 @@ table exists, so an overwritten or cleared point is gone.
 ### The "confirm your location" message (D6)
 
 A new notification `kind`, `confirm_location`: title "Confirm your location",
-body "An order is waiting. Open MmiriOma and confirm where you are to be
-offered it." It names no customer, address or order reference, and it does not
-promise an offer: confirming makes the driver eligible to be considered, not
+body "An order is waiting. Open MmiriOma and confirm where you are so you
+can be considered for it." It names no customer, address or order reference,
+and it does not promise an offer: confirming makes the driver eligible to be considered, not
 chosen. It is created by the #411 dispatch tick when an order is eligible for
 automatic dispatch and no online, otherwise-eligible driver is fresh. It goes
 only to drivers who are **online and pass every #411 eligibility check for that
@@ -597,7 +644,10 @@ the sign-up change waits for its answer.
 One reversible migration: a `driver_locations` table, one row per driver user
 (`driver_id` primary key and foreign key to `users`, `ON DELETE CASCADE`),
 `location` `geography(POINT, 4326)` not null with a GiST index,
-`accuracy_metres` integer `> 0`, `confirmed_at` timestamptz. No history table.
+`accuracy_metres` integer `> 0`, `confirmed_at` timestamptz; and on the driver
+profile `location_sharing_on` boolean not null default `false` and
+`location_sharing_grant` bigint not null default `0`, `>= 0`. Existing drivers
+start with sharing off. No history table.
 
 ### Privacy
 
@@ -628,9 +678,12 @@ Validation and the bounds 422; roles, CSRF and `partner_not_approved`; 409
 `driver_offline`; the freshness boundary at exactly the threshold with an
 injected clock; accuracy at the sub-metre boundary (0.4 stores as 1, and 0 and
 100,000.1 are refused); overwrite, not insert; clearing on each path above,
-`DELETE /driver/location` included; both interleavings of a location write with
-going offline, on the database (offline first: 409 and nothing stored; write
-first: the point is deleted by the offline); the privacy tool's count; no
+`DELETE /driver/location` included; on the database, while the driver stays
+online, both orders of a write against `DELETE` (delete first: 409
+`location_sharing_withdrawn` and no point; write first: the delete removes it),
+and the same two orders against going offline; a write with an old grant after
+offline then online again is refused until a new `POST`; a second `POST`
+makes the first grant stale; `POST` while offline or not approved; the privacy tool's count; no
 coordinates in any response, log or audit row; migration upgrade, downgrade,
 upgrade and `alembic check`.
 
@@ -638,6 +691,7 @@ upgrade and `alembic check`.
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-12 | Second review (PR #423): sharing grants. `POST /driver/location/sharing` issues a grant; `PUT` must carry the current grant or gets 409 `location_sharing_withdrawn`; `DELETE` and every clearing path bump it under the profile lock, so no request sent before a withdrawal can restore a point; `location.sharing` on the profile; two profile columns; message wording made conditional | not yet agreed |
 | 2026-11-12 | Revised after review (PR #423): `DELETE /driver/location` for withdrawn sharing; location writes and every clearing path serialized on the driver-profile lock; accuracy stored rounded up so it is never zero; `confirm_location` limited to otherwise-eligible drivers and promises no offer; 410-3 deferred to its own amendment; 410-4 proposed for decision | not yet agreed |
 | 2026-11-12 | Proposed (#410): `PUT /driver/location`, the freshness rule and setting, `location` on the profile with no coordinates, clearing rules, the `confirm_location` message kind, the `driver_locations` table; D6 recorded; Keke capacity and accuracy left as open questions 410-3 and 410-4 ([amendment](#amendment-410-driver-location-for-automatic-dispatch)) | not yet agreed |
 | 2026-10-27 | Mapping only, the contract is unchanged: `PartnerProfile.email` and `preferences.offers_and_news` left the design type, so their two rows are gone (#85) | @chidimmamogbo (decision on #85) |
