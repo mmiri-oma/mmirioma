@@ -15,7 +15,9 @@ was agreed separately (G3, PR #59). The
 [Admin hold review endpoints](#admin-hold-review-endpoints) were agreed
 separately (G3, PR #91). The
 [Order confirmation endpoints](#order-confirmation-endpoints) were agreed
-separately (G3, PR #111); they add row 26.
+separately (G3, PR #111); they add row 26. The
+[Automatic dispatch and reassignment](#automatic-dispatch-and-reassignment-411)
+section is **proposed, not agreed** (#411).
 
 This document is the single source for order statuses after creation and
 for every allowed transition. It replaces the draft "Transitions" table in
@@ -2223,6 +2225,279 @@ charges.
    default, Cancel order off until one is chosen. Wording is approved with the
    design, not here. The adapter, the dialog and the history label ("Customer
    asked to cancel") follow.
+
+## Automatic dispatch and reassignment (#411)
+
+Status: **proposed** (not agreed). Proposed on 2026-11-12 by @Cloudcrackamara
+(+ Claude Code) for [#411](https://github.com/mmiri-oma/mmirioma/issues/411)
+(DSP-02), part of the automated ordering, pricing, mapping and dispatch plan
+the owner approved on 2026-11-05. Nothing here is built, and nothing here may
+be built until a reviewer who is not the author sets this section to
+**agreed** (G3).
+
+Requirements: FR-013, FR-031, FR-032, FR-033, FR-050, BR-03, BR-05, BR-10,
+NFR-004 · Acceptance tests: T-03, T-04, T-07.
+
+This section depends on three open issues, so parts of it name data that does
+not exist yet: the selected water source on the order
+([#407](https://github.com/mmiri-oma/mmirioma/issues/407),
+[#408](https://github.com/mmiri-oma/mmirioma/issues/408)) and the driver's
+location and its freshness
+([#410](https://github.com/mmiri-oma/mmirioma/issues/410)). Where a rule needs
+that data, this section says so and does not define it.
+
+It also needs an SRS and PRD amendment (section 2.1, FR-031, FR-032, FR-033
+rows 4, 7 and 8, section 8 "Driver rejects job", PRD lines 51 and 129), which
+today describe a dispatcher who approves and assigns every order. That text is
+written with the agreement of this section, not here.
+
+### What does not change
+
+- **One live job per driver.** A driver who holds an `offered` or `accepted`
+  assignment is never offered another order, by a dispatcher or by the system
+  (reason `busy`, and the unique index `uq_assignments_live_driver` behind
+  it). The driver is held from the offer until the job ends: delivered with
+  the delivery code or approved alternative proof, failed, declined, expired,
+  withdrawn or cancelled.
+- **A delivery hold keeps the driver held.** While an order is on hold
+  awaiting administrator review, its assignment stays `accepted`, so the
+  driver gets no other order until the hold is resolved. Confirmed by
+  @nnamdi-security on
+  [#411](https://github.com/mmiri-oma/mmirioma/issues/411#issuecomment-6827846937),
+  2026-11-12, who also chose this live-assignment rule over deactivating the
+  driver's account.
+- **No new order status.** "Awaiting assignment" is wording for a `confirmed`
+  order with no live assignment; it is not a status.
+- **FR-032.** Nothing says a driver accepted before they did, and the customer
+  is told nothing about a driver before the driver accepts.
+- Rows 9 and 11 to 26, the assignment statuses, the driver's accept and
+  decline endpoints, and the dispatcher's assign and withdraw endpoints keep
+  their paths, request bodies and existing responses.
+
+### Changes to the transition table
+
+| # | Today | Proposed |
+| --- | --- | --- |
+| 4 | `quote_requested` → `confirmed`, customer, planned with quotes | Built here for pay on delivery: an order placed with a valid quote and a verified phone is `confirmed` in the same transaction as it is created, with no staff action. The frozen price snapshot is written and the FR-050 confirmation SMS is sent, as a dispatcher's confirmation does today. An unverified phone is still refused (FR-003). The window condition is [decision D5](#decisions-needed-before-agreement) |
+| 7 | `awaiting_confirmation` → `confirmed`, admin | Unchanged, and now the path for exception orders only (manual quote, a check that needs a person). Whether the system also makes this change when an order waited only for opening hours is [decision D5](#decisions-needed-before-agreement) |
+| 8 | `confirmed` → `assigned`, admin | Actor **admin or system**. The system offers an order only when it is [eligible for dispatch](#eligibility-for-dispatch) and the driver passes every [eligibility](#driver-eligibility-proposed) check |
+| 10 | `assigned` → `confirmed`; the system part reserved, never used | The system part is built: an unanswered system offer expires, with reason `assignment_expired`, and the assignment becomes `expired` |
+
+Every change the system makes is an `order_events` row with a null actor
+(shown as the system), and an audit entry, like any other transition
+(NFR-004).
+
+### Eligibility for dispatch
+
+One server function decides whether a `confirmed` order may be offered
+automatically. It is the only place that answers the question, so the future
+payment code calls it instead of repeating the rule.
+
+| Payment | Eligible |
+| --- | --- |
+| Pay on delivery | As soon as the order is `confirmed` |
+| Prepaid (Paystack, bank transfer) | Only after the payment is verified (FR-041). Prepaid does not exist yet; this section builds the function and nothing else of it ([decision D7](#decisions-needed-before-agreement)) |
+
+An order is also not offered automatically while its selected source is
+suspended or no longer eligible (FR-012, BR-10, T-04;
+[decision D8](#decisions-needed-before-agreement)), or after it has been
+[escalated](#offers-retry-and-escalation).
+
+### Driver eligibility (proposed)
+
+The table in [Assignment statuses](#assignment-statuses-built-in-s1-07) gains
+two reasons and changes one. The checks apply to a dispatcher's assign and to
+an automatic offer alike; `reasons` keeps listing every problem at once, in a
+fixed order.
+
+| Reason | Change | Meaning |
+| --- | --- | --- |
+| `outside_service_zone` | **New** | The order has a service zone and the driver does not serve it (`driver_service_zones`; FR-031 "service area") |
+| `transfer_method_unsupported` | **New** | The order is a tanker order and the driver's `transfer_methods`, set by an administrator at approval, do not include the order's tank type (`ground` or `overhead`; FR-013, FR-031 "handling") |
+| `over_payload` | **Changed**, if [decision D4](#decisions-needed-before-agreement) is taken as recommended | The order cannot be carried by this driver's vehicle within the trips the customer was quoted: each load is within the verified safe payload (BR-03), and the trips needed (quantity divided by payload, rounded up; FR-013) are at most the quoted trips and never more than two. Today the check refuses any order above one load, so an order quoted for two trips can be priced but never assigned |
+
+The sentence "Service area and handling capability (FR-031) are not checked
+yet" under that table is removed when this section is built.
+
+**New values break closed lists.** `frontend/src/lib/api/adminDispatch.ts`
+parses `reasons` with a closed `z.enum`, so one unknown reason makes the whole
+driver list fail as `invalid_response`
+(`docs/log/2026-10-26-new-eligibility-reason-breaks-the-admin-dispatch-client.md`).
+The two new reasons, their labels and a test that a list carrying them parses
+ship in the same pull request as the backend change.
+
+Automatic offers add checks that a dispatcher's assign does not have, because
+a dispatcher can see what the system cannot:
+
+- the driver's location is fresh
+  ([#410](https://github.com/mmiri-oma/mmirioma/issues/410) defines "fresh");
+- the driver has not already been offered this order.
+
+These exclude a driver from ranking. They are not `reasons`, and a dispatcher
+may still assign that driver by hand.
+
+### Ranking
+
+The system offers the order to the eligible driver nearest the order's
+selected water source. How distance is measured is
+[decision D9](#decisions-needed-before-agreement). Ranking decides only who
+is offered an order; it never changes a price (FR-022).
+
+### Offers, retry and escalation
+
+| Rule | Proposal |
+| --- | --- |
+| Timeout | A system offer expires after the offer timeout, by default **5 minutes**. A dispatcher's offer never expires, as today |
+| Next driver | After a decline or a timeout the order returns to `confirmed` (row 10) and is offered to the next eligible driver. A driver is never offered the same order twice by the system |
+| Attempt limit | After the attempt limit of failed attempts, by default **3**, the system stops offering the order and escalates it |
+| Failed attempt | A system offer that the driver declined or that expired. A dispatcher's withdraw, a cancellation and "no eligible driver" are not failed attempts |
+| No eligible driver | The order stays `confirmed` and is tried again on the next tick. Nothing is recorded as an attempt, and nothing says a driver was found |
+| Escalation | The order keeps status `confirmed`, records when it was escalated, and each active administrator receives **one** message. No further automatic offer is made for it |
+| Settings | The timeout and the attempt limit are settings. Their names and where they live are [decision D10](#decisions-needed-before-agreement) |
+| Late accept | An accept or decline that arrives after the offer expired is refused; the order is not moved ([open question 1](#open-questions-for-the-reviewers-411)) |
+
+**The periodic tick.** One asyncio task started in the FastAPI `lifespan`
+expires offers and makes new ones. Only one process runs a tick at a time
+(`pg_try_advisory_lock`), orders are taken with `FOR UPDATE SKIP LOCKED`, and
+every fact the tick needs is read from the database, so a restart in the
+middle of an offer loses nothing. No Celery, Redis or new container is added.
+A tick that races an accept, a decline, a dispatcher's assign or a
+cancellation never creates a second live offer and never overcommits a
+driver: the order row lock decides the order of events, and the two unique
+indexes refuse what is left. When an index refuses an offer, the tick moves to
+the next eligible driver.
+
+**Dispatcher override.** Assign and withdraw keep working on any order, at
+any point. A dispatcher's action always wins: the tick never withdraws or
+replaces a dispatcher's offer.
+
+### Fields added (all additive)
+
+`AdminAssignment`:
+
+| Field | Rule |
+| --- | --- |
+| `offered_by` | Now **nullable**: `null` when the system made the offer. A client that assumes an object must handle `null` |
+| `offer_expires_at` | When a system offer expires (UTC), or `null` for a dispatcher's offer and for any assignment that is no longer `offered`. The client may show a countdown from it for a system offer only |
+| `attempt_number` | `1`, `2`, … for a system offer: its place among the order's system offers. `null` for a dispatcher's offer |
+
+`AdminOrderDetail` and each item of `GET /admin/orders`:
+
+| Field | Rule |
+| --- | --- |
+| `dispatch.failed_attempts` | The number of failed attempts so far (integer, `0` or more) |
+| `dispatch.escalated_at` | When the system stopped offering the order (UTC), or `null` |
+
+```json
+{ "dispatch": { "failed_attempts": 3, "escalated_at": "2026-11-12T10:20:00Z" } }
+```
+
+The client words the three states from fields it already has: a `confirmed`
+order with no live assignment is "Awaiting assignment"; with
+`dispatch.escalated_at` set it is escalated; an `assigned` order shows its
+offer and, for a system offer, the attempt number.
+
+The driver job object gains `offer_expires_at` (the same value as on
+`AdminAssignment`), so the driver's offer screen can show the time left.
+
+`AdminOrderEvent.actor` is already `null` for the system, and
+`AdminOrderEvent.assignment` is already set on rows 8 and 10, so the history
+needs no new field. New client wording: `to_status` `assigned` with a null
+actor is "Offered to <driver> automatically"; reason `assignment_expired` is
+"Offer to <driver> expired".
+
+### Notifications
+
+Written in the same transaction as the change, through the notifications
+service, as today's `assigned` and `reassigned` messages are. Creating one
+never changes an order (FR-050). Push, sound and acknowledgement are
+[#412](https://github.com/mmiri-oma/mmirioma/issues/412).
+
+| To | `kind` | When |
+| --- | --- | --- |
+| Driver | `assigned` (existing) | The system offers the driver an order |
+| Driver | `offer_expired` (new) | The driver's offer expired |
+| Administrators | `assignment_expired` (existing kind, never created until now; [admin-operations.md](admin-operations.md#notifications-admin)) | A system offer expired |
+| Administrators | `dispatch_escalated` (new) | The order was escalated; one message per administrator, once per escalation |
+
+Messages never contain a customer phone, an address or a delivery code (SRS
+§5 `notifications`).
+
+### Error codes added by this section
+
+| Status | Code | When |
+| --- | --- | --- |
+| 409 | `offer_expired` | The driver accepts or declines an offer that has expired ([open question 1](#open-questions-for-the-reviewers-411)) |
+
+`driver_not_eligible` gains the two `details.reasons` values above. No other
+code changes.
+
+### Data needed
+
+Reversible migrations, reviewed by a person; no existing row is rewritten.
+
+- `assignments`: `offered_by` becomes nullable; new `offer_expires_at`
+  (nullable) and `attempt_number` (nullable); a partial index on
+  `offer_expires_at` for live offers, which the tick reads.
+- `orders`: new `dispatch_escalated_at` (nullable).
+- `order_price_snapshots`: `entered_by` becomes nullable, and the customer
+  agreement method gains a value for a quote the customer accepted in the
+  app, so the system can write the snapshot of row 4. Whether the window also
+  becomes nullable is [decision D5](#decisions-needed-before-agreement).
+
+The source selected for an order, and the driver's location and its age, are
+defined by #407, #408 and #410.
+
+### Decisions needed before agreement
+
+These come from #411. Each is open: the recommendation is the issue's, not a
+decision, and this section cannot be agreed until a reviewer records an answer
+for each.
+
+| # | Question | Recommendation |
+| --- | --- | --- |
+| D4 | **Trips and the assigned vehicle.** A quote may plan two trips, but assignment refuses any order above one load | Allow up to two trips with each load within the verified payload, and offer only drivers whose vehicle needs no more trips than were quoted, so the price stays right. Otherwise escalate |
+| D5 | **Window and operating hours.** Row 7 and the price snapshot require a delivery window. See #408 | An order placed outside operating hours waits until opening |
+| D7 | **Prepaid.** Paystack and bank transfer are not built | Build only the single eligibility function |
+| D8 | **Source lost after acceptance.** The selected source is suspended after a driver accepted | Select the next nearest source of the same type at the unchanged price, and escalate if there is none. Never raise the customer's price without their agreement (BR-05) |
+| D9 | **Distance for ranking.** FR-022 bans straight-line distance for pricing; it does not mention ranking | A PostGIS shortlist, then road distance for the top few, with the PostGIS order as the fallback, for ranking only |
+| D10 | **Settings.** Names, defaults and whether they are environment settings or stored values. See #408 | As #408 decides; defaults 5 minutes and 3 attempts |
+
+### Open questions for the reviewers (#411)
+
+Raised while writing this section; neither the SRS nor #411 answers them.
+
+1. **A late accept.** Today a driver who is not the offered driver gets 404
+   `order_not_found` (T-07). After an offer expires the driver no longer holds
+   it, so today's code would answer 404, which reads as "no such order" to a
+   driver who was looking at it a moment ago. Proposed: 409 `offer_expired`
+   for the driver whose own offer on that order expired, and 404 for everyone
+   else, so T-07 holds. Or keep 404 for both.
+2. **After a dispatcher withdraws.** Does the system offer the order again on
+   the next tick, or does it wait for the dispatcher? Offering again could
+   undo the dispatcher's intent; waiting needs a way to hand the order back to
+   the system. No recommendation.
+3. **After escalation.** What resumes automatic offers: nothing (dispatcher
+   only), a dispatcher's action, or a new driver becoming available? Proposed:
+   nothing; an escalated order is assigned by a dispatcher.
+4. **An order with no service zone.** `orders.service_zone_id` is nullable.
+   Proposed: `outside_service_zone` is not raised for such an order, for a
+   dispatcher's assign; whether the system may offer it at all is open.
+5. **Keke and tanker.** Orders and drivers both carry a delivery type (`keke`
+   or `tanker`), and nothing checks that they match. Is that a new
+   eligibility reason, or is the vehicle payload check enough? Not proposed
+   here.
+6. **A dispatcher's unanswered offer.** Proposed above: it never expires, as
+   today. Or should every offer expire?
+
+### Build issues
+
+After agreement, in [#411](https://github.com/mmiri-oma/mmirioma/issues/411):
+the G2 design for the admin states (awaiting assignment, offer attempts,
+escalated) and the driver's countdown; the SRS and PRD amendment; the
+migrations; the backend; the client changes. Example files in
+[examples/](examples/) and the tests that check them against the built schemas
+are added with the build.
 
 ## Planned endpoints (not agreed)
 
