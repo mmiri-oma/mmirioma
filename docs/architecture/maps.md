@@ -18,6 +18,8 @@ so this document asks for three decisions, each with 2 to 4 options:
 
 No code and no dependency is added by this issue.
 
+> **12 November 2026:** #408 proposes an external routing provider instead of R1. See [provider research](routing-provider-408.md) and the [contract proposal](../api/road-pricing-and-eta.md). This is not approval or activation of the replacement; the historical decision and conditions below remain recorded.
+
 ## 1. Summary of the recommendation
 
 | Decision | Recommended option | Monthly cost | Main risk |

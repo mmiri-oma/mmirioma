@@ -503,6 +503,8 @@ For #9 (adapters) and `docs/architecture/api-mapping.md`:
 | `QuoteRead` `manual_quote_required` | `Quote` `manual_quote_required`: `reason` text chosen by the client from the code |
 | `service_zone_id` (request), `service_zone` (`OrderRead`) | No design field yet. The customer's address step needs a zone picker with a "my area is not listed" choice (sent as no zone), a screen change that needs G2 in #9 |
 
+> **Follow-up proposal #408 (not agreed):** [source-selected pricing and ETA](road-pricing-and-eta.md) proposes replacing the longest/dearest road path and OSRM-only adapter. The existing #385 contract and runtime remain unchanged until that proposal passes G3.
+
 ## Amendment #385: road-distance pricing
 
 **Status: agreed** (G3) on 2026-11-03 by @nnamdi-security (technical lead and

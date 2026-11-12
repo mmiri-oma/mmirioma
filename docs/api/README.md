@@ -5,6 +5,7 @@ Shared contracts that backend and frontend build against. Agree changes here
 
 | Document | Covers | Implemented by |
 | --- | --- | --- |
+| [road-pricing-and-eta.md](road-pricing-and-eta.md) | **Proposed #408, not agreed:** nearest eligible source, provider-neutral routing, quantity-first requests and honest ETA/fallback semantics | Not implemented; #407 build and G3 required |
 | [auth.md](auth.md) | Roles, sessions, CSRF, register/login/logout/me, phone verification and change; change password (**agreed** 2026-10-26, #8) | S1-02; change password #56 |
 | [orders.md](orders.md) | Order statuses and transitions, order create/read, admin list/detail | S1-03 |
 | [deliveries.md](deliveries.md) | Order state machine and assignments; driver job endpoints (list incl. later-day jobs, detail, decline, pickup, new delivery code, incidents; part 2: accept, steps, arrival, contact attempts, unloading complete, proof, built in #75); admin dispatch endpoints (driver list, assign, withdraw, history; built in #61); order confirmation endpoints (confirmation options, confirm; agreed in PR #111, built in #112 and #113) | S1-06, S1-07, PR #50, PR #59, #61, #75, #113 |
