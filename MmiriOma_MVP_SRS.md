@@ -31,7 +31,7 @@ It **does not** authorize water production, assert water potability, define a co
 ### 2.1 Operating assumptions
 
 - Pilot serves configured active service zones (FR-010); no nationwide availability promise.
-- Manual dispatch is acceptable and preferred over premature routing automation.
+- Automatic confirmation and dispatch are approved as the target for eligible orders (#411, PR #416, 12 November 2026). Dispatcher control remains for exceptions and manual overrides; the implementation is gated on #407, #408, #410 and approved designs.
 - Customers may pay online through Paystack, by bank transfer verified by staff, or on delivery. Pay on delivery is available for **all** order amounts (FR-040).
 - Customers have an account identified by a Nigerian mobile number, which must be verified by SMS one-time code before their first order (FR-003). Abuse prevention is required for real delivery.
 - The app offers two water categories, **Potable Water** and **Utility Water** (FR-014), each only when backed by a supplier activated for that category after independent laboratory verification (FR-012) and a valid handling pathway. Water is never described as potable or drinkable without that evidence.
@@ -113,9 +113,9 @@ All rates are admin-configurable and MAY differ between Potable Water and Utilit
 
 **FR-030 (P0) Dispatcher queue.** Dispatcher SHALL list/filter orders by status, date and zone and inspect order detail including constraints, customer window, source eligibility, payment and costs.
 
-**FR-031 (P0) Assignment.** Dispatcher SHALL assign only active drivers meeting capacity, service area, availability and handling requirements. Assignment SHALL be logged with actor/time; concurrent assignments shall not overcommit a driver.
+**FR-031 (P0) Assignment.** The system or dispatcher SHALL assign only active, approved drivers meeting verified capacity, service area, availability, delivery type and handling requirements. Automatic offers additionally require fresh driver location, an eligible selected source, configured operating hours and no previous offer to that driver for the same order. A driver with an offered or accepted assignment SHALL NOT receive another live job; delivery holds keep the driver held. At most two trips are allowed and a quoted order SHALL NOT require more trips than quoted. Assignment SHALL be logged with actor/time (system actions have a null actor); concurrent assignments shall not overcommit a driver. A successful manual assign or withdrawal, or escalation, leaves the order under persistent dispatcher-only control. Details: docs/api/deliveries.md, "Automatic dispatch and reassignment (#411)" (agreed, not implemented).
 
-**FR-032 (P0) Driver acceptance.** Driver SHALL accept or decline assigned work. Admin SHALL be informed of rejection or timeout through dashboard state; system SHALL not claim acceptance beforehand.
+**FR-032 (P0) Driver acceptance.** Driver SHALL accept or decline assigned work. System offers expire after a configured timeout (default five minutes). Decline or expiry retries the next eligible driver; three failed system offers by default stop automation and escalate once to administrators. No eligible driver does not count as a failed offer. Dispatcher offers retain manual withdrawal without automatic expiry. Admin SHALL be informed of rejection or timeout through dashboard state; system SHALL not claim acceptance beforehand. A late response to the driver's own expired offer is 409 `offer_expired`; other drivers retain 404 without access to delivery details.
 
 **FR-033 (P0) State machine.** The order status tracks fulfilment only. Payment has its own status (FR-040); neither is inferred from the other (BR-12). Ordinary progression:
 
@@ -130,6 +130,8 @@ Statuses in brackets are used only when they apply. Alternatives: `cancelled`, `
 - `arrived`: the driver recorded arrival at the delivery location.
 - `unloading`: the driver started unloading. The delivery code is issued once the driver records that unloading is complete (FR-035).
 - `failed`: a delivery attempt failed (FR-038); the order may be rescheduled.
+
+For #411, a valid customer-accepted pay-on-delivery quote with a verified phone, eligible source and accepted delivery window MAY be confirmed automatically at creation (row 4, system actor). Row 7 also permits the system when waiting only for opening hours, after revalidation; otherwise exceptions remain with the dispatcher. #408 must agree operating-hour and window semantics before implementation; a missing valid window remains `awaiting_confirmation`. Row 8 permits admin or system offers; row 10 permits system expiry. These are approved target transitions, not a claim of implementation.
 
 State transitions SHALL be validated server-side by role and prior state; unauthorized/invalid transitions return a meaningful error. State names may be simplified in implementation but meanings must remain distinguishable.
 
@@ -382,7 +384,7 @@ A custom quantity MAY be sent in local gallons instead (for example `"quantity_l
 - **Zone becomes unavailable:** Pending requests can be declined; do not accept fresh orders.
 - **Approved source revoked:** New dispatch blocked; existing pending orders escalated for revalidation.
 - **Last slot booked concurrently:** One booking succeeds; other receives `slot_unavailable`.
-- **Driver rejects job:** Assignment returns to dispatcher; customer is not told driver accepted.
+- **Driver rejects job:** A system offer returns the order to `confirmed` for retry with the next eligible driver, subject to the attempt limit. Manual-only or escalated orders return to the dispatcher. The customer is not told a driver accepted.
 - **Delivery late:** Record reason; notify/propose revised window; do not falsify delivery time.
 - **Partial delivery:** Record delivered quantity and open dispute/adjustment; don't mark original quantity fully delivered.
 - **Customer unreachable:** Two recorded contact attempts and the full 10 minutes' wait, then a failed attempt; marking it earlier is refused; rescheduling allowed; a redelivery fee only under FR-038, disclosed and approved before rescheduling.
@@ -502,6 +504,14 @@ The team must resolve the open points before coding the features that depend on 
 **External dependencies** (not decisions): Termii Sender ID approval and DND route activation for production SMS (FR-003); water-source laboratory verification, regulatory checks and operational arrangements before the real-world delivery pilot (FR-012, #13); confirming WhatsApp is active on the support number (FR-055).
 
 ## 13. Change history
+
+**12 November 2026 (#411, PR #416; agreed by @nnamdi-security with Codex).**
+Approved automatic confirmation and dispatch as target behavior, including
+two-trip eligibility, one live assignment per driver, expiry/retry/escalation
+and persistent manual control. This documentation does not enable automation.
+#407/#408/#410, the window/operating-hours agreement and G2 designs remain
+implementation gates. Existing source-safety and customer-agreement rules
+remain in force; after pickup, source loss requires a hold and staff review.
 
 **19 October 2026 (v0.3 amendment, #67).** The delivery code is issued after unloading, once the driver records that unloading is complete, instead of at arrival (FR-033 `arrived` and `unloading`, FR-035, illustrative API, T-22, §12 item 14). The 10-minute validity is unchanged and, by the team's later decision the same day, **final** (no longer provisional).
 
