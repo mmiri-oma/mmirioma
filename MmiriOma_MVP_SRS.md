@@ -256,6 +256,7 @@ Minimum recommended entities and example fields (not an exhaustive physical sche
 | water_categories | id, label (Potable Water, Utility Water), supported-uses description, active, evidence reference |
 | vehicle_profiles | id, type, verified safe payload per trip, availability, handling capabilities |
 | drivers | id, user_id, vehicle_profile_id, active, availability |
+| driver_locations | driver_id, current point (PostGIS point, SRID 4326), accuracy in metres, confirmed_at; one row per online driver, overwritten on each confirmation and deleted when the driver goes offline; no history (FR-031, #410) |
 | delivery_slots | id, zone_id, date, start/end UTC, order/volume capacity, reserved capacity |
 | pricing_rules | id, version, zone, quantity band, source/category, base delivery fee, distance rate, additional-trip charge, handling rates, margin type (fixed/percentage) and value, zone fallback rates, effective dates |
 | quotes | id, customer/session, quantity, category, pricing snapshot JSON (water, base fee, distance charge, additional trips, handling, margin type and amount, rates, road distance and source, vehicle, trips, rounding adjustment), total, currency, expires_at |
@@ -504,6 +505,8 @@ The team must resolve the open points before coding the features that depend on 
 **External dependencies** (not decisions): Termii Sender ID approval and DND route activation for production SMS (FR-003); water-source laboratory verification, regulatory checks and operational arrangements before the real-world delivery pilot (FR-012, #13); confirming WhatsApp is active on the support number (FR-055).
 
 ## 13. Change history
+
+**12 November 2026 (no version change, #410, proposed with the partner contract amendment).** The §5 data model gains `driver_locations`: the one current point an online driver confirms, used to decide whether their location is fresh for automatic offers (FR-031). It is overwritten, deleted when the driver goes offline, never kept as history and never shown to customers, so it is not GPS telemetry (§1).
 
 **12 November 2026 (no version change, #407, agreed by @nnamdi-security (+ Codex) in PR #417; not implemented).** FR-011 and the §5 `water_sources` row gain the source fields automatic source selection needs: supplier contact, kind, pickup point, minimum and maximum litres per order, availability and allowed vehicle kinds. A source without a kind can no longer be activated or chosen. The cost per litre can be changed on its own and applies to new quotes only (FR-024, T-09). No stock levels.
 

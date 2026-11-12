@@ -1,7 +1,7 @@
 # Partner account contract
 
 Requirements: FR-001, FR-002, FR-003, FR-013, FR-031, FR-032, FR-050, NFR-002, NFR-004 ·
-Issues: #14, #47 · Built in: not yet
+Issues: #14, #47, #410 ([amendment](#amendment-410-driver-location-for-automatic-dispatch), proposed) · Built in: not yet
 
 **Status: agreed** (G3) on 2026-10-26 by @nnamdi-security, technical lead,
 sole approver under #36. Proposed by @Bonvee120 (+ Claude Code) in #14,
@@ -446,10 +446,167 @@ decided and when. Recommendations are proposals, not decisions.
    belong to the approval endpoint in #43. Applied in `auth.md` in the same
    pull request.
 
+## Amendment #410: driver location for automatic dispatch
+
+**Status: proposed** (G3) on 2026-11-12 for
+[#410](https://github.com/mmiri-oma/mmirioma/issues/410) by @DevBonavee
+(+ Claude Code). Not yet agreed. It needs one reviewer who is not the author.
+
+Requirements: FR-013, FR-031, FR-035 (consent before location), SRS §1 (no GPS
+telemetry), BR-03 · Design:
+[driver-location.md](../design/driver-location.md) (G2, proposed) · Used by:
+[#411](deliveries.md#automatic-dispatch-and-reassignment-411), which needs "the
+driver's location is fresh" before it makes an automatic offer.
+
+Automatic dispatch (#411) offers an order to the eligible driver nearest the
+order's water source, and only to drivers whose location is fresh (FR-031).
+Nothing records where a driver is today. This amendment lets an online,
+approved driver confirm one current point, keeps only that point, and decides
+when it is fresh. It is not tracking: there is no background GPS, no history,
+and no customer ever sees it.
+
+### Decisions
+
+| # | Question | Answer |
+| --- | --- | --- |
+| D6 | The point must be fresh within five minutes, but a browser cannot send a location while the app is closed | Chosen by the assignee on 2026-11-12, from the issue's recommendation, for a reviewer to agree here. While the app is open and visible and the driver is online, the app refreshes the point by itself before it goes stale. When an order is waiting for automatic dispatch and no otherwise-eligible driver is fresh, online drivers get a "confirm your location" message. A driver who closes the app goes stale and may miss automatic offers; a dispatcher can still assign them by hand (#411) |
+| 410-1 | Who may send a point, and when? | Only the signed-in driver, for themselves, while online (`is_available = true`) and approved. Never anyone else's, and never while offline |
+| 410-2 | Are coordinates returned to clients? | No. The driver's own profile returns only the state (`fresh`, `stale`, `none`), when it was confirmed, the accuracy and when it goes stale. Customers, and admin screens until a later amendment, get nothing |
+
+### The freshness rule
+
+A point is **fresh** while `now < confirmed_at + DRIVER_LOCATION_FRESHNESS_SECONDS`,
+and **stale** from that instant on: at exactly the threshold it is stale. The
+setting is read through `get_settings()`, a positive whole number of seconds,
+default `300` (five minutes, D6). A driver with no point is `none`. One server
+function decides it, with the current time passed in, so #411 and the profile
+answer the same way. Automatic offers (#411) need `fresh`; a dispatcher's
+manual assignment does not check location at all.
+
+### `PUT /driver/location`
+
+Driver session and CSRF. Stores the driver's current point, replacing any
+earlier one.
+
+**Request** (example added with the build: `examples/driver-location-request.json`)
+
+```json
+{ "location": { "latitude": 6.452713, "longitude": 7.510348 }, "accuracy_metres": 25 }
+```
+
+| Field | Rule |
+| --- | --- |
+| `location.latitude`, `location.longitude` | As the [location object](delivery-location.md#location-object): WGS 84 degrees, stored to 6 decimal places, and inside the [delivery bounds](delivery-location.md#delivery-bounds). There is no `source` field: the point always comes from the phone |
+| `accuracy_metres` | Required. The radius the phone reports, in metres, greater than 0 and at most 100,000; stored rounded to a whole metre. It is shown to the driver and kept for #411; it does not make a point fresh or stale ([open question 410-4](#open-questions-410)) |
+
+**200** `DriverLocationRead`, the same object as `location` on the profile below.
+
+| Status | `code` | When |
+| --- | --- | --- |
+| 401 | `not_authenticated` | No valid session |
+| 403 | `forbidden` | Not a driver |
+| 403 | `csrf_failed` | Missing or wrong CSRF token |
+| 403 | `partner_not_approved` | The partner is `pending` or `suspended` |
+| 409 | `driver_offline` | `is_available` is `false`: go online first. Nothing is stored |
+| 422 | `validation_error` | A field rule above. A point outside the bounds is reported on `["body", "location"]` with the message "This location is outside the area we deliver in." |
+
+Sending a point again within the same second is not an error; the later one
+wins. There is no endpoint to read another driver's point.
+
+### `PartnerProfileRead` gains `location`
+
+```json
+"location": {
+  "state": "fresh",
+  "confirmed_at": "2026-11-12T09:12:00Z",
+  "fresh_until": "2026-11-12T09:17:00Z",
+  "accuracy_metres": 25
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `state` | `fresh`, `stale` or `none`, by [the freshness rule](#the-freshness-rule) at the time of the response. Clients must not fail on a value they do not know |
+| `confirmed_at` | When the point was received (UTC), or `null` with `none` |
+| `fresh_until` | `confirmed_at` plus the setting, or `null` with `none`. The app refreshes before this time while it is open and visible (D6) |
+| `accuracy_metres` | The stored accuracy, or `null` with `none` |
+
+No latitude or longitude is returned, here or anywhere else.
+
+### Clearing the point
+
+The point is deleted, not kept, whenever the driver stops being available:
+
+- `PUT /driver/availability` with `false`, in the same transaction;
+- an admin moving the partner to `pending` or `suspended`, which already sets
+  `is_available = false` ([Approval status](#approval-status));
+- deactivating the account (FR-002);
+- `anonymize-partner --apply`, which also counts it in its audit row.
+
+A point is never written to a log, an audit row or a notification. No history
+table exists, so an overwritten or cleared point is gone.
+
+### The "confirm your location" message (D6)
+
+A new notification `kind`, `confirm_location`: title "Confirm your location",
+body "An order is waiting. Open MmiriOma and confirm where you are to be
+offered it." It names no customer, address or order reference. It is created by
+the #411 dispatch tick when an order is eligible for automatic dispatch and no
+online, otherwise-eligible driver is fresh, for each online driver who is not
+fresh; a driver has at most one unread `confirm_location` at a time. Until #411
+is built nothing creates it. Push and sound are #412.
+
+### Keke capacity (open question 410-3)
+
+Sign-up records a declared capacity for tankers only. The issue asks that a
+Keke rider declares one too. A declared figure is a claim and never replaces
+the admin-verified `safe_payload_litres` (BR-03); dispatch keeps using only the
+verified payload. The range is [open question 410-3](#open-questions-410), and
+the sign-up change waits for its answer.
+
+### Data
+
+One reversible migration: a `driver_locations` table, one row per driver user
+(`driver_id` primary key and foreign key to `users`, `ON DELETE CASCADE`),
+`location` `geography(POINT, 4326)` not null with a GiST index,
+`accuracy_metres` integer `> 0`, `confirmed_at` timestamptz. No history table.
+
+### Privacy
+
+The notice changes ship with the build, before any app sends a point, because
+today it says the only driver location recorded is the optional GPS at arrival
+and delivery. The build updates `PRIVACY_NOTICE.md` sections 2 (what is
+collected: the current location an online driver confirms), 5 (when it is
+asked for, that it is not tracking and never shown to customers) and 8 (kept
+only while the driver is online, deleted when they go offline), the `/privacy`
+page, and `docs/process/privacy-retention.md` ("Deletion: riders and
+drivers"). These edits are coordinated with the legal review in #392.
+
+### Out of scope
+
+Background location, location history, showing a driver on any map, admin
+screens for driver location, and ranking (#411).
+
+### Open questions (#410)
+
+| # | Question | Recommendation |
+| --- | --- | --- |
+| 410-3 | What range of declared capacity can a Keke rider enter, and in what unit? | Litres, a whole number. The bounds need the business's answer; the screen and the contract wait for it |
+| 410-4 | Should a point with poor accuracy count as fresh? | Yes for the MVP: freshness is about time only. The screen asks the driver to try again outside when accuracy is over 100 m, as the customer location design does |
+
+### Tests the build must include
+
+Validation and the bounds 422; roles, CSRF and `partner_not_approved`; 409
+`driver_offline`; the freshness boundary at exactly the threshold with an
+injected clock; overwrite, not insert; clearing on each path above; the privacy
+tool's count; no coordinates in any response, log or audit row; migration
+upgrade, downgrade, upgrade and `alembic check`.
+
 ## Changes
 
 | Date | Change | Agreed by |
 | --- | --- | --- |
+| 2026-11-12 | Proposed (#410): `PUT /driver/location`, the freshness rule and setting, `location` on the profile with no coordinates, clearing rules, the `confirm_location` message kind, the `driver_locations` table; D6 recorded; Keke capacity and accuracy left as open questions 410-3 and 410-4 ([amendment](#amendment-410-driver-location-for-automatic-dispatch)) | not yet agreed |
 | 2026-10-27 | Mapping only, the contract is unchanged: `PartnerProfile.email` and `preferences.offers_and_news` left the design type, so their two rows are gone (#85) | @chidimmamogbo (decision on #85) |
 | 2026-10-26 | Agreed (G3): open questions 4 (admin sets transfer methods at approval, `ground` and `overhead`) and 8 (`vehicle_profile_id` nullable) decided; the `auth.md` amendment agreed with it | @nnamdi-security (technical lead, #36) |
 | 2026-10-26 | Revised for #47: open questions 1, 3, 5, 6, 7 and 9 decided and applied; the approval endpoint is in #43; the sign-up zone is the first `driver_service_zones` row; `station_closed` not created and push depends on `push.md`; `email` and `offers_and_news` removed; notifications use the customer shape (`read_at`, `unread_count`, `ids` on mark-read); `vehicle.kind` and `vehicle_kind` renamed `delivery_type` to match `admin-directory.md`; `phone_verified` added to the profile; `auth.md` amended | Not yet |
